@@ -1,218 +1,189 @@
-ZAVOD
+# ZAVOD
 
+ZAVOD is not necessarily a final product name.
 
+It is a concept — a system for managing project work
+in a structured and controlled way.
 
-ZAVOD is not necessarily a final product name, but rather a concept -
+---
 
-a system for managing project work in a structured and controlled way.
+**A system that turns chaotic LLM-driven development
+into a structured, controlled workflow.**
 
+---
 
-
-It turns working with a project
-
-from chaotic interaction with LLMs into a controlled process.
-
-What it is
-
-
+## What it is
 
 ZAVOD is not a chat and not just an AI assistant.
 
-
-
 It is a working environment where:
 
+* a project is first **read and grounded in facts**
+* then **interpreted honestly (with uncertainty)**
+* and only after that — modified
 
+---
 
-a project is first read and grounded in facts
+## How it works
 
-then interpreted honestly (with uncertainty)
-
-and only after that - modified
-
-How it works
-
-Project Import (Scanner)
+### 1. Project Import (Scanner)
 
 Reads files, structure, dependencies
-
 → produces cold, evidence-based data
 
-Interpretation (Importer)
+### 2. Interpretation (Importer)
 
 Explains what the project might be
-
 → explicitly marks confidence (Confirmed / Likely / Unknown)
 
-Role-based work
+### 3. Role-based work
 
-Lead - understands intent and builds a plan
+* **Lead** — understands intent and builds a plan
+* **Worker** — executes changes
+* **QC** — validates the result
 
-Worker - executes changes
-
-QC - validates the result
-
-Runtime execution
+### 4. Runtime execution
 
 All operations are executed in a controlled environment
 
-UI as projection
+### 5. UI as projection
 
 The interface shows execution, but does not define logic
 
-Why this is different
+---
 
-
+## Why this is different
 
 Typical LLM workflows:
 
-
-
-use chat as context
-
-rely on memory and guessing
-
-easily break scope boundaries
-
-
+* use chat as context
+* rely on memory and guessing
+* easily break scope boundaries
 
 ZAVOD:
 
+* does **not use chat as truth**
+* builds structured requests
+* operates on **anchors (verified facts)**
 
-
-does not use chat as truth
-
-builds structured requests
-
-operates on anchors (verified facts)
-
+```
 Stable Base
-
-\+ Shift Context
-
-\+ Anchor Pack
-
++ Shift Context
++ Anchor Pack
 = Request Packet
+```
 
+If something is not anchored, it is not treated as real.
 
+---
 
-→ if something is not anchored, it is not treated as real
-
-
-
-Execution as a process
-
-
+## Execution as a process
 
 ZAVOD does not “return answers”.
 
-
-
 It shows execution:
 
+* output is streamed
+* UI updates in logical blocks
+* results go through validation (QC)
 
-
-output is streamed
-
-UI updates in logical blocks
-
-results go through validation (QC)
-
+```
 Streaming → InProgress → Result → Finalized
+```
 
-User experience
+---
 
-
+## User experience
 
 The user:
 
-
-
-selects a project
-
-sees what the system could understand
-
-describes what they want in plain language
-
-
+* selects a project
+* sees what the system could understand
+* describes what they want in plain language
 
 ZAVOD:
 
+* translates this into structured intent
+* executes
+* shows the result
 
+---
 
-translates this into structured intent
+## Direction
 
-executes
+ZAVOD is not being designed as a standalone chat interface only.
 
-shows the result
+The broader direction is to support integration with external developer tools:
 
-Current status
+* CLI-based agent workflows
+* IDE-assisted editing and execution
+* multiple model backends
 
+The goal is not to replace those tools,
+but to orchestrate them within a structured project workflow.
 
+These integrations are part of the intended architecture
+and are not yet implemented as stable features.
 
-ZAVOD is a prototype and ongoing research, not a finished product.
+---
 
+## Current status
 
+ZAVOD is a **prototype and ongoing research**, not a finished product.
 
-What exists
+### What exists
 
-basic Scanner (import)
+* basic Scanner (import)
+* early Importer (interpretation)
+* document pipeline (preview → canonical)
+* core architectural model (roles, anchors, runtime separation)
 
-early Importer (interpretation)
+### What is incomplete
 
-document pipeline (preview → canonical)
+* Worker execution is not yet fully explored or stabilized
+* Execution pipeline is not end-to-end
+* QC is only partially implemented
+* UI is currently unstable (recent regressions during development)
+* Importer may over-interpret or produce inaccurate explanations
 
-core architectural model (roles, anchors, runtime separation)
+### Important note
 
-What is incomplete
+* some architectural ideas have already evolved
+* `canon` documentation may lag behind current thinking
+* parts of the system exist as design, not full implementation
 
-Worker execution is not yet fully explored or stabilized
+---
 
-Execution pipeline is not end-to-end
-
-QC is only partially implemented
-
-UI is currently unstable (recent regressions during development)
-
-Importer may over-interpret or produce inaccurate explanations
-
-Important note
-
-some architectural ideas have already evolved
-
-canon documentation may lag behind current thinking
-
-parts of the system exist as design, not full implementation
-
-Goal
-
-
+## Goal
 
 To build a system where:
 
+* entering a project takes minutes, not hours
+* environment setup is not a user burden
+* work becomes structured and observable
+* LLM is no longer a “black box”
 
+---
 
-entering a project takes minutes, not hours
+## Contributing
 
-environment setup is not a user burden
+ZAVOD is an early-stage project.
 
-work becomes structured and observable
+If you find the idea interesting, feel free to explore, experiment,
+and open discussions or pull requests.
 
-LLM is no longer a “black box”
+The system is still evolving, so contributions are more about shaping direction
+than polishing details.
 
-In short
+---
 
-
+## In short
 
 ZAVOD is an attempt to turn software development
-
 into a controlled, observable system.
 
+---
 
+## More
 
-More
-
-
-
-Architecture and internal concepts → /docs/
-
+Architecture and internal concepts → `/docs/`
