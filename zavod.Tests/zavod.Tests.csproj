@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\app\prompts\*.md" Link="app\prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\Bootstrap\*.cs" Link="Bootstrap\%(Filename)%(Extension)" />
+    <Compile Include="..\Dispatching\*.cs" Link="Dispatching\%(Filename)%(Extension)" />
+    <Compile Include="..\Entry\*.cs" Link="Entry\%(Filename)%(Extension)" />
+    <Compile Include="..\Flow\*.cs" Link="Flow\%(Filename)%(Extension)" />
+    <Compile Include="..\Lead\*.cs" Link="Lead\%(Filename)%(Extension)" />
+    <Compile Include="..\Outcome\*.cs" Link="Outcome\%(Filename)%(Extension)" />
+    <Compile Include="..\Planning\*.cs" Link="Planning\%(Filename)%(Extension)" />
+    <Compile Include="..\Presentation\*.cs" Link="Presentation\%(Filename)%(Extension)" />
+    <Compile Include="..\Presentation\Conversation\ConversationCapabilities.cs" Link="Presentation\Conversation\ConversationCapabilities.cs" />
+    <Compile Include="..\Presentation\Conversation\ConversationActionVisibility.cs" Link="Presentation\Conversation\ConversationActionVisibility.cs" />
+    <Compile Include="..\Presentation\Conversation\ConversationMetadataAction.cs" Link="Presentation\Conversation\ConversationMetadataAction.cs" />
+    <Compile Include="..\Presentation\Conversation\ConversationItemKind.cs" Link="Presentation\Conversation\ConversationItemKind.cs" />
+    <Compile Include="..\Presentation\Conversation\ConversationItemViewModel.cs" Link="Presentation\Conversation\ConversationItemViewModel.cs" />
+    <Compile Include="..\Presentation\Conversation\IConversationAdapter.cs" Link="Presentation\Conversation\IConversationAdapter.cs" />
+    <Compile Include="..\Presentation\Conversation\ChatsAdapter.cs" Link="Presentation\Conversation\ChatsAdapter.cs" />
+    <Compile Include="..\Presentation\Conversation\MessageRenderPipeline.cs" Link="Presentation\Conversation\MessageRenderPipeline.cs" />
+    <Compile Include="..\Presentation\Conversation\MessageRenderState.cs" Link="Presentation\Conversation\MessageRenderState.cs" />
+    <Compile Include="..\Presentation\Conversation\ProjectsAdapter.cs" Link="Presentation\Conversation\ProjectsAdapter.cs" />
+    <Compile Include="..\Presentation\Conversation\StreamingBuffer.cs" Link="Presentation\Conversation\StreamingBuffer.cs" />
+    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownBlock.cs" Link="Presentation\Conversation\Markdown\MarkdownBlock.cs" />
+    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownParserService.cs" Link="Presentation\Conversation\Markdown\MarkdownParserService.cs" />
+    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownRenderCache.cs" Link="Presentation\Conversation\Markdown\MarkdownRenderCache.cs" />
+    <Compile Include="..\Prompting\*.cs" Link="Prompting\%(Filename)%(Extension)" />
+    <Compile Include="..\Boundary\*.cs" Link="Boundary\%(Filename)%(Extension)" />
+    <Compile Include="..\Contexting\*.cs" Link="Contexting\%(Filename)%(Extension)" />
+    <Compile Include="..\Demo\*.cs" Link="Demo\%(Filename)%(Extension)" />
+    <Compile Include="..\Execution\*.cs" Link="Execution\%(Filename)%(Extension)" />
+    <Compile Include="..\Orchestration\*.cs" Link="Orchestration\%(Filename)%(Extension)" />
+    <Compile Include="..\Persistence\*.cs" Link="Persistence\%(Filename)%(Extension)" />
+    <Compile Include="..\Retrieval\*.cs" Link="Retrieval\%(Filename)%(Extension)" />
+    <Compile Include="..\Router\*.cs" Link="Router\%(Filename)%(Extension)" />
+    <Compile Include="..\State\*.cs" Link="State\%(Filename)%(Extension)" />
+    <Compile Include="..\Traceing\*.cs" Link="Traceing\%(Filename)%(Extension)" />
+    <Compile Include="..\Tooling\*.cs" Link="Tooling\%(Filename)%(Extension)" />
+    <Compile Include="..\Workspace\*.cs" Link="Workspace\%(Filename)%(Extension)" />
+    <Compile Include="..\Acceptance\*.cs" Link="Acceptance\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+</Project>

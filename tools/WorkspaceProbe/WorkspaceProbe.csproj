@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Execution\ArchiveInspectionRuntimeService.cs" Link="Execution\ArchiveInspectionRuntimeService.cs" />
+    <Compile Include="..\..\Execution\ArchitectureDiagramRuntimeService.cs" Link="Execution\ArchitectureDiagramRuntimeService.cs" />
+    <Compile Include="..\..\Execution\BundledToolLocator.cs" Link="Execution\BundledToolLocator.cs" />
+    <Compile Include="..\..\Execution\ExternalProcessRequest.cs" Link="Execution\ExternalProcessRequest.cs" />
+    <Compile Include="..\..\Execution\ExternalProcessResult.cs" Link="Execution\ExternalProcessResult.cs" />
+    <Compile Include="..\..\Execution\ExternalProcessRunner.cs" Link="Execution\ExternalProcessRunner.cs" />
+    <Compile Include="..\..\Execution\IExternalProcessRunner.cs" Link="Execution\IExternalProcessRunner.cs" />
+    <Compile Include="..\..\Execution\ImageInspectionRuntimeService.cs" Link="Execution\ImageInspectionRuntimeService.cs" />
+    <Compile Include="..\..\Execution\IOpenRouterExecutionClient.cs" Link="Execution\IOpenRouterExecutionClient.cs" />
+    <Compile Include="..\..\Execution\MaterialRuntimeDiagnostic.cs" Link="Execution\MaterialRuntimeDiagnostic.cs" />
+    <Compile Include="..\..\Execution\MaterialRuntimeRequest.cs" Link="Execution\MaterialRuntimeRequest.cs" />
+    <Compile Include="..\..\Execution\MaterialRuntimeResult.cs" Link="Execution\MaterialRuntimeResult.cs" />
+    <Compile Include="..\..\Execution\MaterialRuntimeStatus.cs" Link="Execution\MaterialRuntimeStatus.cs" />
+    <Compile Include="..\..\Execution\OpenRouterConfiguration.cs" Link="Execution\OpenRouterConfiguration.cs" />
+    <Compile Include="..\..\Execution\OpenRouterDiagnostic.cs" Link="Execution\OpenRouterDiagnostic.cs" />
+    <Compile Include="..\..\Execution\OpenRouterExecutionClient.cs" Link="Execution\OpenRouterExecutionClient.cs" />
+    <Compile Include="..\..\Execution\OpenRouterExecutionRequest.cs" Link="Execution\OpenRouterExecutionRequest.cs" />
+    <Compile Include="..\..\Execution\OpenRouterExecutionResponse.cs" Link="Execution\OpenRouterExecutionResponse.cs" />
+    <Compile Include="..\..\Execution\PdfExtractionRuntimeService.cs" Link="Execution\PdfExtractionRuntimeService.cs" />
+    <Compile Include="..\..\Execution\ProjectDocumentRuntimeService.cs" Link="Execution\ProjectDocumentRuntimeService.cs" />
+    <Compile Include="..\..\Execution\TextMaterialRuntimeService.cs" Link="Execution\TextMaterialRuntimeService.cs" />
+    <Compile Include="..\..\Execution\WorkspaceEvidenceArtifactRuntimeService.cs" Link="Execution\WorkspaceEvidenceArtifactRuntimeService.cs" />
+    <Compile Include="..\..\Execution\WorkspaceMaterialRuntimeFront.cs" Link="Execution\WorkspaceMaterialRuntimeFront.cs" />
+    <Compile Include="..\..\Persistence\PersistenceContracts.cs" Link="Persistence\PersistenceContracts.cs" />
+    <Compile Include="..\..\Persistence\ProjectDocumentContracts.cs" Link="Persistence\ProjectDocumentContracts.cs" />
+    <Compile Include="..\..\Persistence\ProjectDocumentPathResolver.cs" Link="Persistence\ProjectDocumentPathResolver.cs" />
+    <Compile Include="..\..\Persistence\ProjectStateStorage.cs" Link="Persistence\ProjectStateStorage.cs" />
+    <Compile Include="..\..\Persistence\ZavodLocalStorageLayout.cs" Link="Persistence\ZavodLocalStorageLayout.cs" />
+    <Compile Include="..\..\Persistence\ZavodPersistenceException.cs" Link="Persistence\ZavodPersistenceException.cs" />
+    <Compile Include="..\..\Prompting\PromptSystemCatalog.cs" Link="Prompting\PromptSystemCatalog.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceHealthStatus.cs" Link="Workspace\WorkspaceHealthStatus.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceDriftStatus.cs" Link="Workspace\WorkspaceDriftStatus.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceEvidencePack.cs" Link="Workspace\WorkspaceEvidencePack.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceEvidencePackBuilder.cs" Link="Workspace\WorkspaceEvidencePackBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceDocumentationLanguagePolicy.cs" Link="Workspace\WorkspaceDocumentationLanguagePolicy.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceStructuralAnomaly.cs" Link="Workspace\WorkspaceStructuralAnomaly.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceChangeSummary.cs" Link="Workspace\WorkspaceChangeSummary.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportKind.cs" Link="Workspace\WorkspaceImportKind.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialInterpretationResult.cs" Link="Workspace\WorkspaceImportMaterialInterpretationResult.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialInterpretationResultBuilder.cs" Link="Workspace\WorkspaceImportMaterialInterpretationResultBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialInterpreterRunResult.cs" Link="Workspace\WorkspaceImportMaterialInterpreterRunResult.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialInterpreterRuntime.cs" Link="Workspace\WorkspaceImportMaterialInterpreterRuntime.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPreviewPacket.cs" Link="Workspace\WorkspaceImportMaterialPreviewPacket.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPreviewPacketBuilder.cs" Link="Workspace\WorkspaceImportMaterialPreviewPacketBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPromptRequest.cs" Link="Workspace\WorkspaceImportMaterialPromptRequest.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPromptRequestBuilder.cs" Link="Workspace\WorkspaceImportMaterialPromptRequestBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPromptResponse.cs" Link="Workspace\WorkspaceImportMaterialPromptResponse.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPromptResponseItem.cs" Link="Workspace\WorkspaceImportMaterialPromptResponseItem.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceImportMaterialPromptResponseParser.cs" Link="Workspace\WorkspaceImportMaterialPromptResponseParser.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialContextUsefulness.cs" Link="Workspace\WorkspaceMaterialContextUsefulness.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceState.cs" Link="Workspace\WorkspaceState.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialPreviewCandidate.cs" Link="Workspace\WorkspaceMaterialPreviewCandidate.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialPreviewInput.cs" Link="Workspace\WorkspaceMaterialPreviewInput.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialPreviewInterpretation.cs" Link="Workspace\WorkspaceMaterialPreviewInterpretation.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialTemporalStatus.cs" Link="Workspace\WorkspaceMaterialTemporalStatus.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceTechnicalPreviewInput.cs" Link="Workspace\WorkspaceTechnicalPreviewInput.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialShortlistBuilder.cs" Link="Workspace\WorkspaceMaterialShortlistBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialTextEqualizer.cs" Link="Workspace\WorkspaceMaterialTextEqualizer.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialTextExtract.cs" Link="Workspace\WorkspaceMaterialTextExtract.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialTextExtractStatus.cs" Link="Workspace\WorkspaceMaterialTextExtractStatus.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceScanRequest.cs" Link="Workspace\WorkspaceScanRequest.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceScanResult.cs" Link="Workspace\WorkspaceScanResult.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialKind.cs" Link="Workspace\WorkspaceMaterialKind.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceMaterialCandidate.cs" Link="Workspace\WorkspaceMaterialCandidate.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceScanner.cs" Link="Workspace\WorkspaceScanner.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\app\prompts\*.md" Link="app\prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\app\config\*.json" Link="app\config\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+</Project>

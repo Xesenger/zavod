@@ -1,0 +1,119 @@
+ZAVOD UI CONTROL / HOOK MATRIX
+Date: 2026-04-11
+Scope: Project Work Cycle controls only
+
+IMPORTANT
+- This file is no longer a whole-app control inventory.
+- Whole-app navigation now starts from:
+  - Chats
+  - Projects
+- App-level UI model reference:
+  - docs/ui_product_model.txt
+- This file applies only to controls inside Project Work Cycle.
+
+CONTROL CLASSES
+1. Read-only projection controls
+- show status
+- open docs
+- reveal evidence
+
+2. Surface-navigation controls
+- move between visible Work Cycle surfaces
+- return to result
+- return to discussion surface
+- these do not necessarily mutate backend/core truth
+
+3. Core-driving controls
+- affect lifecycle/runtime/result truth
+- must be reconnected only after backend owner is proven
+
+WORK CYCLE CONTROL GROUPS
+
+GROUP A. CHAT PROJECTION
+- Kind:
+  - read-only at first
+- Examples:
+  - discussion summary
+  - phase text
+  - frozen context projection
+- Risk:
+  - medium if it starts inventing intent readiness
+
+GROUP B. CHAT / AGREEMENT ACTIONS
+- Kind:
+  - core-driving
+- Examples:
+  - send
+  - continue
+  - start validation/preflight
+- Risk:
+  - high
+- Rule:
+  - do not reconnect until intent/phase ownership is proven
+
+GROUP C. EXECUTION PROJECTION
+- Kind:
+  - read-only at first
+- Examples:
+  - stage labels
+  - runtime/evidence labels
+  - document links
+- Risk:
+  - low if truthful
+
+GROUP D. EXECUTION ACTIONS
+- Kind:
+  - core-driving
+- Examples:
+  - confirm preflight
+  - clarify preflight
+  - cancel execution
+  - resume execution
+- Risk:
+  - high
+
+GROUP E. RESULT PROJECTION
+- Kind:
+  - read-only at first
+- Examples:
+  - result summary
+  - review status
+  - metadata/evidence projection
+- Risk:
+  - low if truthful
+
+GROUP F. RESULT DECISIONS
+- Kind:
+  - core-driving
+- Examples:
+  - accept
+  - revise / return for revision
+  - reject / abandon style decision
+- Risk:
+  - very high
+- Hard rule:
+  - repo mutation only through Accept
+
+GROUP G. WORK CYCLE SURFACE NAVIGATION
+- Kind:
+  - surface-navigation
+- Examples:
+  - return to result
+  - return to execution surface
+  - return to discussion context
+- Risk:
+  - low to medium
+- Rule:
+  - must not be assumed to mutate backend truth automatically
+
+SAFE RECONNECTION ORDER
+1. Read-only projection controls
+2. Surface-navigation controls
+3. Chat/agreement controls
+4. Execution controls
+5. Result decisions
+
+DO NOT DO
+- Do not assume every button inside Work Cycle is a backend command.
+- Do not assume every Result button writes to repo.
+- Do not connect controls from old recovery docs without re-proving ownership from current code.

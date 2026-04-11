@@ -1,0 +1,25 @@
+<UserControl
+    x:Class="zavod.Presentation.Conversation.ConversationView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:zavod.Presentation.Conversation"
+    mc:Ignorable="d">
+
+    <ScrollViewer
+        x:Name="ConversationScrollViewer"
+        VerticalScrollBarVisibility="Hidden"
+        VerticalScrollMode="Enabled">
+        <ItemsRepeater x:Name="MessagesRepeater">
+            <ItemsRepeater.Layout>
+                <StackLayout Spacing="8" />
+            </ItemsRepeater.Layout>
+            <ItemsRepeater.ItemTemplate>
+                <DataTemplate x:DataType="local:ConversationItemViewModel">
+                    <local:ConversationItemControl />
+                </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+    </ScrollViewer>
+</UserControl>

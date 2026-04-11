@@ -1,0 +1,100 @@
+ZAVOD PROJECT WORK CYCLE PHASE VISIBILITY MATRIX
+Date: 2026-04-11
+Scope: Project Work Cycle only
+
+IMPORTANT
+- This file no longer describes whole-app visibility.
+- Whole-app navigation is now:
+  - Chats
+  - Projects
+- App-level UI model reference:
+  - docs/ui_product_model.txt
+- This matrix begins only after entering:
+  - Projects
+  - Project Work Cycle
+
+VISIBLE STATES
+- Visible
+- Hidden
+- Frozen
+- Stubbed
+
+GLOBAL RULES
+- Chat / Execution / Result here mean Work Cycle surfaces only.
+- They do not describe top-level Chats mode.
+- Refresh/open-doc style read-only actions may remain available when their data exists.
+- Repo mutation still happens only through Accept in Result.
+
+PHASE A. DISCUSSION ENTRY
+- Chat = Visible
+- Execution = Hidden
+- Result = Hidden
+- Notes:
+  - discussion-first
+  - no fake active work
+
+PHASE B. AGREEMENT / PREFLIGHT
+- Chat = Visible
+- Execution = Visible
+- Result = Hidden
+- Execution state:
+  - Stubbed or prepared shell
+- Notes:
+  - Chat remains the active semantic surface
+
+PHASE C. ACTIVE WORK
+- Chat = Frozen
+- Execution = Visible
+- Result = Hidden
+- Notes:
+  - Execution is the active surface
+  - Chat remains visible only as bounded context
+
+PHASE D. RESULT READY
+- Chat = Frozen
+- Execution = Frozen
+- Result = Visible
+- Notes:
+  - Result becomes the active decision surface
+  - Execution stays visible as evidence/work context
+
+PHASE E. REVISION INTAKE
+- Chat = Frozen
+- Execution = Visible
+- Result = Visible
+- Notes:
+  - Execution becomes active again
+  - Result remains visible as reference/decision context
+
+PHASE F. POST-DECISION RETURN
+- Chat = Visible
+- Execution = Hidden
+- Result = Hidden
+- Notes:
+  - return to discussion-first view
+  - this does not itself prove shift closure
+
+PHASE G. INTERRUPTED / DEGRADED RESUME
+- Chat = Frozen
+- Execution = Visible
+- Result = Hidden
+- Notes:
+  - honest degraded restore
+  - do not fake live running
+
+FREEZE RULE
+- Frozen means:
+  - still visible
+  - not the active working surface
+  - no misleading mutating affordances
+
+STUB RULE
+- Stubbed means:
+  - visible only as placeholder/projection
+  - no backend-driving behavior yet
+
+IMPLEMENTATION ORDER
+1. Drive top-level Work Cycle visibility from StepPhaseProjection
+2. Add Frozen/Stubbed styling second
+3. Restore non-mutating controls third
+4. Restore mutating controls only after backend owner is proven

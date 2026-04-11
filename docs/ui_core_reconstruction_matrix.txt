@@ -1,0 +1,184 @@
+ZAVOD PROJECT WORK CYCLE RECONSTRUCTION MATRIX
+Date: 2026-04-11
+Scope: Project Work Cycle only
+
+IMPORTANT
+- This file is no longer a whole-app recovery matrix.
+- Whole-app recovery now starts from:
+  - Chats
+  - Projects
+- App-level UI model reference:
+  - docs/ui_product_model.txt
+- This file applies only after the app is already inside:
+  - Projects
+  - Project Work Cycle
+- Product truth remains under docs/zavod/canon/.
+
+WHAT THIS FILE IS FOR
+- To rebuild the inner 3-surface ZAVOD work cycle safely.
+- To keep Work Cycle reconstruction separate from:
+  - Chats
+  - Project List
+  - Project Home
+
+WORK CYCLE MODEL
+- Internal surfaces:
+  - Chat
+  - Execution
+  - Result
+
+IMPORTANT DISTINCTION
+- Work Cycle Chat != top-level Chats mode.
+- Top-level Chats mode is free chat.
+- Work Cycle Chat is bounded project workflow UI.
+
+WORK CYCLE TRUTH HIERARCHY
+1. docs/zavod/canon/*
+2. current code
+3. agent/UI v2.txt
+4. older recovery/code-memory snapshots
+5. memory/conversation hints
+
+PRIMARY CANON SIGNALS FOR WORK CYCLE
+- Core decides and owns truth.
+- UI mirrors state.
+- Execution is a persistent work surface.
+- Result appears after execution and does not replace execution.
+- Revision keeps result visible while execution becomes active again.
+- Result decisions do not equal implicit closure.
+
+PRIMARY CODE SIGNALS FOR WORK CYCLE
+- StepPhaseState / StepPhaseProjection already exist.
+- Resume normalization already exists.
+- Result/apply/abandon backends already exist.
+- Closure proposal backend already exists.
+
+SAFE WORK CYCLE PHASE MODEL
+Phase A. Discussion Entry
+- Visible:
+  - Chat
+- Hidden:
+  - Execution
+  - Result
+- Truth basis:
+  - no active work, or honest discussion-first project state
+
+Phase B. Agreement / Preflight
+- Visible:
+  - Chat
+  - Execution as prepared shell
+- Hidden:
+  - Result
+- Truth basis:
+  - discussion reached validation/preflight readiness
+
+Phase C. Active Work
+- Visible:
+  - Chat frozen
+  - Execution active
+- Hidden:
+  - Result
+- Truth basis:
+  - active shift/task truth with work context
+
+Phase D. Result Ready
+- Visible:
+  - Chat frozen
+  - Execution visible
+  - Result active
+- Truth basis:
+  - result/review support is genuinely present
+
+Phase E. Revision Intake
+- Visible:
+  - Chat frozen
+  - Execution active
+  - Result visible
+- Truth basis:
+  - task remains active and revision path exists
+
+Phase F. Post-Decision Return
+- Visible:
+  - Chat
+- Hidden:
+  - Execution
+  - Result
+- Truth basis:
+  - decision cycle resolved
+- Important:
+  - hidden execution/result does not itself prove shift closure
+
+PHASE ENGINE RULE
+- Do not invent a new local Work Cycle phase model.
+- Use:
+  - StepPhaseState
+  - StepPhaseProjection
+- Work Cycle UI must project the existing engine, not replace it.
+
+WORK CYCLE SURFACE ROLES
+1. Chat
+- Role:
+  - discussion
+  - agreement/preflight
+  - frozen context during work/result
+- Must not:
+  - invent validated intent
+  - override active truth
+  - behave like free-chat mode
+
+2. Execution
+- Role:
+  - persistent work surface
+  - active work
+  - active again during revision
+- Must not:
+  - fake live running after restart
+  - replace task truth
+  - collapse into Result
+
+3. Result
+- Role:
+  - decision surface
+  - accept / revise / reject-or-abandon style decisions
+- Must not:
+  - imply completion just by visibility
+  - replace Execution
+  - delete history
+
+BUTTON CATEGORY RULE
+- Not every Work Cycle button mutates backend/core.
+- Two button categories must stay separate:
+  - core-driving actions
+  - UI/surface navigation actions
+- Example of non-core button:
+  - return to result
+
+REPO MUTATION RULE
+- Real repo mutation happens only through:
+  - Accept
+  - in Result
+- Not through navigation.
+- Not through entering Work Cycle.
+- Not through showing Execution.
+
+SAFE REBUILD ORDER FOR WORK CYCLE
+1. Restore phase-driven shell only
+2. Restore read-only Chat projection
+3. Restore read-only Execution projection
+4. Restore read-only Result projection
+5. Restore non-mutating navigation controls
+6. Restore discussion/composer actions
+7. Restore execution controls
+8. Restore result decisions
+
+HARD WORK CYCLE RULES
+- Do not treat Work Cycle as the whole app.
+- Do not treat Work Cycle Chat as top-level Chats mode.
+- Do not let Work Cycle navigation mutate truth.
+- Do not write repo changes before Accept.
+- Do not rebuild the full heavy shell in one pass.
+
+UNVERIFIED
+- Exact final button set may differ slightly from earlier UI v2 wording.
+- Final naming of some Result controls may evolve.
+- Those details must not override the larger Work Cycle model above.

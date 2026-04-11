@@ -1,0 +1,119 @@
+ZAVOD UI PRODUCT MODEL
+Date: 2026-04-11
+Status: working source of truth for app-level UI structure during recovery/rebuild
+
+IMPORTANT
+- This file is not product canon.
+- Product/system truth still lives under docs/zavod/canon/.
+- This file exists to keep UI recovery aligned to one app-level model and reduce architecture drift.
+- If older recovery notes conflict with this file, distrust the older notes first and verify against code.
+
+TOP-LEVEL PRODUCT SPLIT
+1. Chats
+- Free chats.
+- Separate top-level app mode.
+- Not part of ZAVOD project lifecycle.
+- No project truth ownership.
+- No bounded project prompt/execution model.
+
+2. Projects
+- Separate top-level app mode.
+- This is the actual entry into ZAVOD.
+- Contains internal project-navigation states:
+  - Project List
+  - Project Home
+  - Project Work Cycle
+
+PROJECTS INTERNAL NAVIGATION
+1. Project List
+- Entry layer for:
+  - import existing project
+  - create new project
+  - choose project
+- Navigation only.
+- Does not mutate project truth by itself.
+
+2. Project Home
+- Simple project overview layer.
+- First implementation should stay minimal:
+  - open generated HTML summary
+  - show scanner/import material list
+  - show simple status lines
+- Not the work cycle.
+- Not execution control.
+- Not result decision surface.
+
+3. Project Work Cycle
+- Inner ZAVOD workflow layer.
+- Internal surfaces:
+  - Chat
+  - Execution
+  - Result
+- This layer uses:
+  - bounded project semantics
+  - phase engine
+  - prompt assembly / anchors
+  - execution streaming / chat projection
+
+IMPORTANT DISTINCTION
+- Top-level Chats mode != Chat surface inside Project Work Cycle.
+- Top-level Chats is free chat.
+- Work Cycle Chat is bounded project workflow UI.
+
+PROJECT STAGE MODEL
+- Practical project progression currently treated as:
+  - Import
+  - Pre-canon docs
+  - Canon
+- This belongs to Projects mode, not to top-level Chats.
+
+NAVIGATION RULE
+- Moving between:
+  - Chats
+  - Projects
+  - Project List
+  - Project Home
+  - Project Work Cycle
+  changes UI/navigation state only.
+- Navigation must not mutate project truth by itself.
+
+REPO MUTATION RULE
+- Real repo changes appear only through:
+  - Accept
+  - in Result
+- Not through navigation.
+- Not through entering Work Cycle.
+- Not through showing HTML.
+- Not through preview docs alone.
+
+COLD START RULE
+- Cold start is valid.
+- Empty state must not confuse or break ZAVOD.
+- Current cold start meaning:
+  - no active work is a valid state
+- Future cold start meaning also includes:
+  - New Project
+  - weak/unclear initial project understanding
+  - environment preparation only with explicit user consent
+
+BUTTON RULE
+- Not every button inside Project Work Cycle mutates backend/core.
+- Two classes must stay separate:
+  - core-driving actions
+  - UI/surface navigation actions
+- Example of UI/surface navigation action:
+  - return to result
+
+IMPLEMENTATION ORDER
+1. Restore top-level Chats | Projects shell
+2. Restore Projects internal navigation
+3. Restore Project Home minimal view
+4. Restore Project Work Cycle shell
+5. Restore Work Cycle content/actions gradually
+
+DO NOT DO
+- Do not treat the 3-surface Work Cycle as the whole app.
+- Do not treat Project Home as Project Work Cycle.
+- Do not treat free Chats as bounded project chat.
+- Do not let navigation mutate truth.
+- Do not let repo writes happen before Accept.

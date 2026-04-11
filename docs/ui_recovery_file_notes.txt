@@ -1,0 +1,99 @@
+ZAVOD UI RECOVERY FILE NOTES
+Date: 2026-04-11
+
+IMPORTANT
+- These notes are implementation-oriented only.
+- Product truth remains under docs/zavod/canon/.
+- Older recovery notes should be treated as hints, not as authoritative architecture.
+- App-level UI model reference:
+  - docs/ui_product_model.txt
+
+1. App.xaml
+- Current role:
+  - shared application resources only
+- Must not become the place where Chats/Projects product semantics are invented.
+
+2. App.xaml.cs
+- Current role:
+  - minimal startup path
+  - resolve project root
+  - demo mode detection
+  - bootstrap initialization
+  - MainWindow creation
+- Keep startup/package recovery stable while rebuilding UI.
+
+3. MainWindow.xaml
+- Current role:
+  - safe recovery host only
+- This file should be rebuilt starting from:
+  - top-level Chats | Projects split
+- Do not rebuild it starting from the inner 3-surface workflow directly.
+
+4. MainWindow.xaml.cs
+- Current role:
+  - read-only recovery projection
+- Current trusted reads:
+  - ProjectStateStorage
+  - ProjectEntryResolver
+  - ProjectDocumentRuntimeService
+- Current MainWindow should eventually become a composition host, not a giant owner of project logic.
+
+5. Chats-related implementation reality
+- Chats mode currently has separate conversation infrastructure:
+  - ChatsAdapter
+  - local conversation persistence under .zavod.local
+- Chats is free-chat product behavior, not project lifecycle behavior.
+
+6. Projects-related implementation reality
+- Projects mode is the actual ZAVOD entry.
+- Projects contains three internal levels:
+  - Project List
+  - Project Home
+  - Project Work Cycle
+
+7. Project List backend hints
+- Relevant owners:
+  - WorkspaceScanner
+  - WorkspaceImportMaterialInterpreterRuntime
+  - WorkspaceEvidenceArtifactRuntimeService
+- Project List should cover:
+  - import
+  - create new project
+  - choose project
+
+8. Project Home backend hints
+- Relevant owners:
+  - ProjectDocumentRuntimeService
+  - scanner/import material outputs
+- First version should stay simple:
+  - open HTML summary
+  - materials list
+  - simple statuses
+- Open HTML through external browser for now.
+
+9. Project Work Cycle backend hints
+- Relevant owners:
+  - ResumeStageStorage
+  - ResumeStageNormalizer
+  - StepPhaseState / StepPhaseProjection
+  - runtime / checkpoint bundles
+- Work Cycle is the only place where:
+  - bounded project chat
+  - execution
+  - result
+  - prompt assembly / anchors
+  - execution streaming / chat projection
+  belong
+
+10. Repo mutation rule
+- Real repo changes must happen only after:
+  - Accept
+  - in Result
+- Navigation between Project List / Home / Work Cycle is UI-only.
+
+11. Unsafe recovery mistakes to avoid
+- Treating Chats and project chat as the same layer
+- Treating Project Home as if it were Project Work Cycle
+- Treating the 3-surface shell as the whole app model
+- Reconnecting heavy conversation/execution/result UI all at once
+- Letting MainWindow own too much orchestration logic

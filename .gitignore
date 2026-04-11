@@ -1,0 +1,48 @@
+# Local runtime state for this source checkout
+/.zavod.local/
+
+# Local generated project state for this source repo itself.
+# This does NOT redefine the product rule that imported projects may carry
+# shared, commit-friendly `.zavod/` state inside their own repos.
+/.zavod/
+
+# Local Codex working surface
+/agent/
+
+# Local demo / audit outputs
+/.zavod-demo-project/
+/blind_import_audit_*/
+
+# Local app configuration / secrets
+/app/config/openrouter.local.json
+
+# Optional local tool payloads not required as source
+/tools/7za.exe
+/tools/image-tools/
+/tools/pdf-tools/
+/tools/pdf-tools/Release-24.07.0-0.zip
+
+# Generated code mirrors / archive junk
+/docs/code_memory/
+/docs/desktop.ini
+/reference/desktop.ini
+/docs/zavod/canon draft/
+/reference/_archive/
+
+# .NET build artifacts
+bin/
+obj/
+build-diag.log
+
+# IDE / SDK local cache
+.vs/
+.dotnet/
+.dotnet-cli/
+.dotnet-home/
+
+# User-specific settings
+*.user
+
+# OS / editor noise
+Thumbs.db
+.DS_Store
