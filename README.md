@@ -33,13 +33,14 @@ It is a working environment where:
 
 ---
 
-How it works
+## How it works
 
 1. Project Import (Scanner)
 Reads files, structure, dependencies → produces cold, evidence-based data
 
 2. Interpretation (Importer)
 Explains what the project might be → explicitly marks confidence (Confirmed / Likely / Unknown)
+The system derives and maintains documentation based on this interpretation.
 
 3. Documentation (System-managed)
 The system continuously builds and maintains project documentation based on evidence and interpretation.
