@@ -228,3 +228,9 @@ ZAVOD is moving toward a model where:
 Core foundations are in progress.
 
 This roadmap reflects the intended system design, including components not yet implemented.
+
+---
+
+## Note
+
+Long-term direction includes reducing reliance on VM-based execution in favor of more native and direct runtime approaches where it improves control, performance, and system transparency.
