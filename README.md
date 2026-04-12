@@ -1,3 +1,8 @@
+## Documentation
+
+- [Roadmap](./ROADMAP.md)
+- [License](./LICENSE)
+
 # ZAVOD
 
 ZAVOD is not necessarily a final product name.
