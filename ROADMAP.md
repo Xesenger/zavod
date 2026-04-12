@@ -1,536 +1,213 @@
-# ZAVOD
+# Roadmap
 
-**Desktop orchestration system for real project work**
+ZAVOD is evolving from a project-aware system into a fully controlled execution environment for real work.
 
-ZAVOD helps people move from idea to working result through guided collaboration with agents — without losing control over project truth, execution, or review.
-
----
-
-## Overview
-
-ZAVOD is not just a chat, not just an AI IDE, and not an autonomous agent playground.
-
-It is a controlled work system where:
-
-- project truth is preserved outside the LLM
-- agent work is bounded and reviewable
-- execution is structured
-- users are guided step by step
+This roadmap focuses on **what the system is becoming**, not only what already exists in code.
 
 ---
 
-## Why ZAVOD
+## Execution Model
 
-Modern development tools often assume that the user:
+Move from implicit agent behavior to structured, controllable execution.
 
-- already knows the toolchain
-- keeps the whole project in their head
-- manually coordinates execution
-- notices when context is lost
-- trusts agents too early
+Planned:
 
-ZAVOD changes this.
+- minimal execution DSL  
+- explicit execution plans (`ExecutionPlan`)  
+- bounded steps (`ExecutionStep`)  
+- observable results (`ExecutionResult`)  
 
-It acts as:
+Initial step types:
 
-- project memory
-- execution boundary
-- review system
-- guided workflow
+- read / edit files  
+- search  
+- run commands  
+- verify results  
 
----
+Goal:
 
-## Core Principles
-
-### Project truth first
-
-ZAVOD keeps project understanding outside the model itself.
-
-Important state lives in the system:
-
-- project documents
-- snapshots
-- logs
-- execution history
-- derived runtime state
-
-This makes work:
-
-- recoverable
-- inspectable
-- stable across sessions
-- less dependent on one specific model
-
-### Diff-first workflow
-
-Agents should not directly own or mutate the real project by default.
-
-The intended flow is:
-
-1. work in an isolated environment
-2. propose changes
-3. show the diff
-4. require explicit acceptance
-5. only then apply to the real repository
-
-### Controlled execution
-
-Agent behavior should be structured, not improvised.
-
-ZAVOD moves toward:
-
-- bounded execution steps
-- explicit plans
-- safe operations
-- observable results
-- review before promotion
-
-### Guided experience
-
-ZAVOD is designed not only for experienced developers.
-
-The long-term direction is to help users start from intention, not from tool complexity.
-
-The system should:
-
-- ask only the minimum necessary questions
-- prepare the environment when needed
-- guide work step by step
-- hide complexity until it becomes useful
+- predictable behavior  
+- safe automation  
+- replayable workflows  
 
 ---
 
-## High-Level Flow
+## Environment Preparation
 
-`Idea → Import → Understanding → Plan → Execution → Review → Accept → Result`
+Make environment setup part of the system instead of a manual prerequisite.
 
-In practice this means:
+Planned:
 
-- import a project or start a new one
-- scan code and structure
-- build preview understanding
-- confirm canonical project truth
-- generate a bounded execution plan
-- execute work in a controlled environment
-- review changes before acceptance
-- apply accepted results safely
+- automatic detection of missing tools  
+- guided installation (Qt, .NET, Git, CMake, etc.)  
+- verification of dependencies  
+- environment readiness checks  
 
----
+Rules:
 
-## Roadmap
+- user-approved  
+- transparent  
+- recoverable  
 
-### Phase 1 — Stable project truth foundation
+Goal:
 
-**Status:** In progress
-
-**Goals**
-
-- import project materials
-- scan code and structure
-- build preview understanding
-- confirm canonical documents
-- persist logs and snapshots
-- support recovery after interruption
-
-**Expected outcomes**
-
-- evidence bundle
-- preview docs pipeline
-- canonical docs pipeline
-- conversation logs
-- snapshot system
-- resume-ready state model
+- reduce setup friction  
+- support non-expert users  
+- ensure reproducible environments  
 
 ---
 
-### Phase 2 — Guided execution model
+## Runtime & Tool Layer
 
-**Status:** Partial foundation exists
+Introduce a unified execution layer independent of any single tool or model.
 
-This phase moves ZAVOD from understanding the project to coordinating real work.
+Planned:
 
-**Goals**
+- controlled filesystem access  
+- process execution layer  
+- tool abstraction (CLI, scripts, services)  
+- sandboxed operations  
 
-- introduce explicit execution flow
-- keep agent work bounded
-- prevent uncontrolled refactoring
-- prepare the system for safer multi-step work
+Examples:
 
-**Expected outcomes**
+- running builds  
+- executing scripts  
+- interacting with local tools  
+- controlled network access  
 
-- Lead / Worker / QC model
-- execution boundaries
-- task framing
-- diff-first workflow
-- acceptance gate before repo apply
+Goal:
 
----
-
-### Phase 3 — DSL / execution contract
-
-**Status:** Planned
-
-This phase introduces a minimal execution language so agent work becomes structured instead of loose and unpredictable.
-
-Without DSL, agents tend to:
-
-- overreach
-- modify unrelated areas
-- blur task boundaries
-- become expensive and hard to trust
-
-With DSL, ZAVOD can move toward:
-
-- explicit steps
-- bounded execution
-- stable review
-- replayable work
-- testable workflows
-
-**Possible step types**
-
-- `read_file`
-- `edit_file`
-- `search`
-- `run_command`
-- `verify`
-- `open_project_target`
-- `run_project_profile`
-
-**Expected outcomes**
-
-- `ExecutionPlan`
-- `ExecutionStep`
-- `ExecutionResult`
-- allowed step registry
-- planner → executor contract
-- rejection of unsafe or unknown steps
+- capabilities belong to the system, not the model  
+- consistent execution across different environments  
 
 ---
 
-### Phase 4 — Environment preparation
+## External Tool Orchestration
 
-**Status:** Planned
+Integrate existing tools as part of the execution system.
 
-This phase covers preparing project environments at the user's request.
+Targets:
 
-**Goal**
+- IDEs (Qt Creator, Visual Studio, VS Code)  
+- CLI tools (git, cmake, dotnet, compilers)  
+- external agent runtimes (Codex, Claude, Google ecosystems)  
 
-Help users install and verify the software required for a project without forcing them to do everything manually.
+Model:
 
-**Examples**
+- tools act as execution workers  
+- ZAVOD coordinates and observes  
+- outputs are captured and integrated  
 
-- install Qt / Qt Creator
-- install .NET SDK
-- install Git
-- install CMake / compilers
-- install project-specific tools
-- verify required dependencies
+Goal:
 
-**Rules**
-
-Environment preparation must be:
-
-- explicit
-- user-approved
-- logged
-- recoverable
-
-**Expected outcomes**
-
-- environment requirements detection
-- setup suggestions
-- setup execution plan
-- installation progress reporting
-- post-install verification
-
-This is especially important for users who should be able to say:
-
-> I want to work on this project
-
-and then be guided through missing setup safely.
+- no tool fragmentation  
+- no loss of context  
+- unified control over execution  
 
 ---
 
-### Phase 5 — Internal lightweight code editor
+## Internal Editing Surface
 
-**Status:** Planned
+Provide a minimal built-in editor to maintain system awareness.
 
-ZAVOD should include its own basic source editor.
+Planned:
 
-Not because it must replace full IDEs forever, but because it needs a stable internal editing surface under its own control.
+- file editing and navigation  
+- diff awareness  
+- change tracking  
+- integration with scanner  
 
-**Why this matters**
+Goal:
 
-A built-in editor helps with:
-
-- quick edits without leaving ZAVOD
-- diff review
-- patch application
-- awareness of local file changes
-- reduced confusion when project state changes outside the current agent flow
-
-**Design direction**
-
-The first editor should be:
-
-- simple
-- reliable
-- tightly integrated with scanner/state tracking
-- replaceable later if needed
-
-**Expected outcomes**
-
-- file open / edit / save
-- syntax highlighting
-- diff awareness
-- file change tracking
-- scanner refresh integration
-- external change detection
+- keep system in sync with file state  
+- reduce dependency on external editors  
+- enable controlled edits inside ZAVOD  
 
 ---
 
-### Phase 6 — External change awareness
+## External Change Awareness
 
-**Status:** Planned
+Ensure the system never loses track of real project state.
 
-This phase ensures that ZAVOD does not lose track of reality when files change outside its own controlled flow.
+Planned:
 
-**Goal**
+- file watchers  
+- detection of external edits  
+- project invalidation and refresh  
+- safe resync flow  
 
-Detect and react to changes made:
+Goal:
 
-- in external editors
-- by IDEs
-- by build systems
-- by the user directly
-- by tools running outside ZAVOD
-
-**Expected outcomes**
-
-- file watchers
-- project invalidation and refresh signals
-- scanner-aware resync
-- external change notifications
-- safe reload and comparison flow
-
-This is critical if the user moves between ZAVOD and other tools during real work.
+- maintain consistency  
+- prevent silent desynchronization  
+- support hybrid workflows  
 
 ---
 
-### Phase 7 — Run and test inside ZAVOD
+## Run & Test Inside ZAVOD
 
-**Status:** Planned
+Allow validation without leaving the system.
 
-ZAVOD should be able to validate changes without forcing the user to leave the application.
+Planned:
 
-**Goal**
+- project run profiles  
+- build / test execution  
+- output streaming  
+- result capture  
 
-Run project-specific build, test, and launch flows from inside ZAVOD using known project profiles.
+Goal:
 
-**Examples**
-
-- Qt projects
-- CMake projects
-- .NET projects
-- script-driven projects
-
-**Expected outcomes**
-
-- project run profiles
-- build / run / test commands
-- execution output streaming
-- result capture
-- failure reporting
-- integration into the review loop
+- close the feedback loop  
+- reduce tool switching  
+- integrate execution into review flow  
 
 ---
 
-### Phase 8 — Safer execution workspaces
+## Safe Execution Workspaces
 
-**Status:** Conceptual foundation exists
+Isolate agent work from the real repository.
 
-This phase hardens the model where agent work happens away from the real repository.
+Planned:
 
-**Goals**
+- temporary workspaces  
+- patch generation  
+- diff-first workflow  
+- acceptance-based apply  
 
-- keep agent work isolated
-- support throwaway workspaces
-- enable diff-before-accept
-- prevent accidental repo damage
+Goal:
 
-**Expected outcomes**
-
-- workspace cloning or preparation
-- patch generation
-- reviewed apply
-- cleanup and retention policy
-- acceptance-based promotion to real repo
-
-This becomes especially important when external contractors, external runtimes, or non-default agents are involved.
+- prevent accidental damage  
+- enable safe experimentation  
+- support external agents and contractors  
 
 ---
 
-### Phase 9 — Guided user mode
+## Guided User Mode
 
-**Status:** Long-term direction
+Make ZAVOD usable without deep technical knowledge.
 
-This is the ordinary-user entry point.
+Planned:
 
-**Goal**
+- intention-driven entry  
+- minimal questioning  
+- step-by-step guidance  
+- progressive disclosure  
 
-Let people start from intention, not from tools.
+Example:
 
-Example entry:
+> "I want to build a project"
 
-> Let's make a Sonic game
+System:
 
-ZAVOD should then:
+- prepares environment  
+- creates structure  
+- guides next steps  
 
-- ask only the minimum clarifying questions
-- prepare the environment if needed
-- create the first safe project structure
-- guide the user one step at a time
-- keep complexity hidden unless needed
+Goal:
 
-**Expected outcomes**
-
-- simple mode
-- guided next-step flow
-- low-jargon UX
-- progressive disclosure
-- safe defaults
-
-This is where ZAVOD becomes a real hand-holding project system, not just a developer shell.
-
----
-
-## Future Integration with IDEs and CLI Tools
-
-ZAVOD is not meant to deny the existence of external tools.
-
-It is meant to orchestrate them.
-
-### Philosophy
-
-External tools should become workers inside the system, not the source of truth.
-
-ZAVOD should be able to integrate with:
-
-- IDEs such as Qt Creator, Visual Studio, and VS Code
-- CLI tools such as `git`, `cmake`, `dotnet`, compilers, test runners, and build systems
-- external agent runtimes and contractor-style tools
-- future third-party development environments
-
-### Intended model
-
-Even when external IDEs or CLI tools are used:
-
-- ZAVOD remains the source of project truth
-- execution is still tracked
-- outputs are still captured
-- changes are still reviewable
-- acceptance still matters before promotion to the real repo
-
-### Why this matters
-
-People already work across multiple tools.
-
-The goal is not to force everyone into one editor window.
-
-The goal is to let ZAVOD coordinate real-world tools without losing context, control, or recoverability.
-
----
-
-## Supporting Systems
-
-### Logging and replay
-
-Everything important should remain inspectable:
-
-- actions
-- diffs
-- decisions
-- tool usage
-- run and test output
-- acceptance history
-
-### Approval model
-
-Potentially dangerous actions should be gated by:
-
-- policy
-- role
-- user approval
-- trust level
-
-### Recovery and continuity
-
-After interruption, ZAVOD should restore:
-
-- where work stopped
-- what changed
-- what was accepted
-- what remains pending
-
----
-
-## Near-Term Priorities
-
-### Priority A — Bounded execution
-
-- diff-first flow
-- no direct repo mutation by agents
-- minimal execution contract
-
-### Priority B — Honest project state
-
-- scanner refresh
-- external change detection
-- truth / preview separation
-
-### Priority C — Reduced dependency on IDE context
-
-- internal lightweight editor
-- run / test inside ZAVOD
-- project profile awareness
-
-### Priority D — Real onboarding
-
-- environment preparation
-- missing tool detection
-- user-approved setup flow
-
----
-
-## Example Future Experience
-
-User says:
-
-> Let's make a Sonic game
-
-ZAVOD responds by:
-
-- asking only the minimum useful questions
-- preparing missing tools and environment
-- creating a safe starting structure
-- guiding the user step by step
-- keeping execution controlled and reviewable
-
----
-
-## Current Status
-
-ZAVOD is under active development.
-
-The product direction is already clear:
-
-- project truth should live outside the LLM
-- agent work should be isolated and reviewable
-- execution should be structured
-- users should be guided toward real results
-
-Core foundations are being built first so the future UX rests on something stable.
+- lower entry barrier  
+- make complex workflows accessible  
+- keep control without overwhelming the user  
 
 ---
 
@@ -538,14 +215,16 @@ Core foundations are being built first so the future UX rests on something stabl
 
 ZAVOD is moving toward a model where:
 
-- project truth lives outside the LLM
-- agent work is isolated and reviewable
-- execution is structured, not improvised
-- users are guided step by step toward a real result
-- external IDEs and CLI tools can be integrated without becoming the source of truth
+- project truth lives outside the LLM  
+- execution is structured and observable  
+- environment setup is part of the system  
+- tools are orchestrated, not manually managed  
+- users are guided from idea to result  
 
 ---
 
-## License
+## Status
 
-TBD
+Core foundations are in progress.
+
+This roadmap reflects the intended system design, including components not yet implemented.
