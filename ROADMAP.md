@@ -362,6 +362,7 @@ It is a factual snapshot, not a claim of completeness.
 - Core architectural layers are in place and already interacting
 - Several subsystems are functional but still evolving
 - Product-level experience and UI are currently under active reconstruction
+- External changes are detected via scan/baseline/acceptance checks; realtime file watching is not implemented yet.
 
 ZAVOD at this stage can be described as:
 
