@@ -302,23 +302,22 @@ This roadmap reflects the intended system design, including components not yet i
 
 Long-term direction includes reducing reliance on VM-based execution in favor of more native and direct runtime approaches where it improves control, performance, and system transparency.
 
+---
+
 ## Current System Snapshot (Code Reality)
 
-This section reflects the actual state of the system based on the current codebase.
-
-It is not a promise — it is a factual snapshot.
-
----
+This section reflects the current state of the system based on the codebase.
+It is a factual snapshot, not a claim of completeness.
 
 ### Core Foundation
 
 | Area | Status | Notes |
 |------|--------|------|
-| Scanner / Import / Evidence | Implemented | Project is read and grounded in real data |
-| Preview → Canonical pipeline | Implemented | Stage-based truth system (anti-hallucination) |
-| Runtime / Tool Layer | Implemented | Unified tool system with controlled execution |
-| Role System (Lead / Worker / QC) | Implemented | Role boundaries and capability separation |
-| Acceptance / Apply Boundary | Implemented | Controlled result application |
+| Scanner / Import / Evidence | Functional | Core flow works, but accuracy and depth are still evolving |
+| Preview → Canonical pipeline | Stable | Stage-based truth system is in place and used |
+| Runtime / Tool Layer | Stable | Unified execution layer with governance and routing |
+| Role System (Lead / Worker / QC) | Functional | Roles and boundaries exist, further refinement expected |
+| Acceptance / Apply Boundary | Stable | Result application is controlled and separated from execution |
 
 ---
 
@@ -326,10 +325,10 @@ It is not a promise — it is a factual snapshot.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Execution lifecycle | Partial | Core flow exists, not fully formalized as DSL |
-| LLM orchestration | Partial | Lead/Importer active, full loop not complete |
-| Worker execution pipeline | Partial | Concept exists, not fully wired |
-| Autonomous runtime planning | Not implemented | No model-driven planner yet |
+| Execution lifecycle | Partial | Core flow exists, not yet formalized as a full DSL |
+| LLM orchestration | Partial | Lead/Importer are active, full loop not yet complete |
+| Worker execution pipeline | Partial | Concept and fragments exist, not fully connected |
+| Autonomous runtime planning | Not yet | No model-driven planning layer yet |
 
 ---
 
@@ -337,11 +336,11 @@ It is not a promise — it is a factual snapshot.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Runtime profiles & isolation | Implemented | local / container / vm / remote |
-| Tool routing & governance | Implemented | Policy-driven execution |
-| External tool orchestration (IDE/CLI) | Partial | Foundation exists, not end-to-end |
-| Environment preparation (setup) | Partial | Detection exists, no guided setup yet |
-| Run / Test inside ZAVOD | Partial | Execution base exists, no full UX |
+| Runtime profiles & isolation | Stable | Multiple runtime modes supported (local/container/vm/remote) |
+| Tool routing & governance | Stable | Policy-driven execution is implemented |
+| External tool orchestration (IDE/CLI) | Early | Initial integration paths exist, not end-to-end |
+| Environment preparation (setup) | Early | Detection exists, guided setup not implemented |
+| Run / Test inside ZAVOD | Partial | Execution capabilities exist, UX layer incomplete |
 
 ---
 
@@ -349,20 +348,20 @@ It is not a promise — it is a factual snapshot.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Guided user flow | Partial | Intent system exists, UX incomplete |
-| Internal editor | Not implemented | No built-in editing surface |
-| External change tracking | Not implemented | No realtime file watchers |
-| Approval UX | Partial | Policy exists, UX not finalized |
+| Guided user flow | Early | Intent system exists, user journey not fully shaped |
+| Internal editor | Not yet | No built-in editing surface |
+| External change tracking | Not yet | No realtime file monitoring yet |
+| Approval UX | Partial | Policy exists, product-level UX is not finalized |
 
 ---
 
 ### Summary
 
-- The system core is already in place (truth model, runtime, roles, boundaries)
-- Product-level experience is not yet complete
-- UI is currently being rebuilt and should be considered unstable
+- Core architectural layers are in place and already interacting
+- Several subsystems are functional but still evolving
+- Product-level experience and UI are currently under active reconstruction
 
-ZAVOD at this stage is:
+ZAVOD at this stage can be described as:
 
-→ a working system foundation  
-→ not yet a finished product
+→ a structured and working system foundation  
+→ not yet a complete end-user product
