@@ -186,7 +186,7 @@ than polishing details.
 
 ---
 
-##ZAVOD is not necessarily a final product name.
+ZAVOD is not necessarily a final product name.
 
 It is a concept - a system for managing project work
 in a structured and controlled way.
