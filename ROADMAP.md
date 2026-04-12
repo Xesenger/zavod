@@ -309,15 +309,17 @@ Long-term direction includes reducing reliance on VM-based execution in favor of
 This section reflects the current state of the system based on the codebase.
 It is a factual snapshot, not a claim of completeness.
 
+---
+
 ### Core Foundation
 
 | Area | Status | Notes |
 |------|--------|------|
 | Scanner / Import / Evidence | Functional | Core flow works, but accuracy and depth are still evolving |
-| Preview → Canonical pipeline | Stable | Stage-based truth system is in place and used |
-| Runtime / Tool Layer | Stable | Unified execution layer with governance and routing |
+| Preview → Canonical pipeline | Functional | Stage-based truth pipeline exists and is actively used, but still evolving |
+| Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | Roles and boundaries exist, further refinement expected |
-| Acceptance / Apply Boundary | Stable | Result application is controlled and separated from execution |
+| Acceptance / Apply Boundary | Functional | Controlled result application boundary exists and is separated from execution |
 
 ---
 
@@ -336,8 +338,8 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Runtime profiles & isolation | Stable | Multiple runtime modes supported (local/container/vm/remote) |
-| Tool routing & governance | Stable | Policy-driven execution is implemented |
+| Runtime profiles & isolation | Functional | Runtime profiles and isolation policies exist for local/container/vm/remote paths |
+| Tool routing & governance | Functional | Policy-driven execution is implemented |
 | External tool orchestration (IDE/CLI) | Early | Initial integration paths exist, not end-to-end |
 | Environment preparation (setup) | Early | Detection exists, guided setup not implemented |
 | Run / Test inside ZAVOD | Partial | Execution capabilities exist, UX layer incomplete |
