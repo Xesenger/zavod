@@ -35,28 +35,25 @@ It is a working environment where:
 
 ## How it works
 
-### 1. Project Import (Scanner)
+1. Project Import (Scanner)
+Reads files, structure, dependencies → produces cold, evidence-based data
 
-Reads files, structure, dependencies
-→ produces cold, evidence-based data
+2. Interpretation (Importer)
+Explains what the project might be → explicitly marks confidence (Confirmed / Likely / Unknown)
 
-### 2. Interpretation (Importer)
+3. Documentation (System-managed)
+The system continuously builds and maintains project documentation based on evidence and interpretation.
+Documentation is not written manually — it is derived, updated, and kept consistent with the project state.
 
-Explains what the project might be
-→ explicitly marks confidence (Confirmed / Likely / Unknown)
+4. Role-based work
+Lead - understands intent and builds a plan
+Worker - executes changes
+QC - validates the result
 
-### 3. Role-based work
-
-* **Lead** - understands intent and builds a plan
-* **Worker** - executes changes
-* **QC** - validates the result
-
-### 4. Runtime execution
-
+5. Runtime execution
 All operations are executed in a controlled environment
 
-### 5. UI as projection
-
+6. UI as projection
 The interface shows execution, but does not define logic
 
 ---
