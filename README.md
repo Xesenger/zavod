@@ -33,7 +33,7 @@ It is a working environment where:
 
 ---
 
-## How it works
+How it works
 
 1. Project Import (Scanner)
 Reads files, structure, dependencies → produces cold, evidence-based data
