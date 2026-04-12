@@ -5,12 +5,16 @@
 
 # ZAVOD
 
-ZAVOD is not necessarily a final product name.
+ZAVOD is a system for controlled project work with LLM agents.
 
-It is a concept — a system for managing project work
-in a structured and controlled way.
+It replaces chaotic prompting with a structured workflow: read → interpret → execute → review.
 
----
+The project is grounded in real data first, then interpreted with uncertainty, and only then modified.
+
+Agents are not owners.  
+They are workers inside a defined process (Lead, Worker, QC).
+
+Models may change. Process must remain stable.
 
 **A system that turns chaotic LLM-driven development
 into a structured, controlled workflow.**
@@ -25,7 +29,7 @@ It is a working environment where:
 
 * a project is first **read and grounded in facts**
 * then **interpreted honestly (with uncertainty)**
-* and only after that — modified
+* and only after that - modified
 
 ---
 
@@ -43,9 +47,9 @@ Explains what the project might be
 
 ### 3. Role-based work
 
-* **Lead** — understands intent and builds a plan
-* **Worker** — executes changes
-* **QC** — validates the result
+* **Lead** - understands intent and builds a plan
+* **Worker** - executes changes
+* **QC** - validates the result
 
 ### 4. Runtime execution
 
@@ -179,6 +183,13 @@ and open discussions or pull requests.
 
 The system is still evolving, so contributions are more about shaping direction
 than polishing details.
+
+---
+
+##ZAVOD is not necessarily a final product name.
+
+It is a concept - a system for managing project work
+in a structured and controlled way.
 
 ---
 
