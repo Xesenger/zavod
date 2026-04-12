@@ -301,3 +301,68 @@ This roadmap reflects the intended system design, including components not yet i
 ## Note
 
 Long-term direction includes reducing reliance on VM-based execution in favor of more native and direct runtime approaches where it improves control, performance, and system transparency.
+
+## Current System Snapshot (Code Reality)
+
+This section reflects the actual state of the system based on the current codebase.
+
+It is not a promise — it is a factual snapshot.
+
+---
+
+### Core Foundation
+
+| Area | Status | Notes |
+|------|--------|------|
+| Scanner / Import / Evidence | Implemented | Project is read and grounded in real data |
+| Preview → Canonical pipeline | Implemented | Stage-based truth system (anti-hallucination) |
+| Runtime / Tool Layer | Implemented | Unified tool system with controlled execution |
+| Role System (Lead / Worker / QC) | Implemented | Role boundaries and capability separation |
+| Acceptance / Apply Boundary | Implemented | Controlled result application |
+
+---
+
+### Execution & Orchestration
+
+| Area | Status | Notes |
+|------|--------|------|
+| Execution lifecycle | Partial | Core flow exists, not fully formalized as DSL |
+| LLM orchestration | Partial | Lead/Importer active, full loop not complete |
+| Worker execution pipeline | Partial | Concept exists, not fully wired |
+| Autonomous runtime planning | Not implemented | No model-driven planner yet |
+
+---
+
+### Environment & Tooling
+
+| Area | Status | Notes |
+|------|--------|------|
+| Runtime profiles & isolation | Implemented | local / container / vm / remote |
+| Tool routing & governance | Implemented | Policy-driven execution |
+| External tool orchestration (IDE/CLI) | Partial | Foundation exists, not end-to-end |
+| Environment preparation (setup) | Partial | Detection exists, no guided setup yet |
+| Run / Test inside ZAVOD | Partial | Execution base exists, no full UX |
+
+---
+
+### User Surface & UX
+
+| Area | Status | Notes |
+|------|--------|------|
+| Guided user flow | Partial | Intent system exists, UX incomplete |
+| Internal editor | Not implemented | No built-in editing surface |
+| External change tracking | Not implemented | No realtime file watchers |
+| Approval UX | Partial | Policy exists, UX not finalized |
+
+---
+
+### Summary
+
+- The system core is already in place (truth model, runtime, roles, boundaries)
+- Product-level experience is not yet complete
+- UI is currently being rebuilt and should be considered unstable
+
+ZAVOD at this stage is:
+
+→ a working system foundation  
+→ not yet a finished product
