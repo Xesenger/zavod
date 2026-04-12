@@ -32,6 +32,73 @@ Goal:
 
 ---
 
+## Agent-Agnostic Role System
+
+ZAVOD is designed so that external agents can be replaced without changing the core workflow.
+
+The system should not depend on one specific model, provider, or runtime.
+A new agent should enter the process like a new shift on a factory floor: different capabilities, same rules, same structure, same expectations.
+
+### Direction
+
+ZAVOD is moving toward a model where:
+
+- agents are replaceable
+- roles remain stable
+- workflow remains stable
+- contracts remain stable
+- acceptance rules remain stable
+
+### Meaning
+
+A stronger or weaker model may affect:
+
+- reasoning quality
+- speed
+- accuracy
+- depth of analysis
+
+But it should not change:
+
+- system boundaries
+- role semantics
+- execution flow
+- review requirements
+- evidence requirements
+- acceptance logic
+
+### Planned model
+
+External agents will be integrated through role-based contracts.
+
+The same agent family should be able to operate in different roles:
+
+- Lead
+- Worker
+- QC
+
+What changes between roles is not only the model selection, but the system contract around it:
+
+- permission scope
+- tool access
+- expected output shape
+- execution boundaries
+- success criteria
+- escalation rules
+
+### Goal
+
+The long-term goal is to make agents interchangeable while keeping the system itself consistent.
+
+In practical terms:
+
+- models may change
+- providers may change
+- runtimes may change
+- the process should remain the same
+
+This allows ZAVOD to treat agents as execution resources inside the system, not as the source of process truth.
+
 ## Environment Preparation
 
 Make environment setup part of the system instead of a manual prerequisite.
