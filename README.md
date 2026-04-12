@@ -9,12 +9,12 @@ ZAVOD is a system for controlled project work with LLM agents.
 
 It replaces chaotic prompting with a structured workflow: read → interpret → execute → review.
 
-The project is grounded in real data first, then interpreted with uncertainty, and only then modified.
+A project is first grounded in real data, then interpreted with explicit uncertainty, and only after that — modified.
 
-Agents are not owners.  
-They are workers inside a defined process (Lead, Worker, QC).
+Agents are not owners of the project.  
+They operate inside a defined process as roles: Lead, Worker, QC.
 
-Models may change. Process must remain stable.
+Models may change. The process remains stable.
 
 **A system that turns chaotic LLM-driven development
 into a structured, controlled workflow.**
