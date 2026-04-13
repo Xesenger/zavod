@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using zavod.Presentation.Conversation;
-using zavod.Presentation.Conversation.Markdown;
+using zavod.UI.Rendering.Conversation;
+using zavod.UI.Rendering.Markdown;
 
 namespace zavod.Demo;
 

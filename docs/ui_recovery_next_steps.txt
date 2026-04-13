@@ -9,6 +9,8 @@ IMPORTANT
 - Code remains the source of current implementation reality.
 - App-level UI model reference:
   - docs/ui_product_model.txt
+- Current verification checkpoint:
+  - docs/ui_verification_checkpoint_2026-04-12.txt
 
 CORE CORRECTION
 - The app must not be rebuilt from the inner 3-surface shell outward.

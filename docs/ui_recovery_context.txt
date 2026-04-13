@@ -16,7 +16,18 @@ Date: 2026-04-11
 - Unpackaged launch recovery is in place.
 - Project startup profile is back to normal Project launch.
 - The app now builds and launches again.
-- MainWindow is currently back on a safe read-only recovery shell.
+- Pass 1 visual host extraction is done:
+  - theme dictionaries split out of App.xaml
+  - mode switch extracted
+  - Chats / Projects / Project List / Project Home / Project Work Cycle visual hosts extracted
+- Pass 2 is done:
+  - WorkCycleActionController is the active owner for the discussion/preflight action path
+- Pass 3A is done:
+  - existing Projects / Conversation / Markdown owners are relocated under UI/*
+- Pass 3B / Pass 4 Lite and Pass 4B are done:
+  - obvious host-owned glue has moved into extracted views
+  - MainWindow no longer owns every visual tree directly
+- MainWindow is still the temporary shell/composition host and still owns mixed shell glue on purpose.
 
 3. What recovery understanding was wrong
 - The older recovery interpretation treated the inner 3-surface shell as if it were the app-level model.

@@ -1,0 +1,134 @@
+<UserControl
+    x:Class="zavod.UI.Rendering.Conversation.ConversationItemControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="ProjectFullDocumentSurfaceStyle" TargetType="Border">
+            <Setter Property="MaxWidth" Value="1040" />
+            <Setter Property="Padding" Value="20,8,20,8" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style x:Key="ChatLightDocumentSurfaceStyle" TargetType="Border">
+            <Setter Property="Width" Value="{StaticResource Ui.Layout.Chats.RailMaxWidth}" />
+            <Setter Property="MaxWidth" Value="{StaticResource Ui.Layout.Chats.RailMaxWidth}" />
+            <Setter Property="Padding" Value="0,8,0,8" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style x:Key="ConversationUserBubbleStyle" TargetType="Border">
+            <Setter Property="MaxWidth" Value="520" />
+            <Setter Property="Padding" Value="{StaticResource Ui.Layout.Chats.UserBubblePadding}" />
+            <Setter Property="CornerRadius" Value="{StaticResource Ui.CornerRadius.Lg}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="{StaticResource Ui.Chat.UserBubbleBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Ui.Chat.UserBubbleBorderBrush}" />
+        </Style>
+
+        <Style x:Key="ConversationSecondaryActionButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="8,2,8,2" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="CornerRadius" Value="{StaticResource Ui.CornerRadius.Sm}" />
+            <Setter Property="Background" Value="{StaticResource Ui.Chat.SurfaceSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Ui.Chat.BorderQuietBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Opacity" Value="0.82" />
+            <Setter Property="FontFamily" Value="{StaticResource Ui.FontFamily.Chrome.Regular}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Border
+            x:Name="UserBubbleBorder"
+            HorizontalAlignment="Right"
+            Style="{StaticResource ConversationUserBubbleStyle}"
+            Visibility="Collapsed">
+            <StackPanel Spacing="6">
+                <TextBlock
+                    x:Name="UserAuthorTextBlock"
+                    FontWeight="SemiBold"
+                    Visibility="Collapsed" />
+                <ContentPresenter x:Name="UserMessageContentPresenter" />
+            </StackPanel>
+        </Border>
+
+        <Border
+            x:Name="DocumentSurfaceBorder"
+            HorizontalAlignment="Center"
+            Style="{StaticResource ProjectFullDocumentSurfaceStyle}"
+            Visibility="Collapsed">
+            <StackPanel Spacing="0">
+                <StackPanel
+                    x:Name="DocumentHeaderSection"
+                    Spacing="6">
+                    <TextBlock
+                        x:Name="DocumentAuthorTextBlock"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Opacity="0.58"
+                        CharacterSpacing="24"
+                        TextWrapping="WrapWholeWords" />
+                    <Rectangle
+                        x:Name="DocumentHeaderDivider"
+                        Height="1"
+                        HorizontalAlignment="Stretch"
+                        Fill="{StaticResource CardStrokeColorDefaultBrush}"
+                        Opacity="0" />
+                </StackPanel>
+
+                <Border
+                    x:Name="DocumentContentSection"
+                    Margin="0,16,0,0"
+                    Padding="0,0,0,0"
+                    Background="Transparent">
+                    <ContentPresenter x:Name="DocumentMessageContentPresenter" />
+                </Border>
+
+                <StackPanel
+                    x:Name="DocumentMetadataSection"
+                    Margin="0,18,0,0"
+                    Spacing="8"
+                    Visibility="Collapsed">
+                    <Rectangle
+                        Height="1"
+                        HorizontalAlignment="Stretch"
+                        Fill="{StaticResource CardStrokeColorDefaultBrush}"
+                        Opacity="0.12" />
+                    <TextBlock
+                        x:Name="DocumentMetadataTextBlock"
+                        Opacity="0.42"
+                        FontSize="11"
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+
+                <StackPanel
+                    x:Name="DocumentActionsSection"
+                    Margin="0,18,0,0"
+                    Spacing="8"
+                    HorizontalAlignment="Left"
+                    Visibility="Collapsed">
+                    <Rectangle
+                        Height="1"
+                        HorizontalAlignment="Stretch"
+                        Fill="{StaticResource CardStrokeColorDefaultBrush}"
+                        Opacity="0.08" />
+                    <StackPanel
+                        x:Name="DocumentMetadataActionsPanel"
+                        Orientation="Horizontal"
+                        Spacing="6" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

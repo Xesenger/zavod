@@ -84,6 +84,47 @@ public sealed class ConversationLogStorage
         File.AppendAllText(FilePath, serialized + Environment.NewLine, Encoding.UTF8);
     }
 
+    public void ReplaceAll(IReadOnlyList<ConversationLogSnapshot> snapshots, string eventType = "replace")
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
+
+        ZavodLocalStorageLayout.EnsureInitialized(_projectRootPath);
+
+        if (snapshots.Count == 0)
+        {
+            if (File.Exists(FilePath))
+            {
+                File.Delete(FilePath);
+            }
+
+            return;
+        }
+
+        var lines = snapshots.Select(snapshot =>
+        {
+            var record = new PersistedConversationLogEntry(
+                ContractVersion,
+                snapshot.MessageId,
+                snapshot.Timestamp,
+                snapshot.Role,
+                snapshot.Kind,
+                snapshot.Text,
+                snapshot.Markdown,
+                snapshot.StepId,
+                snapshot.Phase,
+                snapshot.Attachments.ToArray(),
+                snapshot.Source,
+                snapshot.Adapter,
+                snapshot.IsStreaming,
+                snapshot.Metadata is null ? null : new Dictionary<string, string>(snapshot.Metadata, StringComparer.Ordinal),
+                eventType);
+            return JsonSerializer.Serialize(record, JsonOptions);
+        });
+
+        File.WriteAllLines(FilePath, lines, Encoding.UTF8);
+    }
+
     public IReadOnlyList<ConversationLogSnapshot> LoadLatest()
     {
         if (!File.Exists(FilePath))

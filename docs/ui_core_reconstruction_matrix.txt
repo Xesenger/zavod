@@ -9,6 +9,8 @@ IMPORTANT
   - Projects
 - App-level UI model reference:
   - docs/ui_product_model.txt
+- Current verification checkpoint:
+  - docs/ui_verification_checkpoint_2026-04-12.txt
 - This file applies only after the app is already inside:
   - Projects
   - Project Work Cycle
@@ -26,6 +28,21 @@ WORK CYCLE MODEL
   - Chat
   - Execution
   - Result
+- This 3-phase UI exists only inside:
+  - Projects
+  - Project Work Cycle
+- It does not describe top-level Chats mode.
+
+PROTOTYPE REFERENCE RULE
+- Early prototypes may guide:
+  - visual lightness
+  - column proportions
+  - broad layout direction
+- They must not be treated as authoritative lifecycle/control truth on their own.
+- Recovery still depends on:
+  - canon
+  - current code
+  - explicitly confirmed semantics
 
 IMPORTANT DISTINCTION
 - Work Cycle Chat != top-level Chats mode.
@@ -71,6 +88,10 @@ Phase B. Agreement / Preflight
   - Result
 - Truth basis:
   - discussion reached validation/preflight readiness
+- Important:
+  - Chat remains the discussion surface.
+  - the work-entry action opens Execution.
+  - Execution first appears in validation/preflight mode.
 
 Phase C. Active Work
 - Visible:
@@ -80,6 +101,9 @@ Phase C. Active Work
   - Result
 - Truth basis:
   - active shift/task truth with work context
+- Important:
+  - this is still the same persistent Execution surface
+  - it changes internal mode from validation/preflight into active work
 
 Phase D. Result Ready
 - Visible:
@@ -88,6 +112,9 @@ Phase D. Result Ready
   - Result active
 - Truth basis:
   - result/review support is genuinely present
+- Important:
+  - Result appears automatically after work is done
+  - Result does not replace Execution
 
 Phase E. Revision Intake
 - Visible:
@@ -96,6 +123,9 @@ Phase E. Revision Intake
   - Result visible
 - Truth basis:
   - task remains active and revision path exists
+- Important:
+  - entering revision from Result returns to the same persistent Execution surface
+  - Result remains visible as reference
 
 Phase F. Post-Decision Return
 - Visible:
@@ -128,13 +158,18 @@ WORK CYCLE SURFACE ROLES
 
 2. Execution
 - Role:
-  - persistent work surface
-  - active work
-  - active again during revision
+  - one persistent work surface
+  - first opens in validation/preflight after the work-entry action
+  - then changes in-place into active execution after confirmation
+  - becomes active again during revision
 - Must not:
   - fake live running after restart
   - replace task truth
   - collapse into Result
+- Important:
+  - validation/preflight is not a separate second window
+  - running is not a separate replacement window
+  - it is one Execution surface with different internal modes
 
 3. Result
 - Role:
@@ -152,6 +187,89 @@ BUTTON CATEGORY RULE
   - UI/surface navigation actions
 - Example of non-core button:
   - return to result
+- Additional rule:
+  - recovery-only helper buttons introduced to inspect or focus visible surfaces are temporary scaffolding unless later promoted into product semantics
+
+WORK-ENTRY AND EXECUTION MODE SEMANTICS
+- Send
+  - sends a message in Chat discussion
+  - does not by itself open Execution
+- Work-entry action ("В работу" as the current working label)
+  - opens Execution from Chat when readiness allows it
+- Validation / preflight mode inside Execution
+  - shows the current agreement
+  - buttons:
+    - Confirm
+    - Fix / Clarify
+    - Return to chat
+- Confirm in validation/preflight
+  - does not open a new window
+  - switches the same Execution surface into active work mode
+- Fix / Clarify in validation/preflight
+  - opens clarification with the lead
+  - does not necessarily mean a full return to the large Chat surface
+- Return to chat
+  - leaves validation/preflight and returns to discussion
+  - must not be described as a guaranteed no-op for the current step
+  - later discussion may:
+    - refine the same step
+    - materially change the step
+    - replace the step
+    - collapse the current step path entirely
+- Revise
+  - returns to the same persistent Execution surface in revision mode
+
+REVISION MODE SHAPE
+- Revision inside Execution must not be treated as status text only.
+- It should keep the same persistent Execution surface and show:
+  - previous result kept as context
+  - what needs to be revised
+  - input for the new revision clarification
+- Buttons in revision should be understood as:
+  - Confirm
+  - Fix / Clarify
+  - Return to result
+- This makes revision structurally similar to validation/preflight:
+  - context
+  - input
+  - confirmation
+  - clarification path
+  - return path
+
+RETURN TRANSITIONS ARE DANGEROUS
+- Return-style controls must not be treated as harmless navigation by default.
+- Current code already shows different return paths with different truth consequences:
+  - CancelPreflight
+  - ReturnToLead
+  - OpenInterruptedDiscussion
+  - ReturnToResultFromRevisionIntake
+- Therefore UI wording and button semantics must not imply:
+  - "just go back"
+  - "nothing changes"
+  - "step is safely preserved"
+  unless the specific transition owner proves that behavior
+
+KNOWN CURRENT CORE SIGNALS ABOUT RETURNS
+- CancelPreflight:
+  - returns to discussion
+  - may preserve active shift/task context depending on current state
+- ReturnToLead:
+  - returns to discussion/refining
+  - may clear active shift/task truth from the current visible path
+- OpenInterruptedDiscussion:
+  - returns to discussion/refining
+  - preserves active shift/task truth
+- ReturnToResultFromRevisionIntake:
+  - returns to Result
+  - does not discard revision/reference context
+
+RULE FOR FUTURE UI
+- Any return button must be mapped to a specific backend/core transition.
+- Do not implement a generic "Back" interpretation for lifecycle buttons.
+- UI-only back/navigation remains allowed only for shell navigation:
+  - List -> Home -> Work Cycle
+  - surface focus within an already visible Work Cycle
+- Lifecycle returns inside Work Cycle are core-sensitive until proven otherwise.
 
 REPO MUTATION RULE
 - Real repo mutation happens only through:

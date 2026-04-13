@@ -1,0 +1,50 @@
+<UserControl
+    x:Class="zavod.UI.Modes.Projects.Screens.ProjectListView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="Root" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Project List" FontSize="28" FontWeight="SemiBold" Foreground="#F2F2F2" />
+            <TextBlock x:Name="SummaryText" Foreground="#E4E4E4" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+                <Border Width="360" Padding="18" Background="#1F1F1F" BorderBrush="#363636" BorderThickness="1" CornerRadius="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Start Here" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
+                        <TextBlock Foreground="#E4E4E4" TextWrapping="Wrap" Text="Projects mode starts here. Import and New Project remain explicit entry actions." />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="New project" IsEnabled="False" />
+                            <Button Content="Import" IsEnabled="False" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Width="420" Padding="18" Background="#1F1F1F" BorderBrush="#363636" BorderThickness="1" CornerRadius="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Current Project" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
+                        <TextBlock x:Name="CurrentProjectText" Foreground="#CFCFCF" TextWrapping="Wrap" />
+                        <TextBlock x:Name="CurrentStageText" Foreground="#E4E4E4" TextWrapping="Wrap" />
+                        <TextBlock x:Name="CurrentDetailsText" Foreground="#E4E4E4" TextWrapping="Wrap" />
+                        <Button x:Name="OpenCurrentProjectButton" AutomationProperties.AutomationId="Projects.List.OpenCurrentProject" HorizontalAlignment="Left" Content="Open project" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Padding="18" Background="#1F1F1F" BorderBrush="#363636" BorderThickness="1" CornerRadius="16">
+            <TextBlock x:Name="NotesText" Foreground="#E4E4E4" TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,20 @@
+ZAVOD UI RECOVERY CHECKPOINT
+Date: 2026-04-12
+Status: post Pass 4B stabilization note
+
+DONE
+- Pass 1 done
+- Pass 2 done
+- Pass 3A done
+- Pass 3B / Pass 4 Lite done
+- Pass 4B done
+
+ACTIVE STATE
+- Extracted visual hosts/screens are live under UI/*
+- WorkCycleActionController is the active owner for the current discussion/preflight action path
+- MainWindow remains the shell/composition host and still owns mixed shell glue intentionally
+
+DEFERRED
+- true cold-start re-proof
+- deeper interaction smoke
+- remaining mixed MainWindow WorkCycle glue
