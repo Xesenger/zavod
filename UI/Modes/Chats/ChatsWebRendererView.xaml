@@ -1,0 +1,80 @@
+<UserControl
+    x:Class="zavod.UI.Modes.Chats.ChatsWebRendererView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="Transparent">
+        <WebView2 x:Name="ChatsWebView" />
+        <Border
+            x:Name="LoadingOverlay"
+            Background="{StaticResource Ui.Chat.BackgroundBrush}"
+            Visibility="Visible">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="270" />
+                    <ColumnDefinition Width="1" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid
+                    Grid.Column="0"
+                    Padding="20,16,12,120">
+                    <StackPanel VerticalAlignment="Top" Spacing="12">
+                        <Border
+                            Width="96"
+                            Height="18"
+                            HorizontalAlignment="Left"
+                            Background="{StaticResource Ui.Chat.SurfaceSoftBrush}"
+                            CornerRadius="9" />
+                        <Border
+                            Width="220"
+                            Height="36"
+                            HorizontalAlignment="Left"
+                            Background="{StaticResource Ui.Chat.SurfaceActiveBrush}"
+                            CornerRadius="18" />
+                    </StackPanel>
+                </Grid>
+
+                <Rectangle
+                    Grid.Column="1"
+                    Margin="0,8,0,32"
+                    Fill="{StaticResource Ui.Chat.DividerBrush}" />
+
+                <Grid Grid.Column="2">
+                    <Border
+                        Width="292"
+                        Height="40"
+                        Margin="0,8,0,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Background="{StaticResource Ui.Chat.SurfaceSoftBrush}"
+                        BorderBrush="{StaticResource Ui.Chat.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="16" />
+
+                    <StackPanel
+                        Width="920"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="18">
+                        <Border
+                            Width="460"
+                            Height="24"
+                            HorizontalAlignment="Center"
+                            Background="{StaticResource Ui.Chat.SurfaceSoftBrush}"
+                            CornerRadius="12" />
+                        <Border
+                            Width="920"
+                            Height="1"
+                            Margin="0,260,0,0"
+                            VerticalAlignment="Bottom"
+                            Background="{StaticResource Ui.Chat.DividerBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

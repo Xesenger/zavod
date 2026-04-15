@@ -1,21 +1,36 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.Foundation;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using Windows.UI;
+using WinRT.Interop;
 using zavod.Bootstrap;
 using zavod.Contexting;
 using zavod.Flow;
 using zavod.Persistence;
 using zavod.UI.Rendering.Conversation;
 using zavod.UI.Modes.Chats;
+using zavod.UI.Modes.Projects;
 using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Shell.Verification;
+using zavod.UI.Shell.Windowing;
+using zavod.UI.Text;
 using zavod.State;
 using zavod.UI.Modes.Projects.WorkCycle.Actions;
 
@@ -23,55 +38,80 @@ namespace zavod
 {
     public sealed partial class MainWindow : Window
     {
-        private sealed class ChatSessionState
-        {
-            public ChatSessionState(string id, ChatsAdapter adapter, string title, bool isDraft)
-            {
-                Id = id;
-                Adapter = adapter;
-                Title = title;
-                IsDraft = isDraft;
-            }
-
-            public string Id { get; }
-
-            public ChatsAdapter Adapter { get; }
-
-            public string Title { get; set; }
-
-            public bool IsDraft { get; set; }
-        }
-
         private readonly string _projectRoot;
         private readonly bool _isDemoMode;
-        private readonly ConversationLogStorage _chatStorage;
-        private readonly ProjectsAdapter _projectsAdapter;
+        private readonly ChatsRuntimeController _chatsController;
+        private readonly ProjectsRuntimeController _projectsController;
         private readonly WorkCycleActionController _workCycleActions;
-        private readonly List<ChatSessionState> _chatSessions = new();
-        private ChatsAdapter _chatsAdapter;
-        private ChatSessionState? _activeChatSession;
-        private ChatSessionState? _draftChatSession;
         private AppMode _selectedMode = AppMode.Projects;
         private ProjectsScreen _projectsScreen = ProjectsScreen.List;
         private WorkCycleFocus _workCycleFocus = WorkCycleFocus.Auto;
         private bool _initialRefreshRequested;
-        private bool _chatsReady;
-        private bool _projectsReady;
+        private const int ShellMinimumWidth = 960;
+        private const int ShellMinimumHeight = 640;
+        private readonly bool _shellPassEnabled = true;
+        private bool _shellPassWebRefreshRequested;
+        private readonly string? _verificationCaptureMode;
+        private readonly string? _verificationCapturePath;
+        private readonly string? _verificationProofTextPath;
+        private readonly string? _verificationProofPrompt;
+        private readonly string? _verificationProofResultPath;
+        private readonly bool _verificationCaptureExit;
+        private bool _verificationCaptureCompleted;
+        private bool _verificationLiveProofStarted;
+        private WindowShellController? _windowShell;
         public MainWindow(string projectRoot, bool isDemoMode = false)
         {
             _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
             _isDemoMode = isDemoMode;
 
             InitializeComponent();
-            _chatStorage = ConversationLogStorage.ForChats(Path.GetFullPath(_projectRoot));
-            _chatsAdapter = new ChatsAdapter();
-            _projectsAdapter = new ProjectsAdapter(storage: ConversationLogStorage.ForProjects(Path.GetFullPath(_projectRoot)));
-            ChatsHostView.ConversationView.Adapter = _chatsAdapter;
+            _chatsController = new ChatsRuntimeController(Path.GetFullPath(_projectRoot));
+            _projectsController = new ProjectsRuntimeController(Path.GetFullPath(_projectRoot));
+
+            _workCycleActions = new WorkCycleActionController(
+                _projectRoot,
+                () => _projectsController.EnsureActiveAdapter(),
+                RefreshRecoveryShellAsync,
+                UpdateProjectsDiscussionPreview);
+            _verificationCaptureMode = Environment.GetEnvironmentVariable("ZAVOD_UI_CAPTURE_MODE")?.Trim();
+            _verificationCapturePath = Environment.GetEnvironmentVariable("ZAVOD_UI_CAPTURE_PATH")?.Trim();
+            _verificationProofTextPath = Environment.GetEnvironmentVariable("ZAVOD_UI_PROOF_TEXT_PATH")?.Trim();
+            _verificationProofPrompt = Environment.GetEnvironmentVariable("ZAVOD_UI_PROOF_PROMPT")?.Trim();
+            _verificationProofResultPath = Environment.GetEnvironmentVariable("ZAVOD_UI_PROOF_RESULT_PATH")?.Trim();
+            _verificationCaptureExit = string.Equals(Environment.GetEnvironmentVariable("ZAVOD_UI_CAPTURE_EXIT"), "1", StringComparison.Ordinal);
+
+            Title = GetWindowTitle();
+            WindowTitleText.Text = Title;
+            ShellBrandText.Text = Title;
+            WindowStatusText.Text = AppText.Current.Get("shell.recovery_mode_active");
+            ProjectsBackButton.Content = AppText.Current.Get("shell.back");
+            RefreshButton.Content = AppText.Current.Get("shell.refresh");
+
+            _windowShell = new WindowShellController(this, ShellMinimumWidth, ShellMinimumHeight);
             ModeSwitchView.ChatsClicked += ChatsModeButton_Click;
             ModeSwitchView.ProjectsClicked += ProjectsModeButton_Click;
-            ChatsHostView.ComposerSendClicked += ChatsComposerSendButton_Click;
-            ChatsHostView.NewChatClicked += ChatsNewChatButton_Click;
-            ChatsHostView.ChatRowClicked += ChatsHostView_ChatRowClicked;
+            WireWindowButtonChrome(MinimizeWindowButton, destructive: false);
+            WireWindowButtonChrome(MaximizeWindowButton, destructive: false);
+            WireWindowButtonChrome(CloseWindowButton, destructive: true);
+            ApplyWindowButtonsReveal(revealed: false);
+            UpdateMaximizeButtonGlyph();
+            WindowRoot.Loaded += WindowRoot_Loaded;
+            SizeChanged += MainWindow_SizeChanged;
+            Closed += MainWindow_Closed;
+            Activated += MainWindow_Activated;
+
+            ChatsWebRendererView.IntentReceived += ChatsWebRendererView_IntentReceived;
+            ChatsWebRendererView.FirstFrameReady += ChatsWebRendererView_FirstFrameReady;
+            ProjectsHostView.WorkCycleView.ConversationRenderer.IntentReceived += ProjectsConversationRenderer_IntentReceived;
+
+            if (_shellPassEnabled)
+            {
+                _selectedMode = AppMode.Chats;
+                WindowStatusText.Text = AppText.Current.Format("shell.shell_pass_active", ShellMinimumWidth, ShellMinimumHeight);
+                ApplyVerificationOverride();
+            }
+
             ProjectsHostView.ListView.OpenCurrentProjectAction.Click += OpenCurrentProjectButton_Click;
             ProjectsHostView.HomeView.OpenProjectHtmlAction.Click += OpenProjectHtmlButton_Click;
             ProjectsHostView.HomeView.OpenProjectDocumentAction.Click += OpenProjectDocumentButton_Click;
@@ -90,16 +130,160 @@ namespace zavod
             ProjectsHostView.WorkCycleView.OpenProjectDocumentAction.Click += OpenProjectDocumentButton_Click;
             ProjectsHostView.WorkCycleView.OpenCapsuleDocumentAction.Click += OpenCapsuleDocumentButton_Click;
             ProjectsHostView.WorkCycleView.ReturnToExecutionAction.Click += ReturnToExecutionSurfaceButton_Click;
+            ProjectsHostView.WorkCycleView.ResultAcceptAction.Click += ResultAcceptButton_WrapperClick;
+            ProjectsHostView.WorkCycleView.ResultReviseAction.Click += ResultReviseButton_WrapperClick;
+            ProjectsHostView.WorkCycleView.ResultRejectAction.Click += ResultRejectButton_WrapperClick;
 
-            _workCycleActions = new WorkCycleActionController(
-                _projectRoot,
-                _projectsAdapter,
-                RefreshRecoveryShellAsync,
-                UpdateProjectsDiscussionPreview);
+            if (_shellPassEnabled)
+            {
+                ApplyModeChrome();
+                return;
+            }
 
-            Title = GetWindowTitle();
-            WindowTitleText.Text = Title;
-            Activated += MainWindow_Activated;
+            ApplyVerificationOverride();
+        }
+
+        private void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            _windowShell?.Dispose();
+        }
+
+        private void MainWindow_SizeChanged(object sender, WindowSizeChangedEventArgs args)
+        {
+            ApplyShellCaptionRegion();
+            UpdateMaximizeButtonGlyph();
+        }
+
+        private void WindowRoot_Loaded(object sender, RoutedEventArgs e)
+        {
+            ApplyShellCaptionRegion();
+        }
+
+        private void WindowButtonsHitArea_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            ApplyWindowButtonsReveal(revealed: true);
+        }
+
+        private void WindowButtonsHitArea_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            ApplyWindowButtonsReveal(revealed: false);
+        }
+
+        private void MinimizeWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!DispatcherQueue.TryEnqueue(() => _windowShell?.Minimize()))
+            {
+                _windowShell?.Minimize();
+            }
+        }
+
+        private void MaximizeWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            _windowShell?.ToggleMaximize();
+            UpdateMaximizeButtonGlyph();
+        }
+
+        private void CloseWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void ApplyWindowButtonsReveal(bool revealed)
+        {
+            WindowButtonsHost.Opacity = revealed ? 1.0 : 0.05;
+
+            if (!revealed)
+            {
+                ApplyWindowButtonChrome(MinimizeWindowButton, destructive: false, hovered: false, pressed: false);
+                ApplyWindowButtonChrome(MaximizeWindowButton, destructive: false, hovered: false, pressed: false);
+                ApplyWindowButtonChrome(CloseWindowButton, destructive: true, hovered: false, pressed: false);
+                return;
+            }
+
+            MinimizeWindowButton.Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
+            MinimizeWindowButton.Foreground = new SolidColorBrush(ColorFromHex("#3B3B3B"));
+            MaximizeWindowButton.Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
+            MaximizeWindowButton.Foreground = new SolidColorBrush(ColorFromHex("#3B3B3B"));
+            CloseWindowButton.Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
+            CloseWindowButton.Foreground = new SolidColorBrush(ColorFromHex("#666666"));
+        }
+
+        private void WireWindowButtonChrome(Button button, bool destructive)
+        {
+            ApplyWindowButtonChrome(button, destructive, hovered: false, pressed: false);
+            button.PointerEntered += (_, _) => ApplyWindowButtonChrome(button, destructive, hovered: true, pressed: false);
+            button.PointerExited += (_, _) => ApplyWindowButtonChrome(button, destructive, hovered: false, pressed: false);
+            button.PointerPressed += (_, _) => ApplyWindowButtonChrome(button, destructive, hovered: true, pressed: true);
+            button.PointerReleased += (_, _) => ApplyWindowButtonChrome(button, destructive, hovered: true, pressed: false);
+        }
+
+        private static void ApplyWindowButtonChrome(Button button, bool destructive, bool hovered, bool pressed)
+        {
+            if (!hovered)
+            {
+                button.Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
+                button.Foreground = new SolidColorBrush(ColorFromHex("#5F5F5F"));
+                return;
+            }
+
+            if (destructive)
+            {
+                button.Background = new SolidColorBrush(pressed ? ColorFromHex("#D74444") : ColorFromHex("#E65454"));
+                button.Foreground = new SolidColorBrush(ColorFromHex("#FFFFFF"));
+                return;
+            }
+
+            button.Background = new SolidColorBrush(pressed ? ColorFromHex("#E5E5E5") : ColorFromHex("#F1F1F1"));
+            button.Foreground = new SolidColorBrush(ColorFromHex("#1E1E1E"));
+        }
+
+        private void UpdateMaximizeButtonGlyph()
+        {
+            MaximizeWindowButton.Content = _windowShell?.IsMaximized == true ? "\uE923" : "\uE922";
+        }
+
+        private void ApplyShellCaptionRegion()
+        {
+            if (!_shellPassEnabled || _windowShell is null || WindowRoot.XamlRoot is null)
+            {
+                return;
+            }
+
+            var scale = WindowRoot.XamlRoot.RasterizationScale;
+            var captionRects = new List<Windows.Graphics.RectInt32>();
+            var passthroughRects = new List<Windows.Graphics.RectInt32>();
+
+            AppendCaptionRect(captionRects, LeftShellDragRegion, scale);
+            AppendCaptionRect(captionRects, RightShellDragRegion, scale);
+            AppendCaptionRect(passthroughRects, ModeSwitchView, scale);
+            AppendCaptionRect(passthroughRects, WindowButtonsHitArea, scale);
+
+            if (captionRects.Count == 0)
+            {
+                return;
+            }
+
+            _windowShell.SetCaptionRegions(captionRects);
+            if (passthroughRects.Count > 0)
+            {
+                _windowShell.SetPassthroughRegions(passthroughRects);
+            }
+        }
+
+        private void AppendCaptionRect(List<Windows.Graphics.RectInt32> rects, FrameworkElement element, double scale)
+        {
+            if (element.ActualWidth <= 0 || element.ActualHeight <= 0)
+            {
+                return;
+            }
+
+            var transform = element.TransformToVisual(WindowRoot);
+            var origin = transform.TransformPoint(new Point(0, 0));
+            rects.Add(new Windows.Graphics.RectInt32(
+                Math.Max(0, (int)Math.Round(origin.X * scale)),
+                Math.Max(0, (int)Math.Round(origin.Y * scale)),
+                Math.Max(1, (int)Math.Round(element.ActualWidth * scale)),
+                Math.Max(1, (int)Math.Round(element.ActualHeight * scale))));
         }
 
         private ColumnDefinition WorkCycleChatColumn => ProjectsHostView.WorkCycleView.ChatColumn;
@@ -147,13 +331,277 @@ namespace zavod
 
             _initialRefreshRequested = true;
             Activated -= MainWindow_Activated;
+
+            if (_shellPassEnabled)
+            {
+                if (_selectedMode == AppMode.Chats)
+                {
+                    await RefreshShellPassChatsWebAsync();
+                    return;
+                }
+            }
+
             await RefreshRecoveryShellAsync();
+        }
+
+        private void ChatsWebRendererView_FirstFrameReady(object? sender, EventArgs e)
+        {
+            WindowStatusText.Text = AppText.Current.Get("shell.first_frame_ready");
+            _ = TryRunChatsLiveProofAsync();
+        }
+
+        private void ApplyVerificationOverride()
+        {
+            switch (_verificationCaptureMode)
+            {
+                case "projects-home":
+                    _selectedMode = AppMode.Projects;
+                    _projectsScreen = ProjectsScreen.Home;
+                    break;
+                case "projects-work-cycle":
+                    _selectedMode = AppMode.Projects;
+                    _projectsScreen = ProjectsScreen.WorkCycle;
+                    break;
+                case "projects-list":
+                    _selectedMode = AppMode.Projects;
+                    _projectsScreen = ProjectsScreen.List;
+                    break;
+                case "chats":
+                case "chats-live-proof":
+                    _selectedMode = AppMode.Chats;
+                    break;
+            }
+        }
+
+        private async void ChatsWebRendererView_IntentReceived(object? sender, ChatsWebIntentReceivedEventArgs e)
+        {
+            switch (e.Message.Type?.Trim())
+            {
+                case "renderer_ready":
+                case "dom_ready":
+                    await ApplyShellPassChatsSnapshotAsync();
+                    break;
+                case "send_message":
+                    if (TryGetMessageText(e.Message.Payload, out var text))
+                    {
+                        await SendChatsMessageAsync(text);
+                    }
+                    break;
+                case "new_chat":
+                    _chatsController.CreateOrActivateDraft();
+                    await ApplyShellPassChatsSnapshotAsync();
+                    break;
+                case "select_chat":
+                    if (TryGetChatId(e.Message.Payload, out var chatId))
+                    {
+                        await _chatsController.SelectChatAsync(chatId);
+                        await ApplyShellPassChatsSnapshotAsync();
+                    }
+                    break;
+                case "request_older":
+                    if (TryGetBeforeSeq(e.Message.Payload, out var beforeSeq)
+                        && await _chatsController.TryLoadOlderAsync(beforeSeq))
+                    {
+                        await ApplyShellPassChatsSnapshotAsync();
+                    }
+                    break;
+                case "request_attach_files":
+                    if (await StageComposerFilesAsync(projectsMode: false))
+                    {
+                        await ApplyShellPassChatsSnapshotAsync();
+                    }
+                    break;
+                case "remove_attachment":
+                    if (TryGetDraftId(e.Message.Payload, out var chatDraftId)
+                        && _chatsController.RemovePendingComposerInput(chatDraftId))
+                    {
+                        await ApplyShellPassChatsSnapshotAsync();
+                    }
+                    break;
+                case "stage_text_artifact":
+                    if (TryGetComposerText(e.Message.Payload, out var longChatText)
+                        && _chatsController.StageLongTextArtifact(longChatText))
+                    {
+                        await ApplyShellPassChatsSnapshotAsync();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private async void ProjectsConversationRenderer_IntentReceived(object? sender, ChatsWebIntentReceivedEventArgs e)
+        {
+            switch (e.Message.Type?.Trim())
+            {
+                case "renderer_ready":
+                case "dom_ready":
+                    await ApplyProjectsConversationSnapshotAsync();
+                    break;
+                case "send_message":
+                    if (TryGetMessageText(e.Message.Payload, out var text))
+                    {
+                        await SendProjectsMessageThroughControllerAsync(text);
+                    }
+                    break;
+                case "new_chat":
+                    _projectsController.CreateOrActivateDraft();
+                    await ApplyProjectsConversationSnapshotAsync();
+                    break;
+                case "select_chat":
+                    if (TryGetChatId(e.Message.Payload, out var chatId)
+                        && await _projectsController.SelectConversationAsync(chatId))
+                    {
+                        await ApplyProjectsConversationSnapshotAsync();
+                    }
+                    break;
+                case "request_older":
+                    if (TryGetBeforeSeq(e.Message.Payload, out var beforeSeq)
+                        && await _projectsController.TryLoadOlderAsync(beforeSeq))
+                    {
+                        await ApplyProjectsConversationSnapshotAsync();
+                    }
+                    break;
+                case "request_attach_files":
+                    if (await StageComposerFilesAsync(projectsMode: true))
+                    {
+                        await ApplyProjectsConversationSnapshotAsync();
+                    }
+                    break;
+                case "remove_attachment":
+                    if (TryGetDraftId(e.Message.Payload, out var projectDraftId)
+                        && _projectsController.RemovePendingComposerInput(projectDraftId))
+                    {
+                        await ApplyProjectsConversationSnapshotAsync();
+                    }
+                    break;
+                case "stage_text_artifact":
+                    if (TryGetComposerText(e.Message.Payload, out var longProjectText)
+                        && _projectsController.StageLongTextArtifact(longProjectText))
+                    {
+                        await ApplyProjectsConversationSnapshotAsync();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private async Task RefreshShellPassChatsWebAsync()
+        {
+            if (_shellPassWebRefreshRequested)
+            {
+                return;
+            }
+
+            _shellPassWebRefreshRequested = true;
+            await _chatsController.EnsureInitializedAsync();
+            await ChatsWebRendererView.PreloadAsync();
+            await ApplyShellPassChatsSnapshotAsync();
+            ChatsWebRendererView.Visibility = Visibility.Visible;
+            ProjectsHostView.Visibility = Visibility.Collapsed;
+        }
+
+        private async Task ApplyShellPassChatsSnapshotAsync()
+        {
+            var snapshot = _chatsController.BuildSnapshot();
+            await ChatsWebRendererView.ApplySnapshotAsync(snapshot);
+        }
+
+        private async Task ApplyProjectsConversationSnapshotAsync()
+        {
+            if (_projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            await ProjectsHostView.WorkCycleView.ConversationRenderer.PreloadAsync();
+            var snapshot = _projectsController.BuildSnapshot();
+            await ProjectsHostView.WorkCycleView.ConversationRenderer.ApplySnapshotAsync(snapshot);
+        }
+
+        private static bool TryGetMessageText(System.Text.Json.JsonElement payload, out string text)
+        {
+            text = string.Empty;
+            if (payload.ValueKind != System.Text.Json.JsonValueKind.Object
+                || !payload.TryGetProperty("text", out var textProperty)
+                || textProperty.ValueKind != System.Text.Json.JsonValueKind.String)
+            {
+                return false;
+            }
+
+            text = textProperty.GetString()?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(text);
+        }
+
+        private static bool TryGetChatId(System.Text.Json.JsonElement payload, out string chatId)
+        {
+            chatId = string.Empty;
+            if (payload.ValueKind != System.Text.Json.JsonValueKind.Object
+                || !payload.TryGetProperty("chatId", out var chatIdProperty)
+                || chatIdProperty.ValueKind != System.Text.Json.JsonValueKind.String)
+            {
+                return false;
+            }
+
+            chatId = chatIdProperty.GetString()?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(chatId);
+        }
+
+        private static bool TryGetBeforeSeq(System.Text.Json.JsonElement payload, out int beforeSeq)
+        {
+            beforeSeq = 0;
+            if (payload.ValueKind != System.Text.Json.JsonValueKind.Object
+                || !payload.TryGetProperty("beforeSeq", out var beforeSeqProperty))
+            {
+                return false;
+            }
+
+            if (beforeSeqProperty.ValueKind == System.Text.Json.JsonValueKind.Number
+                && beforeSeqProperty.TryGetInt32(out beforeSeq))
+            {
+                return beforeSeq > 0;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetDraftId(System.Text.Json.JsonElement payload, out string draftId)
+        {
+            draftId = string.Empty;
+            if (payload.ValueKind != System.Text.Json.JsonValueKind.Object
+                || !payload.TryGetProperty("draftId", out var draftIdProperty)
+                || draftIdProperty.ValueKind != System.Text.Json.JsonValueKind.String)
+            {
+                return false;
+            }
+
+            draftId = draftIdProperty.GetString()?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(draftId);
+        }
+
+        private static bool TryGetComposerText(System.Text.Json.JsonElement payload, out string text)
+        {
+            text = string.Empty;
+            if (payload.ValueKind != System.Text.Json.JsonValueKind.Object
+                || !payload.TryGetProperty("text", out var textProperty)
+                || textProperty.ValueKind != System.Text.Json.JsonValueKind.String)
+            {
+                return false;
+            }
+
+            text = textProperty.GetString() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(text);
         }
 
         private async Task RefreshRecoveryShellAsync()
         {
             var normalizedRoot = Path.GetFullPath(_projectRoot);
-            var projection = ProjectsShellProjection.Build(normalizedRoot);
+            var queryState = ProjectWorkCycleQueryStateBuilder.Build(normalizedRoot);
+            var projection = ProjectsShellProjection.Build(queryState);
+            var activeTaskDisplay = AppText.Current.Format(
+                "projects.shell.active_task",
+                queryState.ActiveTaskId ?? AppText.Current.Get("projects.token.none"));
 
             ProjectsHostView.WorkCycleView.ApplyShellState(
                 projectName: projection.ProjectName,
@@ -168,32 +616,33 @@ namespace zavod
                 projectDocumentTag: projection.ProjectDocumentPath,
                 hasCapsuleDocument: projection.HasCapsuleDocument,
                 capsuleDocumentTag: projection.CapsuleDocumentPath,
-                executionState: projection.ActiveTaskText.EndsWith("none", StringComparison.Ordinal) ? "Recovery hold" : "Task context detected",
-                executionDetail: projection.ActiveTaskText.EndsWith("none", StringComparison.Ordinal)
-                    ? "Execution wiring is still disabled. The center surface is back only as a verified shell."
-                    : $"{projection.ActiveTaskText.Replace("Active task: ", "A live task id exists (", StringComparison.Ordinal)}) but execution controls remain intentionally disconnected during recovery.",
-                resultState: projection.HasCapsuleDocument ? "Evidence available" : "No result loaded",
+                executionState: queryState.ActiveTaskId is null
+                    ? AppText.Current.Get("projects.recovery.execution_state.recovery_hold")
+                    : AppText.Current.Get("projects.recovery.execution_state.task_detected"),
+                executionDetail: queryState.ActiveTaskId is null
+                    ? AppText.Current.Get("projects.recovery.execution_detail.disabled")
+                    : AppText.Current.Format("projects.recovery.execution_detail.task_detected", activeTaskDisplay),
+                resultState: projection.HasCapsuleDocument
+                    ? AppText.Current.Get("projects.recovery.result_state.evidence_available")
+                    : AppText.Current.Get("projects.recovery.result_state.none"),
                 resultDetail: projection.HasCapsuleDocument
-                    ? "A capsule document exists and can be opened from the execution surface."
-                    : "No capsule/result document is materialized yet.");
-
-            await EnsureChatsConversationAsync(normalizedRoot);
-            ApplyChatsLayout(normalizedRoot);
+                    ? AppText.Current.Get("projects.recovery.result_detail.capsule_exists")
+                    : AppText.Current.Get("projects.recovery.result_detail.none"));
 
             ProjectsHostView.ListView.ApplyContent(
-                summary: "Choose a project entry block. Import and New Project stay disconnected in this slice.",
+                summary: AppText.Current.Get("projects.list.summary"),
                 currentProject: projection.ProjectListCurrentProjectText,
                 currentStage: projection.ProjectListCurrentStageText,
-                currentDetails: "Current project entry remains read-only in this slice.",
-                notes: "This list stays read-only for now.");
+                currentDetails: AppText.Current.Get("projects.list.current_project.details"),
+                notes: AppText.Current.Get("projects.list.notes"));
 
             ProjectsHostView.HomeView.ApplyContent(
-                summary: "Open HTML, inspect materials, and read a few truthful status lines.",
+                summary: AppText.Current.Get("projects.home.summary"),
                 status: projection.ProjectHomeStatusText,
                 stage: projection.ProjectHomeStageText,
                 activity: projection.ProjectHomeActivityText,
                 materials: projection.ProjectHomeMaterialsText,
-                notes: "This surface stays read-only in the current slice.");
+                notes: AppText.Current.Get("projects.home.notes"));
 
             ProjectsHostView.HomeView.SetActionState(
                 hasProjectHtml: projection.HasProjectHtml,
@@ -201,18 +650,18 @@ namespace zavod
                 hasProjectDocument: projection.HasProjectDocument,
                 projectDocumentPath: projection.ProjectDocumentPath);
             await EnsureProjectsConversationAsync(normalizedRoot, projection);
-            UpdateProjectsDiscussionPreview();
+            await ApplyProjectsConversationSnapshotAsync();
 
-            var workCycle = ProjectWorkCycleProjection.Build(normalizedRoot, projection);
+            var workCycle = ProjectWorkCycleProjection.Build(queryState, projection);
             ProjectsHostView.WorkCycleView.ApplyWorkCycleState(
                 workCycle,
                 projectContext: $"{projection.ProjectName}  |  {projection.ProjectRoot}",
                 showEnterWork: _projectsScreen == ProjectsScreen.WorkCycle && workCycle.Projection.CanStartIntentValidation,
                 composerEnabled: _projectsScreen == ProjectsScreen.WorkCycle && workCycle.PhaseState.Phase == Flow.SurfacePhase.Discussion,
                 clarificationVisible: WorkCycleActionController.IsPreflightClarificationActive(normalizedRoot),
-                validationReason: "РџСЂРѕРІРµСЂРєР° РґРѕРіРѕРІРѕСЂС‘РЅРЅРѕСЃС‚Рё РїРµСЂРµРґ Р·Р°РїСѓСЃРєРѕРј.",
+                validationReason: AppText.Current.Get("projects.work_cycle.validation.reason"),
                 validationSummary: string.IsNullOrWhiteSpace(workCycle.IntentSummary)
-                    ? "Р”РѕРіРѕРІРѕСЂС‘РЅРЅРѕСЃС‚СЊ РµС‰С‘ РЅРµ СЃС„РѕСЂРјРёСЂРѕРІР°РЅР°."
+                    ? AppText.Current.Get("projects.work_cycle.validation.empty")
                     : workCycle.IntentSummary,
                 validationItems: WorkCycleActionController.BuildAgreementItemsText(workCycle.IntentSummary));
             ApplyWorkCycleColumnLayout(workCycle);
@@ -220,209 +669,22 @@ namespace zavod
 
             ApplyModeChrome();
             ApplyProjectsScreenChrome();
-        }
-
-        private async Task EnsureChatsConversationAsync(string normalizedRoot)
-        {
-            if (_chatsReady)
-            {
-                ChatsHostView.ConversationView.RefreshItems();
-                return;
-            }
-
-            var restoredAdapter = new ChatsAdapter(storage: _chatStorage)
-            {
-                PersistenceEnabled = false
-            };
-
-            if (await restoredAdapter.RestorePersistedAsync() == 0 && restoredAdapter.Items.Count == 0)
-            {
-                ActivateChatSession(null);
-                ChatsHostView.ConversationView.RefreshItems();
-                _chatsReady = true;
-                return;
-            }
-
-            var session = new ChatSessionState(
-                id: Guid.NewGuid().ToString("N"),
-                adapter: restoredAdapter,
-                title: BuildChatTitle(restoredAdapter),
-                isDraft: false);
-            _chatSessions.Clear();
-            _chatSessions.Add(session);
-            ActivateChatSession(session);
-            ChatsHostView.ConversationView.RefreshItems();
-            _chatsReady = true;
-        }
-
-        private void ApplyChatsLayout(string normalizedRoot)
-        {
-            var hasConversation = _chatsAdapter.Items.Count > 0;
-
-            ChatsHostView.SetSummaryVisibility(Visibility.Collapsed);
-            ChatsHostView.SetConversationVisible(hasConversation);
-            ChatsHostView.SetSidebarState(
-                visible: true,
-                title: string.Empty,
-                meta: string.Empty,
-                note: string.Empty,
-                width: 270);
-            ChatsHostView.SetSidebarEntries(
-                _chatSessions
-                    .Select(session => new ChatsSidebarEntry(session.Id, session.Title))
-                    .ToArray(),
-                _activeChatSession is { IsDraft: false } ? _activeChatSession.Id : null);
-            ChatsHostView.SetEmptyState(
-                visible: !hasConversation,
-                headline: "Quiet space for a thought",
-                subtitle: "Start anywhere. Structure can arrive later.");
-            ChatsHostView.SetPersistenceState(
-                text: hasConversation
-                    ? $"Saved locally. Messages in current chat: {_chatsAdapter.Items.Count}."
-                    : string.Empty,
-                visible: hasConversation);
-            ChatsHostView.SetAttachVisible(hasConversation);
-            ChatsHostView.SetComposerPlacement(hasConversation);
-        }
-
-        private static string BuildChatTitle(ChatsAdapter adapter)
-        {
-            foreach (var item in adapter.Items)
-            {
-                if (item.Kind != ConversationItemKind.User)
-                {
-                    continue;
-                }
-
-                var text = item.Text?.Trim();
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    continue;
-                }
-
-                var singleLine = text.Replace("\r", " ").Replace("\n", " ").Trim();
-                if (singleLine.Length <= 34)
-                {
-                    return singleLine;
-                }
-
-                return $"{singleLine[..31].TrimEnd()}...";
-            }
-
-            return "Current chat";
-        }
-
-        private void ActivateChatSession(ChatSessionState? session)
-        {
-            _activeChatSession = session;
-            _chatsAdapter = session?.Adapter ?? new ChatsAdapter();
-            ChatsHostView.ConversationView.Adapter = _chatsAdapter;
-            ChatsHostView.ConversationView.RefreshItems();
-
-            if (session is { IsDraft: false })
-            {
-                PersistActiveChatSession();
-            }
-        }
-
-        private void PersistActiveChatSession()
-        {
-            if (_activeChatSession is null || _activeChatSession.IsDraft)
-            {
-                return;
-            }
-
-            var snapshots = _activeChatSession.Adapter.Items
-                .Select(item => new ConversationLogSnapshot(
-                    item.Id,
-                    item.Timestamp,
-                    item.AuthorLabel,
-                    item.Kind.ToString(),
-                    item.Text,
-                    item.Text,
-                    StepId: null,
-                    Phase: null,
-                    Attachments: Array.Empty<string>(),
-                    Source: "chats",
-                    Adapter: "chats",
-                    item.IsStreaming,
-                    Metadata: null))
-                .ToArray();
-
-            _chatStorage.ReplaceAll(snapshots);
-        }
-
-        private void ChatsNewChatButton_Click(object? sender, RoutedEventArgs e)
-        {
-            if (_draftChatSession is not null)
-            {
-                ActivateChatSession(_draftChatSession);
-                ApplyChatsLayout(Path.GetFullPath(_projectRoot));
-                return;
-            }
-
-            _draftChatSession = new ChatSessionState(
-                id: Guid.NewGuid().ToString("N"),
-                adapter: new ChatsAdapter(),
-                title: "New chat",
-                isDraft: true);
-            ActivateChatSession(_draftChatSession);
-            ApplyChatsLayout(Path.GetFullPath(_projectRoot));
-        }
-
-        private void ChatsHostView_ChatRowClicked(object? sender, string id)
-        {
-            var session = _chatSessions.FirstOrDefault(candidate => string.Equals(candidate.Id, id, StringComparison.Ordinal));
-            if (session is null)
-            {
-                return;
-            }
-
-            ActivateChatSession(session);
-            ApplyChatsLayout(Path.GetFullPath(_projectRoot));
+            await TryCaptureVerificationAsync();
         }
 
         private void UpdateProjectsDiscussionPreview()
         {
-            var items = _projectsAdapter.Items;
-            if (items.Count == 0)
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
             {
-                ProjectsHostView.WorkCycleView.SetDiscussionPreviewText("Discussion preview will appear here as soon as the first project messages are available.");
                 return;
             }
 
-            var lines = items
-                .TakeLast(6)
-                .Select(item => $"{item.AuthorLabel}{Environment.NewLine}{item.Text}".Trim())
-                .ToArray();
-            ProjectsHostView.WorkCycleView.SetDiscussionPreviewText(string.Join($"{Environment.NewLine}{Environment.NewLine}", lines));
+            _ = ApplyProjectsConversationSnapshotAsync();
         }
 
         private async Task EnsureProjectsConversationAsync(string normalizedRoot, ProjectsShellProjection projection)
         {
-            if (_projectsReady)
-            {
-                return;
-            }
-
-            if (await _projectsAdapter.RestorePersistedAsync() == 0 && _projectsAdapter.Items.Count == 0)
-            {
-                _projectsAdapter.PersistenceEnabled = false;
-                try
-                {
-                    await _projectsAdapter.AddMessageAsync(
-                        ConversationItemKind.Lead,
-                        "Shift Lead",
-                        $"РџСЂРёРІРµС‚. РњС‹ РІ РїСЂРѕРµРєС‚Рµ **{projection.ProjectName}**. РћРїРёС€Рё, С‡С‚Рѕ РёРјРµРЅРЅРѕ С…РѕС‡РµС€СЊ СЃРґРµР»Р°С‚СЊ, Рё СЏ РїРѕРјРѕРіСѓ РґРѕРІРµСЃС‚Рё Р·Р°РґР°С‡Сѓ РґРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ, РєРѕРіРґР° РµС‘ РјРѕР¶РЅРѕ РѕС‚РїСЂР°РІРёС‚СЊ РІ СЂР°Р±РѕС‚Сѓ.",
-                        metadata: WorkCycleActionController.BuildProjectConversationMetadata("discussion", projection.ActiveTaskText));
-                }
-                finally
-                {
-                    _projectsAdapter.PersistenceEnabled = true;
-                }
-            }
-
-            _projectsReady = true;
+            await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -435,37 +697,218 @@ namespace zavod
             _ = SendProjectsMessageThroughControllerAsync();
         }
 
-        private async Task SendProjectsMessageThroughControllerAsync()
+        private async Task SendProjectsMessageThroughControllerAsync(string? textOverride = null)
         {
             if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
             {
                 return;
             }
 
-            if (await _workCycleActions.SendProjectsMessageAsync(ProjectsComposerTextBox.Text ?? string.Empty))
+            _projectsController.EnsureActiveAdapter();
+            var submission = await _projectsController.ConsumeComposerSubmissionAsync(textOverride ?? ProjectsComposerTextBox.Text ?? string.Empty);
+            if (submission.IsEmpty)
             {
-                ProjectsComposerTextBox.Text = string.Empty;
+                return;
             }
+
+            if (submission.HasText && await _workCycleActions.SendProjectsMessageAsync(submission))
+            {
+                // Message path already emitted user/lead items via the action controller.
+            }
+
+            ProjectsComposerTextBox.Text = string.Empty;
+            _projectsController.CommitActiveConversation();
+            await ApplyProjectsConversationSnapshotAsync();
+        }
+
+        private async Task EnterWorkAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.EnterWorkAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task ConfirmPreflightAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.ConfirmPreflightAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task BeginClarificationAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.BeginClarificationAsync(ExecutionClarificationTextBox.Text ?? string.Empty))
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task<bool> ApplyClarificationAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return false;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (!await _workCycleActions.ApplyClarificationAsync(ExecutionClarificationTextBox.Text ?? string.Empty))
+            {
+                return false;
+            }
+
+            _projectsController.CommitActiveConversation();
+            await ApplyProjectsConversationSnapshotAsync();
+            return true;
+        }
+
+        private async Task CancelClarificationAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.CancelClarificationAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task ReturnToChatAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.ReturnToChatAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task AcceptResultAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.AcceptResultAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task RequestRevisionAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.RequestRevisionAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task RejectResultAsync()
+        {
+            if (_selectedMode != AppMode.Projects || _projectsScreen != ProjectsScreen.WorkCycle)
+            {
+                return;
+            }
+
+            _projectsController.EnsureActiveAdapter();
+            if (await _workCycleActions.RejectResultAsync())
+            {
+                _projectsController.CommitActiveConversation();
+                await ApplyProjectsConversationSnapshotAsync();
+            }
+        }
+
+        private async Task<bool> StageComposerFilesAsync(bool projectsMode)
+        {
+            var pickedFiles = await PickFilesAsync();
+            if (pickedFiles.Count == 0)
+            {
+                return false;
+            }
+
+            return projectsMode
+                ? _projectsController.StageFiles(pickedFiles)
+                : _chatsController.StageFiles(pickedFiles);
+        }
+
+        private async Task<IReadOnlyList<string>> PickFilesAsync()
+        {
+            var picker = new FileOpenPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.FileTypeFilter.Add("*");
+
+            var files = await picker.PickMultipleFilesAsync();
+            if (files is null || files.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            return files
+                .Where(static file => file is not null && !string.IsNullOrWhiteSpace(file.Path))
+                .Select(static file => file.Path)
+                .ToArray();
         }
 
         private void EnterWorkButton_WrapperClick(object sender, RoutedEventArgs e)
         {
-            _ = _workCycleActions.EnterWorkAsync();
+            _ = EnterWorkAsync();
         }
 
         private void ExecutionConfirmButton_WrapperClick(object sender, RoutedEventArgs e)
         {
-            _ = _workCycleActions.ConfirmPreflightAsync();
+            _ = ConfirmPreflightAsync();
         }
 
         private void ExecutionClarifyButton_WrapperClick(object sender, RoutedEventArgs e)
         {
-            _ = _workCycleActions.BeginClarificationAsync(ExecutionClarificationTextBox.Text ?? string.Empty);
+            _ = BeginClarificationAsync();
         }
 
         private async void ExecutionApplyClarificationButton_WrapperClick(object sender, RoutedEventArgs e)
         {
-            if (await _workCycleActions.ApplyClarificationAsync(ExecutionClarificationTextBox.Text ?? string.Empty))
+            if (await ApplyClarificationAsync())
             {
                 ExecutionClarificationTextBox.Text = string.Empty;
             }
@@ -474,24 +917,47 @@ namespace zavod
         private void ExecutionCancelClarificationButton_WrapperClick(object sender, RoutedEventArgs e)
         {
             ExecutionClarificationTextBox.Text = string.Empty;
-            _ = _workCycleActions.CancelClarificationAsync();
+            _ = CancelClarificationAsync();
         }
 
         private void ExecutionReturnToChatButton_WrapperClick(object sender, RoutedEventArgs e)
         {
-            _ = _workCycleActions.ReturnToChatAsync();
+            _ = ReturnToChatAsync();
         }
 
-        private void ChatsModeButton_Click(object sender, RoutedEventArgs e)
+        private void ResultAcceptButton_WrapperClick(object sender, RoutedEventArgs e)
+        {
+            _ = AcceptResultAsync();
+        }
+
+        private void ResultReviseButton_WrapperClick(object sender, RoutedEventArgs e)
+        {
+            _ = RequestRevisionAsync();
+        }
+
+        private void ResultRejectButton_WrapperClick(object sender, RoutedEventArgs e)
+        {
+            _ = RejectResultAsync();
+        }
+
+        private async void ChatsModeButton_Click(object sender, RoutedEventArgs e)
         {
             _selectedMode = AppMode.Chats;
+            if (_shellPassEnabled)
+            {
+                await RefreshShellPassChatsWebAsync();
+            }
             ApplyModeChrome();
             ApplyProjectsScreenChrome();
         }
 
-        private void ProjectsModeButton_Click(object sender, RoutedEventArgs e)
+        private async void ProjectsModeButton_Click(object sender, RoutedEventArgs e)
         {
             _selectedMode = AppMode.Projects;
+            if (_shellPassEnabled)
+            {
+                await RefreshRecoveryShellAsync();
+            }
             ApplyModeChrome();
             ApplyProjectsScreenChrome();
         }
@@ -501,45 +967,24 @@ namespace zavod
             _ = SendChatsMessageAsync();
         }
 
-        private async Task SendChatsMessageAsync()
+        private async Task SendChatsMessageAsync(string? shellPassText = null)
         {
             if (_selectedMode != AppMode.Chats)
             {
                 return;
             }
 
-            var text = ChatsHostView.ComposerTextBox.Text?.Trim();
-            if (string.IsNullOrWhiteSpace(text))
+            var submission = await _chatsController.ConsumeComposerSubmissionAsync(shellPassText ?? string.Empty);
+            if (!await _chatsController.SendMessageAsync(
+                    submission,
+                    _shellPassEnabled ? ApplyShellPassChatsSnapshotAsync : null))
             {
                 return;
             }
-
-            await _chatsAdapter.AddMessageAsync(ConversationItemKind.User, "User", text);
-            await _chatsAdapter.AddMessageAsync(
-                ConversationItemKind.Assistant,
-                "Assistant",
-                "Chats mode is restored as a safe local loop for now. This reply is local and independent from project core.");
-            ChatsHostView.ComposerTextBox.Text = string.Empty;
-
-            if (_activeChatSession is not null)
+            if (_shellPassEnabled)
             {
-                if (_activeChatSession.IsDraft)
-                {
-                    _activeChatSession.IsDraft = false;
-                    _activeChatSession.Title = BuildChatTitle(_activeChatSession.Adapter);
-                    _chatSessions.Insert(0, _activeChatSession);
-                    _draftChatSession = null;
-                }
-                else
-                {
-                    _activeChatSession.Title = BuildChatTitle(_activeChatSession.Adapter);
-                }
-
-                PersistActiveChatSession();
+                await ApplyShellPassChatsSnapshotAsync();
             }
-
-            ChatsHostView.ConversationView.RefreshItems();
-            ApplyChatsLayout(Path.GetFullPath(_projectRoot));
         }
 
         private void OpenProjectHtmlButton_Click(object sender, RoutedEventArgs e)
@@ -551,6 +996,7 @@ namespace zavod
         {
             _projectsScreen = ProjectsScreen.WorkCycle;
             ApplyProjectsScreenChrome();
+            _ = RefreshRecoveryShellAsync();
         }
 
         private void OpenCurrentProjectButton_Click(object sender, RoutedEventArgs e)
@@ -604,57 +1050,87 @@ namespace zavod
 
         private void ApplyModeChrome()
         {
-            var chats = _selectedMode == AppMode.Chats;
+            if (_shellPassEnabled)
+            {
+                var chats = _selectedMode == AppMode.Chats;
 
-            ChatsHostView.Visibility = chats ? Visibility.Visible : Visibility.Collapsed;
-            ProjectsHostView.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
+                ChatsWebRendererView.Visibility = chats ? Visibility.Visible : Visibility.Collapsed;
+                ProjectsHostView.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
+                TestSurface.Visibility = Visibility.Collapsed;
 
-            WindowRoot.Background = chats
+                WindowRoot.Background = chats
+                    ? Brush("Ui.Chat.BackgroundBrush")
+                    : new SolidColorBrush(ColorFromHex("#171717"));
+                HeaderBorder.Background = WindowRoot.Background;
+                ShellBrandText.Foreground = chats
+                    ? new SolidColorBrush(ColorFromHex("#646464"))
+                    : new SolidColorBrush(ColorFromHex("#B8B8B8"));
+                ShellBrandText.Opacity = chats ? 0.62 : 0.72;
+
+                ModeSwitchView.SwitchBorder.Background = chats
+                    ? new SolidColorBrush(ColorFromHex("#F7F4EE"))
+                    : new SolidColorBrush(ColorFromHex("#232323"));
+                ModeSwitchView.SwitchBorder.BorderBrush = chats
+                    ? new SolidColorBrush(ColorFromHex("#E7DED3"))
+                    : new SolidColorBrush(ColorFromHex("#343434"));
+                ModeSwitchView.SwitchBorder.BorderThickness = new Thickness(1);
+
+                ApplyModeButtonState(ModeSwitchView.ChatsButton, chats, isChatsButton: true);
+                ApplyModeButtonState(ModeSwitchView.ProjectsButton, !chats, isChatsButton: false);
+                return;
+            }
+
+            var chatsMode = _selectedMode == AppMode.Chats;
+
+            ChatsWebRendererView.Visibility = chatsMode ? Visibility.Visible : Visibility.Collapsed;
+            ProjectsHostView.Visibility = chatsMode ? Visibility.Collapsed : Visibility.Visible;
+
+            WindowRoot.Background = chatsMode
                 ? Brush("Ui.Chat.BackgroundBrush")
                 : new SolidColorBrush(ColorFromHex("#171717"));
-            HeaderBorder.Background = chats
+            HeaderBorder.Background = chatsMode
                 ? new SolidColorBrush(Color.FromArgb(0, 0, 0, 0))
                 : new SolidColorBrush(ColorFromHex("#1D1D1D"));
-            HeaderBorder.BorderBrush = chats
+            HeaderBorder.BorderBrush = chatsMode
                 ? new SolidColorBrush(Color.FromArgb(0, 0, 0, 0))
                 : new SolidColorBrush(ColorFromHex("#323232"));
-            HeaderBorder.BorderThickness = chats
+            HeaderBorder.BorderThickness = chatsMode
                 ? new Thickness(0)
                 : new Thickness(0, 0, 0, 1);
-            HeaderBorder.Padding = chats
+            HeaderBorder.Padding = chatsMode
                 ? new Thickness(0, 8, 0, 0)
                 : new Thickness(14, 12, 14, 12);
-            HeaderBorder.Margin = chats
+            HeaderBorder.Margin = chatsMode
                 ? new Thickness(24, 16, 24, 0)
                 : new Thickness(18, 18, 18, 0);
-            TitleBarRoot.MinHeight = chats ? 40 : 64;
-            ModeSwitchView.SwitchBorder.Background = chats
+            TitleBarRoot.MinHeight = chatsMode ? 40 : 64;
+            ModeSwitchView.SwitchBorder.Background = chatsMode
                 ? Brush("Ui.Chat.ChromeSurfaceBrush")
                 : new SolidColorBrush(ColorFromHex("#2A2A2A"));
-            ModeSwitchView.SwitchBorder.BorderBrush = chats
+            ModeSwitchView.SwitchBorder.BorderBrush = chatsMode
                 ? Brush("Ui.Chat.ChromeBorderBrush")
                 : new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
-            ModeSwitchView.SwitchBorder.BorderThickness = chats
+            ModeSwitchView.SwitchBorder.BorderThickness = chatsMode
                 ? new Thickness(1)
                 : new Thickness(1);
 
-            WindowStatusText.Text = chats
-                ? "Chats mode active. Free chat stays outside project lifecycle."
+            WindowStatusText.Text = chatsMode
+                ? AppText.Current.Get("shell.chats_mode_active")
                 : _isDemoMode
-                    ? "Projects mode active. Demo runtime detected. List, Home, and Work Cycle hosts are restored; discussion/preflight path is partially reconnected."
-                    : "Projects mode active. List, Home, and Work Cycle hosts are restored; discussion/preflight path is partially reconnected.";
-            WindowStatusText.Foreground = chats
+                    ? AppText.Current.Get("shell.projects_mode_demo_active")
+                    : AppText.Current.Get("shell.projects_mode_active");
+            WindowStatusText.Foreground = chatsMode
                 ? Brush("Ui.Chat.TextSecondaryBrush")
                 : new SolidColorBrush(ColorFromHex("#CFCFCF"));
-            WindowTitleText.Foreground = chats
+            WindowTitleText.Foreground = chatsMode
                 ? Brush("Ui.Chat.TextPrimaryBrush")
                 : new SolidColorBrush(ColorFromHex("#F2F2F2"));
-            WindowTitleText.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
-            WindowStatusText.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
-            RefreshButton.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
+            WindowTitleText.Visibility = chatsMode ? Visibility.Collapsed : Visibility.Visible;
+            WindowStatusText.Visibility = chatsMode ? Visibility.Collapsed : Visibility.Visible;
+            RefreshButton.Visibility = chatsMode ? Visibility.Collapsed : Visibility.Visible;
 
-            ApplyModeButtonState(ModeSwitchView.ChatsButton, chats, isChatsButton: true);
-            ApplyModeButtonState(ModeSwitchView.ProjectsButton, !chats, isChatsButton: false);
+            ApplyModeButtonState(ModeSwitchView.ChatsButton, chatsMode, isChatsButton: true);
+            ApplyModeButtonState(ModeSwitchView.ProjectsButton, !chatsMode, isChatsButton: false);
         }
 
         private void ApplyProjectsScreenChrome()
@@ -715,12 +1191,12 @@ namespace zavod
 
             ProjectsHostView.WorkCycleView.ChatSummaryNoteBlock.Text = phase switch
             {
-                Flow.SurfacePhase.Discussion => "Discussion is active in this phase. Send stays discussion-only, and work entry remains a separate validated transition.",
-                Flow.SurfacePhase.Execution when workCycle.PhaseState.ExecutionSubphase == Flow.ExecutionSubphase.Preflight => "Chat stays primary while the same persistent execution surface opens in validation/preflight mode.",
-                Flow.SurfacePhase.Execution => "Execution is the active surface. Chat remains visible only as bounded frozen context in this slice.",
-                Flow.SurfacePhase.Result => "Result is the active decision surface. Execution stays visible as context and chat remains frozen.",
-                Flow.SurfacePhase.Completed => "Completed state is shown as historical context only in this slice.",
-                _ => "Discussion and execution stay limited to the currently re-proven owner paths."
+                Flow.SurfacePhase.Discussion => AppText.Current.Get("projects.chrome.note.discussion"),
+                Flow.SurfacePhase.Execution when workCycle.PhaseState.ExecutionSubphase == Flow.ExecutionSubphase.Preflight => AppText.Current.Get("projects.chrome.note.execution_preflight"),
+                Flow.SurfacePhase.Execution => AppText.Current.Get("projects.chrome.note.execution"),
+                Flow.SurfacePhase.Result => AppText.Current.Get("projects.chrome.note.result"),
+                Flow.SurfacePhase.Completed => AppText.Current.Get("projects.chrome.note.completed"),
+                _ => AppText.Current.Get("projects.chrome.note.fallback")
             };
         }
 
@@ -792,6 +1268,24 @@ namespace zavod
 
         private void ApplyModeButtonState(Button button, bool selected, bool isChatsButton)
         {
+            if (_shellPassEnabled)
+            {
+                if (isChatsButton)
+                {
+                    button.Background = selected ? new SolidColorBrush(ColorFromHex("#FFFFFF")) : new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+                    button.BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+                    button.BorderThickness = new Thickness(0);
+                    button.Foreground = selected ? new SolidColorBrush(ColorFromHex("#2F2924")) : new SolidColorBrush(ColorFromHex("#8B8278"));
+                    return;
+                }
+
+                button.Background = selected ? new SolidColorBrush(ColorFromHex("#2F2F2F")) : new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+                button.BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+                button.BorderThickness = new Thickness(0);
+                button.Foreground = selected ? new SolidColorBrush(ColorFromHex("#F2F2F2")) : new SolidColorBrush(ColorFromHex("#8F8F8F"));
+                return;
+            }
+
             if (isChatsButton)
             {
                 button.Background = selected ? new SolidColorBrush(ColorFromHex("#FFFDF8")) : new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
@@ -846,6 +1340,155 @@ namespace zavod
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
 
+        private async Task TryCaptureVerificationAsync()
+        {
+            if (_verificationCaptureCompleted
+                || string.IsNullOrWhiteSpace(_verificationCapturePath)
+                || !string.Equals(_verificationCaptureMode, "projects-home", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _verificationCaptureCompleted = true;
+            await Task.Delay(250);
+            await SaveElementScreenshotAsync(WindowRoot, _verificationCapturePath);
+            if (_verificationCaptureExit)
+            {
+                Close();
+            }
+        }
+
+        private async Task TryRunChatsLiveProofAsync()
+        {
+            if (_verificationLiveProofStarted
+                || !string.Equals(_verificationCaptureMode, "chats-live-proof", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _verificationLiveProofStarted = true;
+            var result = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["mode"] = "chats-live-proof",
+                ["startedAt"] = DateTimeOffset.Now
+            };
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_verificationProofTextPath) || !File.Exists(_verificationProofTextPath))
+                {
+                    throw new InvalidOperationException("Live proof text file is missing.");
+                }
+
+                var proofText = File.ReadAllText(_verificationProofTextPath, Encoding.UTF8);
+                var proofPrompt = string.IsNullOrWhiteSpace(_verificationProofPrompt)
+                    ? "О чем этот текст?"
+                    : _verificationProofPrompt.Trim();
+
+                await _chatsController.EnsureInitializedAsync();
+                _chatsController.CreateOrActivateDraft();
+                if (!_chatsController.StageLongTextArtifact(proofText))
+                {
+                    throw new InvalidOperationException("Live proof text did not cross the artifact staging threshold.");
+                }
+
+                await ApplyShellPassChatsSnapshotAsync();
+                var submission = await _chatsController.ConsumeComposerSubmissionAsync(proofPrompt);
+                result["conversationId"] = submission.NormalizedConversationId;
+                result["submissionText"] = submission.Text;
+                result["attachmentCount"] = submission.Attachments.Count;
+                result["attachmentLabels"] = submission.Attachments.Select(static item => item.DisplayName).ToArray();
+                result["attachmentTypes"] = submission.Attachments.Select(static item => item.IntakeType).ToArray();
+
+                var sendSucceeded = await _chatsController.SendMessageAsync(
+                    submission,
+                    _shellPassEnabled ? ApplyShellPassChatsSnapshotAsync : null);
+                result["sendSucceeded"] = sendSucceeded;
+                if (_shellPassEnabled)
+                {
+                    await ApplyShellPassChatsSnapshotAsync();
+                }
+
+                var snapshot = _chatsController.BuildSnapshot();
+                result["messageCount"] = snapshot.Messages.Count;
+                result["artifactVisible"] = snapshot.Messages.Any(static message => string.Equals(message.Kind, "artifact", StringComparison.Ordinal));
+                result["cyrillicVisible"] = snapshot.Messages.Any(message => ContainsCyrillic(message.Text));
+                result["assistantText"] = snapshot.Messages
+                    .LastOrDefault(message => string.Equals(message.Role, "assistant", StringComparison.Ordinal))?.Text ?? string.Empty;
+
+                await Task.Delay(500);
+                if (!string.IsNullOrWhiteSpace(_verificationCapturePath))
+                {
+                    await SaveElementScreenshotAsync(WindowRoot, _verificationCapturePath);
+                    result["screenshotPath"] = _verificationCapturePath;
+                }
+
+                result["success"] = true;
+            }
+            catch (Exception ex)
+            {
+                result["success"] = false;
+                result["error"] = ex.ToString();
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(_verificationProofResultPath))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(_verificationProofResultPath)!);
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    };
+                    await File.WriteAllTextAsync(
+                        _verificationProofResultPath,
+                        JsonSerializer.Serialize(result, options),
+                        Encoding.UTF8);
+                }
+
+                if (_verificationCaptureExit)
+                {
+                    Close();
+                }
+            }
+        }
+
+        private static async Task SaveElementScreenshotAsync(FrameworkElement element, string outputPath)
+        {
+            var bitmap = new RenderTargetBitmap();
+            await bitmap.RenderAsync(element);
+            var pixels = await bitmap.GetPixelsAsync();
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+
+            using var stream = new InMemoryRandomAccessStream();
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+            encoder.SetPixelData(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied,
+                (uint)bitmap.PixelWidth,
+                (uint)bitmap.PixelHeight,
+                element.XamlRoot?.RasterizationScale ?? 1,
+                element.XamlRoot?.RasterizationScale ?? 1,
+                pixels.ToArray());
+            await encoder.FlushAsync();
+            stream.Seek(0);
+
+            var buffer = new byte[stream.Size];
+            await stream.ReadAsync(buffer.AsBuffer(), (uint)stream.Size, InputStreamOptions.None);
+            await File.WriteAllBytesAsync(outputPath, buffer);
+        }
+
+        private static bool ContainsCyrillic(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return value.Any(static ch => ch is >= '\u0400' and <= '\u04FF');
+        }
+
         private enum AppMode
         {
             Chats,
@@ -876,8 +1519,9 @@ namespace zavod
                 _ => "list"
             });
 
-            var shellProjection = ProjectsShellProjection.Build(Path.GetFullPath(_projectRoot));
-            var workCycleProjection = ProjectWorkCycleProjection.Build(Path.GetFullPath(_projectRoot), shellProjection);
+            var queryState = ProjectWorkCycleQueryStateBuilder.Build(Path.GetFullPath(_projectRoot));
+            var shellProjection = ProjectsShellProjection.Build(queryState);
+            var workCycleProjection = ProjectWorkCycleProjection.Build(queryState, shellProjection);
             var appMode = _selectedMode == AppMode.Chats ? "Chats" : "Projects";
 
             return UiVerificationSnapshotBuilder.BuildJson(

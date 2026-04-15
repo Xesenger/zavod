@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Spacing="8">
-            <TextBlock Text="Project List" FontSize="28" FontWeight="SemiBold" Foreground="#F2F2F2" />
+            <TextBlock x:Name="TitleText" FontSize="28" FontWeight="SemiBold" Foreground="#F2F2F2" />
             <TextBlock x:Name="SummaryText" Foreground="#E4E4E4" TextWrapping="Wrap" />
         </StackPanel>
 
@@ -22,22 +22,22 @@
             <StackPanel Orientation="Horizontal" Spacing="14">
                 <Border Width="360" Padding="18" Background="#1F1F1F" BorderBrush="#363636" BorderThickness="1" CornerRadius="16">
                     <StackPanel Spacing="12">
-                        <TextBlock Text="Start Here" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
-                        <TextBlock Foreground="#E4E4E4" TextWrapping="Wrap" Text="Projects mode starts here. Import and New Project remain explicit entry actions." />
+                        <TextBlock x:Name="StartHereTitleText" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
+                        <TextBlock x:Name="StartHereBodyText" Foreground="#E4E4E4" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="New project" IsEnabled="False" />
-                            <Button Content="Import" IsEnabled="False" />
+                            <Button x:Name="NewProjectButton" IsEnabled="False" />
+                            <Button x:Name="ImportButton" IsEnabled="False" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <Border Width="420" Padding="18" Background="#1F1F1F" BorderBrush="#363636" BorderThickness="1" CornerRadius="16">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="Current Project" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
+                        <TextBlock x:Name="CurrentProjectTitleText" FontSize="18" FontWeight="SemiBold" Foreground="#F2F2F2" />
                         <TextBlock x:Name="CurrentProjectText" Foreground="#CFCFCF" TextWrapping="Wrap" />
                         <TextBlock x:Name="CurrentStageText" Foreground="#E4E4E4" TextWrapping="Wrap" />
                         <TextBlock x:Name="CurrentDetailsText" Foreground="#E4E4E4" TextWrapping="Wrap" />
-                        <Button x:Name="OpenCurrentProjectButton" AutomationProperties.AutomationId="Projects.List.OpenCurrentProject" HorizontalAlignment="Left" Content="Open project" />
+                        <Button x:Name="OpenCurrentProjectButton" AutomationProperties.AutomationId="Projects.List.OpenCurrentProject" HorizontalAlignment="Left" />
                     </StackPanel>
                 </Border>
             </StackPanel>

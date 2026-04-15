@@ -33,6 +33,8 @@
 bin/
 obj/
 build-diag.log
+build-shell-pass.log
+test-run.log
 
 # IDE / SDK local cache
 .vs/

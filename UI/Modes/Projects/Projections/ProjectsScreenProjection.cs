@@ -1,3 +1,5 @@
+using zavod.UI.Text;
+
 namespace zavod.UI.Modes.Projects.Projections;
 
 public sealed record ProjectsScreenProjection(
@@ -13,22 +15,22 @@ public sealed record ProjectsScreenProjection(
         return screenKey switch
         {
             "home" => new ProjectsScreenProjection(
-                "Project Home",
-                "Project Home host is restored as a simple read-only overview layer.",
+                AppText.Current.Get("projects.screen.home.title"),
+                AppText.Current.Get("projects.screen.home.summary"),
                 ShowBack: true,
                 ShowList: false,
                 ShowHome: true,
                 ShowWorkCycle: false),
             "work_cycle" => new ProjectsScreenProjection(
-                "Project Work Cycle",
-                "Project Work Cycle host is restored; discussion and preflight semantics are partially reconnected on the proven owner path.",
+                AppText.Current.Get("projects.screen.work_cycle.title"),
+                AppText.Current.Get("projects.screen.work_cycle.summary"),
                 ShowBack: true,
                 ShowList: false,
                 ShowHome: false,
                 ShowWorkCycle: true),
             _ => new ProjectsScreenProjection(
-                "Project List",
-                "Project List host is restored as the non-mutating entry layer for Projects.",
+                AppText.Current.Get("projects.screen.list.title"),
+                AppText.Current.Get("projects.screen.list.summary"),
                 ShowBack: false,
                 ShowList: true,
                 ShowHome: false,

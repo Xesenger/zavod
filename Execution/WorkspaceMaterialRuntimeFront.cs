@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using zavod.Workspace;
 
 namespace zavod.Execution;
@@ -301,7 +302,7 @@ public sealed class WorkspaceMaterialRuntimeFront(
 
         try
         {
-            var rawText = File.ReadAllText(fullPath);
+            var rawText = File.ReadAllText(fullPath, Encoding.UTF8);
             var normalized = TextMaterialRuntimeService.NormalizeText(rawText);
             if (normalized.Length == 0)
             {

@@ -15,7 +15,7 @@
 
         <Border Grid.Row="0" Padding="12" Background="#1D1D1D" BorderBrush="#323232" BorderThickness="1" CornerRadius="16">
             <StackPanel Spacing="6">
-                <TextBlock x:Name="ScreenTitleText" Text="Projects" FontSize="24" FontWeight="SemiBold" Foreground="#F2F2F2" />
+                <TextBlock x:Name="ScreenTitleText" FontSize="24" FontWeight="SemiBold" Foreground="#F2F2F2" />
                 <TextBlock x:Name="ModeSummaryText" Foreground="#E4E4E4" TextWrapping="Wrap" />
             </StackPanel>
         </Border>

@@ -41,7 +41,7 @@ public static class FirstShiftBootstrap
             Array.Empty<string>());
 
         var intent = CreateInitialIntent(request);
-        var applied = ApplyInitialTask(projectState, shift, intent, request.Timestamp);
+        var applied = ApplyInitialTask(projectState, shift, intent, request);
         var task = applied?.Task;
         shift = applied?.ShiftState ?? shift;
 
@@ -72,7 +72,7 @@ public static class FirstShiftBootstrap
         ProjectState projectState,
         ShiftState shiftState,
         TaskIntent? intent,
-        DateTimeOffset timestamp)
+        FirstShiftBootstrapRequest request)
     {
         if (intent is null)
         {
@@ -84,6 +84,8 @@ public static class FirstShiftBootstrap
             shiftState,
             intent,
             "TASK-001",
-            timestamp);
+            request.Timestamp,
+            scope: request.Scope,
+            acceptanceCriteria: request.AcceptanceCriteria);
     }
 }

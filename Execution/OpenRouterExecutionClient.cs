@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -10,6 +11,11 @@ namespace zavod.Execution;
 
 public sealed class OpenRouterExecutionClient : IOpenRouterExecutionClient
 {
+    private static readonly JsonSerializerOptions PayloadJsonOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     private readonly OpenRouterConfiguration? _configuration;
     private readonly HttpClient _httpClient;
 
@@ -33,6 +39,7 @@ public sealed class OpenRouterExecutionClient : IOpenRouterExecutionClient
         }
 
         var modelId = string.IsNullOrWhiteSpace(request.ModelId) ? _configuration.ModelId : request.ModelId.Trim();
+        var userPrompt = ConversationAttachmentPromptBuilder.BuildUserPrompt(request.UserPrompt, request.Attachments);
         var payload = JsonSerializer.Serialize(new
         {
             model = modelId,
@@ -40,9 +47,9 @@ public sealed class OpenRouterExecutionClient : IOpenRouterExecutionClient
             messages = new object[]
             {
                 new { role = "system", content = request.SystemPrompt },
-                new { role = "user", content = request.UserPrompt }
+                new { role = "user", content = userPrompt }
             }
-        });
+        }, PayloadJsonOptions);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, $"{_configuration.BaseUrl.TrimEnd('/')}/chat/completions");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _configuration.ApiKey);

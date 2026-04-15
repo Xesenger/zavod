@@ -1,6 +1,7 @@
 using System;
 using zavod.Flow;
 using zavod.Persistence;
+using zavod.UI.Text;
 
 namespace zavod.UI.Modes.Projects.Projections;
 
@@ -25,30 +26,21 @@ public sealed record ProjectWorkCycleProjection(
     string ResultEvidenceText,
     string ResultMetadataText)
 {
-    public static ProjectWorkCycleProjection Build(string projectRoot, ProjectsShellProjection shellProjection)
+    public static ProjectWorkCycleProjection Build(ProjectWorkCycleQueryState queryState, ProjectsShellProjection shellProjection)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
+        ArgumentNullException.ThrowIfNull(queryState);
         ArgumentNullException.ThrowIfNull(shellProjection);
 
-        var normalizedRoot = System.IO.Path.GetFullPath(projectRoot);
-        var hasActiveShift = !shellProjection.ActiveShiftText.EndsWith("none", StringComparison.Ordinal);
-        var hasActiveTask = !shellProjection.ActiveTaskText.EndsWith("none", StringComparison.Ordinal);
-        var normalizedResume = ResumeStageNormalizer.Normalize(
-            ResumeStageStorage.Load(normalizedRoot),
-            hasActiveWork: hasActiveTask,
-            preserveLiveRuntimePhase: false,
-            hasActiveShift: hasActiveShift);
-
-        var phaseState = ResolvePhaseState(normalizedResume, hasActiveShift, hasActiveTask, shellProjection.HasCapsuleDocument);
+        var phaseState = ResolvePhaseState(queryState.ResumeSnapshot, queryState.HasActiveShift, queryState.HasActiveTask, queryState.HasCapsuleDocument, queryState.RuntimeStatePresent);
         var projection = StepPhaseProjectionBuilder.Build(phaseState);
-        var intentSummary = normalizedResume?.IntentSummary ?? string.Empty;
+        var intentSummary = queryState.ResumeSnapshot?.IntentSummary ?? string.Empty;
 
         return new ProjectWorkCycleProjection(
             phaseState,
             projection,
             intentSummary,
             BuildPhaseLabel(phaseState),
-            $"Current phase: {BuildPhaseLabel(phaseState)}. Work Cycle follows phase-driven visibility, and the discussion/preflight owner path is partially reconnected.",
+            AppText.Current.Format("projects.work_cycle.summary", BuildPhaseLabel(phaseState)),
             BuildShowSurfaceNavigation(projection),
             BuildChatSurfaceStateText(phaseState),
             BuildChatSummaryTitle(phaseState),
@@ -56,43 +48,32 @@ public sealed record ProjectWorkCycleProjection(
             BuildChatSummaryNote(phaseState),
             BuildExecutionSurfaceStateText(phaseState, projection),
             BuildExecutionSummaryText(phaseState, projection),
-            BuildExecutionDetailText(shellProjection, phaseState),
-            BuildExecutionEvidenceText(shellProjection, phaseState),
+            BuildExecutionDetailText(queryState, phaseState),
+            BuildExecutionEvidenceText(queryState, phaseState),
             BuildResultSurfaceStateText(phaseState, projection),
             BuildResultSummaryText(phaseState, projection),
-            BuildResultDetailText(shellProjection, phaseState),
-            BuildResultEvidenceText(shellProjection, phaseState),
-            BuildResultMetadataText(shellProjection, phaseState));
+            BuildResultDetailText(queryState, phaseState),
+            BuildResultEvidenceText(queryState, phaseState),
+            BuildResultMetadataText(queryState, phaseState));
     }
 
     private static StepPhaseState ResolvePhaseState(
         ResumeStageSnapshot? normalizedResume,
         bool hasActiveShift,
         bool hasActiveTask,
-        bool hasCapsule)
+        bool hasCapsule,
+        bool runtimeStatePresent)
     {
         if (normalizedResume is not null)
         {
             return normalizedResume.PhaseState;
         }
 
-        if (hasCapsule && hasActiveTask)
-        {
-            return new StepPhaseState(
-                SurfacePhase.Execution,
-                DiscussionSubphase.None,
-                ExecutionSubphase.Revision,
-                ResultSubphase.RevisionRequested,
-                Contexting.ContextIntentState.Validated,
-                HasActiveShift: true,
-                HasActiveTask: true,
-                HasClarification: false,
-                HasReopenedContext: false);
-        }
+        _ = hasCapsule;
 
-        if (hasCapsule)
+        if (runtimeStatePresent && hasActiveTask)
         {
-            return StepPhaseMachine.ResumeResult();
+            return StepPhaseMachine.ResumeInterrupted();
         }
 
         if (hasActiveTask)
@@ -112,18 +93,18 @@ public sealed record ProjectWorkCycleProjection(
     {
         return phaseState.Phase switch
         {
-            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Reopened => "Discussion / Reopened",
-            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Ready => "Discussion / Ready",
-            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Forming => "Discussion / Forming",
-            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Preflight => "Execution / Preflight",
-            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Running => "Execution / Running",
-            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Qc => "Execution / QC",
-            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Revision => "Execution / Revision",
-            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Interrupted => "Execution / Interrupted",
-            SurfacePhase.Result when phaseState.ResultSubphase == ResultSubphase.RevisionRequested => "Result / Revision Requested",
-            SurfacePhase.Result => "Result / Ready",
-            SurfacePhase.Completed => "Completed",
-            _ => "Discussion / Idle"
+            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Reopened => AppText.Current.Get("projects.work_cycle.phase.discussion_reopened"),
+            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Ready => AppText.Current.Get("projects.work_cycle.phase.discussion_ready"),
+            SurfacePhase.Discussion when phaseState.DiscussionSubphase == DiscussionSubphase.Forming => AppText.Current.Get("projects.work_cycle.phase.discussion_forming"),
+            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Preflight => AppText.Current.Get("projects.work_cycle.phase.execution_preflight"),
+            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Running => AppText.Current.Get("projects.work_cycle.phase.execution_running"),
+            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Qc => AppText.Current.Get("projects.work_cycle.phase.execution_qc"),
+            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Revision => AppText.Current.Get("projects.work_cycle.phase.execution_revision"),
+            SurfacePhase.Execution when phaseState.ExecutionSubphase == ExecutionSubphase.Interrupted => AppText.Current.Get("projects.work_cycle.phase.execution_interrupted"),
+            SurfacePhase.Result when phaseState.ResultSubphase == ResultSubphase.RevisionRequested => AppText.Current.Get("projects.work_cycle.phase.result_revision_requested"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.phase.result_ready"),
+            SurfacePhase.Completed => AppText.Current.Get("projects.work_cycle.phase.completed"),
+            _ => AppText.Current.Get("projects.work_cycle.phase.discussion_idle")
         };
     }
 
@@ -131,11 +112,11 @@ public sealed record ProjectWorkCycleProjection(
     {
         return phaseState.Phase switch
         {
-            SurfacePhase.Discussion => "Discussion",
-            SurfacePhase.Execution => "Frozen Context",
-            SurfacePhase.Result => "Decision Context",
-            SurfacePhase.Completed => "Completed Context",
-            _ => "Discussion"
+            SurfacePhase.Discussion => AppText.Current.Get("projects.work_cycle.chat_title.discussion"),
+            SurfacePhase.Execution => AppText.Current.Get("projects.work_cycle.chat_title.execution"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.chat_title.result"),
+            SurfacePhase.Completed => AppText.Current.Get("projects.work_cycle.chat_title.completed"),
+            _ => AppText.Current.Get("projects.work_cycle.chat_title.discussion")
         };
     }
 
@@ -143,11 +124,11 @@ public sealed record ProjectWorkCycleProjection(
     {
         return phaseState.Phase switch
         {
-            SurfacePhase.Discussion => "Primary surface",
-            SurfacePhase.Execution => "Frozen context",
-            SurfacePhase.Result => "Frozen context",
-            SurfacePhase.Completed => "Historical context",
-            _ => "Context"
+            SurfacePhase.Discussion => AppText.Current.Get("projects.work_cycle.surface.primary"),
+            SurfacePhase.Execution => AppText.Current.Get("projects.work_cycle.surface.frozen"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.surface.frozen"),
+            SurfacePhase.Completed => AppText.Current.Get("projects.work_cycle.surface.historical"),
+            _ => AppText.Current.Get("projects.work_cycle.surface.context")
         };
     }
 
@@ -176,11 +157,11 @@ public sealed record ProjectWorkCycleProjection(
     {
         return phaseState.Phase switch
         {
-            SurfacePhase.Discussion => "Chat is the primary surface in this phase. It frames intent and keeps the project discussion visible without creating work truth on its own.",
-            SurfacePhase.Execution => "Chat remains visible only as bounded context while execution becomes the active work surface.",
-            SurfacePhase.Result => "Chat stays visible as frozen context while execution/result carry the active work and decision surfaces.",
-            SurfacePhase.Completed => "The visible discussion context is now historical and no longer an active control surface.",
-            _ => "Chat remains part of the current project context."
+            SurfacePhase.Discussion => AppText.Current.Get("projects.work_cycle.chat_summary.discussion"),
+            SurfacePhase.Execution => AppText.Current.Get("projects.work_cycle.chat_summary.execution"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.chat_summary.result"),
+            SurfacePhase.Completed => AppText.Current.Get("projects.work_cycle.chat_summary.completed"),
+            _ => AppText.Current.Get("projects.work_cycle.chat_summary.fallback")
         };
     }
 
@@ -188,10 +169,10 @@ public sealed record ProjectWorkCycleProjection(
     {
         return phaseState.Phase switch
         {
-            SurfacePhase.Discussion => "Composer and agreement actions remain disconnected in this slice.",
-            SurfacePhase.Execution => "Execution phase must not reintroduce free-form discussion UI as active control.",
-            SurfacePhase.Result => "Result visibility must not imply lifecycle completion.",
-            SurfacePhase.Completed => "Completed state must not silently erase step history.",
+            SurfacePhase.Discussion => AppText.Current.Get("projects.work_cycle.chat_summary_note.discussion"),
+            SurfacePhase.Execution => AppText.Current.Get("projects.work_cycle.chat_summary_note.execution"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.chat_summary_note.result"),
+            SurfacePhase.Completed => AppText.Current.Get("projects.work_cycle.chat_summary_note.completed"),
             _ => string.Empty
         };
     }
@@ -200,17 +181,17 @@ public sealed record ProjectWorkCycleProjection(
     {
         if (!projection.ShowExecution)
         {
-            return "Execution surface is hidden until the phase engine reaches execution/result territory.";
+            return AppText.Current.Get("projects.work_cycle.execution_summary.hidden");
         }
 
         return phaseState.ExecutionSubphase switch
         {
-            ExecutionSubphase.Preflight => "Execution is present as a prepared shell before active work begins.",
-            ExecutionSubphase.Running => "Execution is the active work surface in this phase.",
-            ExecutionSubphase.Qc => "Execution remains visible while QC-related state is active.",
-            ExecutionSubphase.Revision => "Execution is active again because the current task is in revision flow.",
-            ExecutionSubphase.Interrupted => "Execution stays visible as an interrupted/degraded work surface.",
-            _ => "Execution surface is visible because the current phase requires it."
+            ExecutionSubphase.Preflight => AppText.Current.Get("projects.work_cycle.execution_summary.preflight"),
+            ExecutionSubphase.Running => AppText.Current.Get("projects.work_cycle.execution_summary.running"),
+            ExecutionSubphase.Qc => AppText.Current.Get("projects.work_cycle.execution_summary.qc"),
+            ExecutionSubphase.Revision => AppText.Current.Get("projects.work_cycle.execution_summary.revision"),
+            ExecutionSubphase.Interrupted => AppText.Current.Get("projects.work_cycle.execution_summary.interrupted"),
+            _ => AppText.Current.Get("projects.work_cycle.execution_summary.visible")
         };
     }
 
@@ -218,50 +199,57 @@ public sealed record ProjectWorkCycleProjection(
     {
         if (!projection.ShowExecution)
         {
-            return "Hidden";
+            return AppText.Current.Get("projects.work_cycle.surface.hidden");
         }
 
         return phaseState.Phase switch
         {
-            SurfacePhase.Execution => "Active surface",
-            SurfacePhase.Result => "Reference surface",
-            _ => "Visible surface"
+            SurfacePhase.Execution => AppText.Current.Get("projects.work_cycle.surface.active"),
+            SurfacePhase.Result => AppText.Current.Get("projects.work_cycle.surface.reference"),
+            _ => AppText.Current.Get("projects.work_cycle.surface.visible")
         };
     }
 
-    private static string BuildExecutionDetailText(ProjectsShellProjection shellProjection, StepPhaseState phaseState)
+    private static string BuildExecutionDetailText(ProjectWorkCycleQueryState queryState, StepPhaseState phaseState)
     {
+        var taskText = queryState.ActiveTaskId is null
+            ? AppText.Current.Format("projects.shell.active_task", AppText.Current.Get("projects.token.none"))
+            : AppText.Current.Format("projects.shell.active_task", queryState.ActiveTaskId);
         return phaseState.ExecutionSubphase switch
         {
-            ExecutionSubphase.Preflight => "Preflight must not create active work truth on its own. It stays read-only in this slice.",
-            ExecutionSubphase.Running => $"Task context: {shellProjection.ActiveTaskText}. Live controls remain disconnected.",
-            ExecutionSubphase.Qc => $"QC-adjacent execution context remains projection-only. {shellProjection.ActiveTaskText}",
-            ExecutionSubphase.Revision => $"Revision-capable execution context is visible. {shellProjection.ActiveTaskText}",
-            ExecutionSubphase.Interrupted => "Interrupted execution must degrade honestly and must not pretend live running survived restart.",
-            _ => "Execution details remain read-only until owner paths are re-proven."
+            ExecutionSubphase.Preflight => AppText.Current.Get("projects.work_cycle.execution_detail.preflight"),
+            ExecutionSubphase.Running => AppText.Current.Format("projects.work_cycle.execution_detail.running", taskText),
+            ExecutionSubphase.Qc => AppText.Current.Format("projects.work_cycle.execution_detail.qc", taskText),
+            ExecutionSubphase.Revision => AppText.Current.Format("projects.work_cycle.execution_detail.revision", taskText),
+            ExecutionSubphase.Interrupted => AppText.Current.Get("projects.work_cycle.execution_detail.interrupted"),
+            _ => AppText.Current.Get("projects.work_cycle.execution_detail.fallback")
         };
     }
 
-    private static string BuildExecutionEvidenceText(ProjectsShellProjection shellProjection, StepPhaseState phaseState)
+    private static string BuildExecutionEvidenceText(ProjectWorkCycleQueryState queryState, StepPhaseState phaseState)
     {
         var phaseNote = phaseState.Phase == SurfacePhase.Result
-            ? "Execution remains visible beside Result."
-            : "Execution evidence remains available as context.";
-        return $"{shellProjection.DocumentStageText}. {phaseNote}";
+            ? AppText.Current.Get("projects.work_cycle.execution_evidence.result_visible")
+            : AppText.Current.Get("projects.work_cycle.execution_evidence.context");
+        return AppText.Current.Format(
+            "projects.work_cycle.execution_evidence.format",
+            queryState.ProjectDocument.Exists ? DisplayDocumentStage(queryState.ProjectDocument.Stage) : AppText.Current.Get("projects.token.missing"),
+            queryState.CapsuleDocument.Exists ? DisplayDocumentStage(queryState.CapsuleDocument.Stage) : AppText.Current.Get("projects.token.missing"),
+            phaseNote);
     }
 
     private static string BuildResultSummaryText(StepPhaseState phaseState, StepPhaseProjection projection)
     {
         if (!projection.ShowResult)
         {
-            return "Result surface stays hidden until the phase engine reaches result/revision territory.";
+            return AppText.Current.Get("projects.work_cycle.result_summary.hidden");
         }
 
         return phaseState.ResultSubphase switch
         {
-            ResultSubphase.Ready => "Result is now the active decision surface while execution remains visible as context.",
-            ResultSubphase.RevisionRequested => "Result remains visible as reference because the current task is in revision flow.",
-            _ => "Result surface is visible because the current phase requires it."
+            ResultSubphase.Ready => AppText.Current.Get("projects.work_cycle.result_summary.ready"),
+            ResultSubphase.RevisionRequested => AppText.Current.Get("projects.work_cycle.result_summary.revision"),
+            _ => AppText.Current.Get("projects.work_cycle.result_summary.visible")
         };
     }
 
@@ -269,45 +257,59 @@ public sealed record ProjectWorkCycleProjection(
     {
         if (!projection.ShowResult)
         {
-            return "Hidden";
+            return AppText.Current.Get("projects.work_cycle.surface.hidden");
         }
 
         return phaseState.ResultSubphase switch
         {
-            ResultSubphase.Ready => "Active decision surface",
-            ResultSubphase.RevisionRequested => "Reference decision surface",
-            _ => "Visible decision surface"
+            ResultSubphase.Ready => AppText.Current.Get("projects.work_cycle.result_surface.active"),
+            ResultSubphase.RevisionRequested => AppText.Current.Get("projects.work_cycle.result_surface.reference"),
+            _ => AppText.Current.Get("projects.work_cycle.result_surface.visible")
         };
     }
 
-    private static string BuildResultDetailText(ProjectsShellProjection shellProjection, StepPhaseState phaseState)
+    private static string BuildResultDetailText(ProjectWorkCycleQueryState queryState, StepPhaseState phaseState)
     {
+        var taskText = queryState.ActiveTaskId is null
+            ? AppText.Current.Format("projects.shell.active_task", AppText.Current.Get("projects.token.none"))
+            : AppText.Current.Format("projects.shell.active_task", queryState.ActiveTaskId);
         return phaseState.ResultSubphase switch
         {
-            ResultSubphase.Ready => $"Result remains read-only in this slice. {shellProjection.ActiveTaskText}",
-            ResultSubphase.RevisionRequested => "Revision keeps the result visible, but decision hooks remain disconnected in this slice.",
-            _ => "Result details remain read-only until owner paths are re-proven."
+            ResultSubphase.Ready => AppText.Current.Format("projects.work_cycle.result_detail.ready", taskText),
+            ResultSubphase.RevisionRequested => AppText.Current.Get("projects.work_cycle.result_detail.revision"),
+            _ => AppText.Current.Get("projects.work_cycle.result_detail.fallback")
         };
     }
 
-    private static string BuildResultEvidenceText(ProjectsShellProjection shellProjection, StepPhaseState phaseState)
+    private static string BuildResultEvidenceText(ProjectWorkCycleQueryState queryState, StepPhaseState phaseState)
     {
-        var capsuleText = shellProjection.HasCapsuleDocument
-            ? "Capsule/result evidence is present."
-            : "Capsule/result evidence is not materialized yet.";
+        var capsuleText = queryState.HasCapsuleDocument
+            ? AppText.Current.Get("projects.work_cycle.result_evidence.capsule_present")
+            : AppText.Current.Get("projects.work_cycle.result_evidence.capsule_missing");
         var phaseText = phaseState.ResultSubphase == ResultSubphase.RevisionRequested
-            ? "Result remains on screen as revision reference."
-            : "Result stays a decision surface only when supported by phase truth.";
+            ? AppText.Current.Get("projects.work_cycle.result_evidence.revision_reference")
+            : AppText.Current.Get("projects.work_cycle.result_evidence.decision_surface");
         return $"{capsuleText} {phaseText}";
     }
 
-    private static string BuildResultMetadataText(ProjectsShellProjection shellProjection, StepPhaseState phaseState)
+    private static string BuildResultMetadataText(ProjectWorkCycleQueryState queryState, StepPhaseState phaseState)
     {
         var phaseText = phaseState.ResultSubphase == ResultSubphase.RevisionRequested
-            ? "Revision reference active."
+            ? AppText.Current.Get("projects.work_cycle.result_metadata.revision")
             : phaseState.ResultSubphase == ResultSubphase.Ready
-                ? "Decision review active."
-                : "Decision review unavailable.";
-        return $"{shellProjection.DocumentStageText} {phaseText}";
+                ? AppText.Current.Get("projects.work_cycle.result_metadata.ready")
+                : AppText.Current.Get("projects.work_cycle.result_metadata.unavailable");
+        return AppText.Current.Format("projects.work_cycle.result_metadata.format", DisplayDocumentStage(queryState.DocumentStage), phaseText);
+    }
+
+    private static string DisplayDocumentStage(ProjectDocumentStage stage)
+    {
+        return stage switch
+        {
+            ProjectDocumentStage.ImportPreview => AppText.Current.Get("projects.enum.document_stage.import_preview"),
+            ProjectDocumentStage.PreviewDocs => AppText.Current.Get("projects.enum.document_stage.preview_docs"),
+            ProjectDocumentStage.CanonicalDocs => AppText.Current.Get("projects.enum.document_stage.canonical_docs"),
+            _ => stage.ToString()
+        };
     }
 }

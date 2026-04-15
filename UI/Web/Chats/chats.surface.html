@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAVOD Chats Mode</title>
+<link rel="stylesheet" href="chats.css">
+</head>
+<body>
+<div class="app is-empty">
+  <button class="sidebar-toggle" type="button" title="" aria-label="" aria-expanded="true">
+    <svg viewBox="0 0 14 16" aria-hidden="true" class="toggle-icon">
+      <g class="icon-expanded">
+        <rect x="1.75" y="1.25" width="10.5" height="13.5" rx="5.25"></rect>
+        <line x1="7" y1="2.9" x2="7" y2="13.1"></line>
+      </g>
+      <g class="icon-collapsed">
+        <line x1="4.5" y1="8" x2="10.5" y2="8"></line>
+        <line x1="7.8" y1="5.2" x2="10.5" y2="8"></line>
+        <line x1="7.8" y1="10.8" x2="10.5" y2="8"></line>
+      </g>
+    </svg>
+  </button>
+
+  <aside class="sidebar">
+    <div class="chat-list"></div>
+  </aside>
+
+  <div class="divider"></div>
+
+  <main class="main">
+    <div class="page conversation-page">
+      <div class="empty-state">
+        <div class="empty-mark">
+          <span class="empty-line"></span>
+          <span class="empty-dot"></span>
+          <span class="empty-line"></span>
+        </div>
+        <div class="empty-title"></div>
+        <div class="empty-subtitle"></div>
+      </div>
+
+      <div class="history-load-row" hidden>
+        <button class="history-load-button" type="button"></button>
+      </div>
+
+      <div class="conversation"></div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="attachments" hidden></div>
+        <input type="file" class="file-input" hidden multiple>
+
+        <div class="plus-menu" hidden>
+          <div class="plus-item" data-type="file">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 3h6l5 5v13H8z"></path>
+              <path d="M14 3v5h5"></path>
+            </svg>
+            <span class="plus-item-file"></span>
+          </div>
+          <div class="plus-item" data-type="image">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="5" width="16" height="14" rx="1.5"></rect>
+              <circle cx="9" cy="10" r="1.5"></circle>
+              <path d="M7 16l4-4 3 3 3-2 2 3"></path>
+            </svg>
+            <span class="plus-item-image"></span>
+          </div>
+          <div class="plus-item" data-type="note">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 4h10"></path>
+              <path d="M7 9h10"></path>
+              <path d="M7 14h6"></path>
+              <path d="M7 19h10"></path>
+            </svg>
+            <span class="plus-item-note"></span>
+          </div>
+        </div>
+
+        <div class="composer-wrap">
+          <span class="icon-btn icon-left" title="" role="button" tabindex="0">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="12" y1="7" x2="12" y2="17"></line>
+              <line x1="7" y1="12" x2="17" y2="12"></line>
+            </svg>
+          </span>
+
+          <input class="input" placeholder="">
+
+          <span class="icon-btn icon-right" title="" role="button" tabindex="0">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="12" y1="17" x2="12" y2="7"></line>
+              <line x1="8" y1="11" x2="12" y2="7"></line>
+              <line x1="16" y1="11" x2="12" y2="7"></line>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="chats.bridge.js"></script>
+</body>
+</html>

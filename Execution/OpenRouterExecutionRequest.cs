@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace zavod.Execution;
 
 public sealed record OpenRouterExecutionRequest(
@@ -5,4 +7,5 @@ public sealed record OpenRouterExecutionRequest(
     string SystemPrompt,
     string UserPrompt,
     string? ModelId = null,
-    double Temperature = 0);
+    double Temperature = 0,
+    IReadOnlyList<OpenRouterAttachment>? Attachments = null);

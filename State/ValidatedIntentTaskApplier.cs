@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using zavod.Contexting;
 using zavod.Persistence;
@@ -15,7 +16,9 @@ public static class ValidatedIntentTaskApplier
         string taskId,
         DateTimeOffset timestamp,
         PromptRole createdByRole = PromptRole.ShiftLead,
-        PromptRole assignedRole = PromptRole.Worker)
+        PromptRole assignedRole = PromptRole.Worker,
+        IReadOnlyList<string>? scope = null,
+        IReadOnlyList<string>? acceptanceCriteria = null)
     {
         ArgumentNullException.ThrowIfNull(projectState);
         ArgumentNullException.ThrowIfNull(shiftState);
@@ -47,7 +50,7 @@ public static class ValidatedIntentTaskApplier
             throw new InvalidOperationException("Canonical task application cannot reuse existing task id in shift truth.");
         }
 
-        var task = TaskStateFactory.CreateFromValidatedIntent(intent, taskId, createdByRole, assignedRole, timestamp);
+        var task = TaskStateFactory.CreateFromValidatedIntent(intent, taskId, createdByRole, assignedRole, timestamp, scope, acceptanceCriteria);
         var shiftWithTask = shiftState with
         {
             Tasks = shiftState.Tasks.Concat(new[] { task }).ToArray()

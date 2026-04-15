@@ -2,13 +2,14 @@ using System;
 using System.IO;
 using System.Linq;
 using zavod.Bootstrap;
-using zavod.Execution;
 using zavod.Persistence;
+using zavod.UI.Text;
 using zavod.Workspace;
 
 namespace zavod.UI.Modes.Projects.Projections;
 
 public sealed record ProjectsShellProjection(
+    string ProjectId,
     string ProjectName,
     string ProjectRoot,
     string EntryStateText,
@@ -32,93 +33,139 @@ public sealed record ProjectsShellProjection(
 {
     public static ProjectsShellProjection Build(string projectRoot)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
+        return Build(ProjectWorkCycleQueryStateBuilder.Build(projectRoot));
+    }
 
-        var normalizedRoot = Path.GetFullPath(projectRoot);
-        var state = LoadOrInitializeProjectState(normalizedRoot);
-        var entry = ProjectEntryResolver.Resolve(state);
-        var documentRuntime = new ProjectDocumentRuntimeService();
-        var projectDocument = documentRuntime.Read(normalizedRoot, ProjectDocumentKind.Project);
-        var capsuleDocument = documentRuntime.Read(normalizedRoot, ProjectDocumentKind.Capsule);
-        var documentSelection = documentRuntime.SelectSources(normalizedRoot);
-        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(normalizedRoot));
-        var preferredHtmlPath = ResolvePreferredProjectHtmlPath(normalizedRoot);
+    public static ProjectsShellProjection Build(ProjectWorkCycleQueryState queryState)
+    {
+        ArgumentNullException.ThrowIfNull(queryState);
+
+        var state = queryState.ProjectState;
+        var entry = queryState.Entry;
+        var projectDocument = queryState.ProjectDocument;
+        var capsuleDocument = queryState.CapsuleDocument;
+        var documentSelection = queryState.DocumentSelection;
+        var scan = queryState.Scan;
+        var normalizedRoot = queryState.ProjectRoot;
+        var activeStage = DisplayDocumentStage(documentSelection.ActiveStage);
+        var importKind = DisplayImportKind(scan.State.ImportKind);
+        var health = DisplayHealth(scan.State.Health);
+        var projectDocumentStage = projectDocument.Exists ? DisplayDocumentStage(projectDocument.Stage) : AppText.Current.Get("projects.token.missing");
+        var capsuleDocumentStage = capsuleDocument.Exists ? DisplayDocumentStage(capsuleDocument.Stage) : AppText.Current.Get("projects.token.missing");
 
         return new ProjectsShellProjection(
+            ProjectId: state.ProjectId,
             ProjectName: state.ProjectName,
             ProjectRoot: normalizedRoot,
-            EntryStateText: $"Project entry: {entry.Mode}",
+            EntryStateText: AppText.Current.Format("projects.shell.entry_state", DisplayEntryMode(entry.Mode)),
             StorageStateText: Directory.Exists(state.Paths.ZavodRoot)
-                ? $".zavod initialized at {state.Paths.ZavodRoot}"
-                : ".zavod storage root is missing",
-            ActiveShiftText: $"Active shift: {state.ActiveShiftId ?? "none"}",
-            ActiveTaskText: $"Active task: {state.ActiveTaskId ?? "none"}",
+                ? AppText.Current.Format("projects.shell.storage_initialized", state.Paths.ZavodRoot)
+                : AppText.Current.Get("projects.shell.storage_missing"),
+            ActiveShiftText: AppText.Current.Format("projects.shell.active_shift", state.ActiveShiftId ?? AppText.Current.Get("projects.token.none")),
+            ActiveTaskText: AppText.Current.Format("projects.shell.active_task", state.ActiveTaskId ?? AppText.Current.Get("projects.token.none")),
             DocumentStageText: BuildDocumentStageText(projectDocument, capsuleDocument),
             ProjectDocumentPathText: projectDocument.Exists
                 ? projectDocument.Path
-                : "No project document is currently materialized.",
+                : AppText.Current.Get("projects.shell.no_project_document"),
             HasProjectDocument: projectDocument.Exists,
             ProjectDocumentPath: projectDocument.Exists ? projectDocument.Path : null,
             HasCapsuleDocument: capsuleDocument.Exists,
             CapsuleDocumentPath: capsuleDocument.Exists ? capsuleDocument.Path : null,
             ProjectListCurrentProjectText: $"{state.ProjectName}{Environment.NewLine}{normalizedRoot}",
-            ProjectListCurrentStageText: $"Current stage: {documentSelection.ActiveStage}. Import kind: {scan.State.ImportKind}.",
-            ProjectHomeStatusText: $"Health: {scan.State.Health}. Import kind: {scan.State.ImportKind}.",
-            ProjectHomeStageText: $"Document stage: {documentSelection.ActiveStage}. project doc={(projectDocument.Exists ? projectDocument.Stage.ToString() : "missing")}, capsule={(capsuleDocument.Exists ? capsuleDocument.Stage.ToString() : "missing")}.",
-            ProjectHomeActivityText: $"Active shift: {state.ActiveShiftId ?? "none"}. Active task: {state.ActiveTaskId ?? "none"}.",
+            ProjectListCurrentStageText: AppText.Current.Format("projects.shell.current_stage", activeStage, importKind),
+            ProjectHomeStatusText: AppText.Current.Format("projects.shell.health", health, importKind),
+            ProjectHomeStageText: AppText.Current.Format("projects.shell.home_stage", activeStage, projectDocumentStage, capsuleDocumentStage),
+            ProjectHomeActivityText: AppText.Current.Format("projects.shell.home_activity", state.ActiveShiftId ?? AppText.Current.Get("projects.token.none"), state.ActiveTaskId ?? AppText.Current.Get("projects.token.none")),
             ProjectHomeMaterialsText: FormatMaterials(scan),
-            HasProjectHtml: preferredHtmlPath is not null,
-            ProjectHtmlPath: preferredHtmlPath);
-    }
-
-    private static ProjectState LoadOrInitializeProjectState(string normalizedRoot)
-    {
-        try
-        {
-            return ProjectStateStorage.Load(normalizedRoot);
-        }
-        catch (ZavodPersistenceException)
-        {
-            var directoryName = new DirectoryInfo(normalizedRoot).Name;
-            var projectName = string.IsNullOrWhiteSpace(directoryName) ? "zavod" : directoryName;
-            var projectId = projectName.ToLowerInvariant().Replace(' ', '-');
-            return ProjectStateStorage.EnsureInitialized(normalizedRoot, projectId, projectName);
-        }
+            HasProjectHtml: queryState.PreferredHtmlPath is not null,
+            ProjectHtmlPath: queryState.PreferredHtmlPath);
     }
 
     private static string BuildDocumentStageText(ProjectDocumentReadResult projectDocument, ProjectDocumentReadResult capsuleDocument)
     {
         var projectState = projectDocument.Exists
             ? $"project={projectDocument.Stage}"
-            : "project=missing";
+            : $"project={AppText.Current.Get("projects.token.missing")}";
         var capsuleState = capsuleDocument.Exists
             ? $"capsule={capsuleDocument.Stage}"
-            : "capsule=missing";
-        return $"Document state: {projectState}, {capsuleState}";
+            : $"capsule={AppText.Current.Get("projects.token.missing")}";
+        return AppText.Current.Format("projects.shell.document_state", projectState, capsuleState);
     }
 
     private static string FormatMaterials(WorkspaceScanResult scan)
     {
         if (scan.MaterialCandidates.Count == 0)
         {
-            return "No user-facing materials were detected by the scanner yet.";
+            return AppText.Current.Get("projects.shell.materials_empty");
         }
 
         return string.Join(
             Environment.NewLine,
             scan.MaterialCandidates
                 .Take(12)
-                .Select(candidate => $"- [{candidate.Kind}] {candidate.RelativePath}"));
+                .Select(candidate => $"- [{DisplayMaterialKind(candidate.Kind)}] {candidate.RelativePath}"));
     }
 
-    private static string? ResolvePreferredProjectHtmlPath(string projectRoot)
+    private static string DisplayImportKind(WorkspaceImportKind importKind)
     {
-        var preferredPaths = new[]
+        return importKind switch
         {
-            Path.Combine(projectRoot, ".zavod", "preview.html"),
-            Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "preview.html")
+            WorkspaceImportKind.Empty => AppText.Current.Get("projects.enum.import.empty"),
+            WorkspaceImportKind.SourceProject => AppText.Current.Get("projects.enum.import.source_project"),
+            WorkspaceImportKind.NonSourceImport => AppText.Current.Get("projects.enum.import.non_source"),
+            WorkspaceImportKind.MixedImport => AppText.Current.Get("projects.enum.import.mixed"),
+            _ => importKind.ToString()
         };
+    }
 
-        return preferredPaths.FirstOrDefault(File.Exists);
+    private static string DisplayHealth(WorkspaceHealthStatus health)
+    {
+        return health switch
+        {
+            WorkspaceHealthStatus.Healthy => AppText.Current.Get("projects.enum.health.healthy"),
+            WorkspaceHealthStatus.Missing => AppText.Current.Get("projects.enum.health.missing"),
+            WorkspaceHealthStatus.Unavailable => AppText.Current.Get("projects.enum.health.unavailable"),
+            WorkspaceHealthStatus.BrokenStructure => AppText.Current.Get("projects.enum.health.broken_structure"),
+            WorkspaceHealthStatus.ScanPending => AppText.Current.Get("projects.enum.health.scan_pending"),
+            WorkspaceHealthStatus.ScanFailed => AppText.Current.Get("projects.enum.health.scan_failed"),
+            _ => health.ToString()
+        };
+    }
+
+    private static string DisplayDocumentStage(ProjectDocumentStage stage)
+    {
+        return stage switch
+        {
+            ProjectDocumentStage.ImportPreview => AppText.Current.Get("projects.enum.document_stage.import_preview"),
+            ProjectDocumentStage.PreviewDocs => AppText.Current.Get("projects.enum.document_stage.preview_docs"),
+            ProjectDocumentStage.CanonicalDocs => AppText.Current.Get("projects.enum.document_stage.canonical_docs"),
+            _ => stage.ToString()
+        };
+    }
+
+    private static string DisplayMaterialKind(WorkspaceMaterialKind kind)
+    {
+        return kind switch
+        {
+            WorkspaceMaterialKind.TextDocument => AppText.Current.Get("projects.enum.material.text_document"),
+            WorkspaceMaterialKind.PdfDocument => AppText.Current.Get("projects.enum.material.pdf_document"),
+            WorkspaceMaterialKind.OfficeDocument => AppText.Current.Get("projects.enum.material.office_document"),
+            WorkspaceMaterialKind.Spreadsheet => AppText.Current.Get("projects.enum.material.spreadsheet"),
+            WorkspaceMaterialKind.Presentation => AppText.Current.Get("projects.enum.material.presentation"),
+            WorkspaceMaterialKind.ImageAsset => AppText.Current.Get("projects.enum.material.image_asset"),
+            WorkspaceMaterialKind.ArchiveArtifact => AppText.Current.Get("projects.enum.material.archive_artifact"),
+            WorkspaceMaterialKind.Multimedia => AppText.Current.Get("projects.enum.material.multimedia"),
+            _ => kind.ToString()
+        };
+    }
+
+    private static string DisplayEntryMode(ProjectEntryMode mode)
+    {
+        return mode switch
+        {
+            ProjectEntryMode.Bootstrap => AppText.Current.Get("projects.enum.entry_mode.bootstrap"),
+            ProjectEntryMode.Resume => AppText.Current.Get("projects.enum.entry_mode.resume"),
+            _ => mode.ToString()
+        };
     }
 }

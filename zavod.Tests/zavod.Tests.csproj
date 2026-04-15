@@ -17,23 +17,33 @@
     <Compile Include="..\Outcome\*.cs" Link="Outcome\%(Filename)%(Extension)" />
     <Compile Include="..\Planning\*.cs" Link="Planning\%(Filename)%(Extension)" />
     <Compile Include="..\Presentation\*.cs" Link="Presentation\%(Filename)%(Extension)" />
-    <Compile Include="..\Presentation\Conversation\ConversationCapabilities.cs" Link="Presentation\Conversation\ConversationCapabilities.cs" />
-    <Compile Include="..\Presentation\Conversation\ConversationActionVisibility.cs" Link="Presentation\Conversation\ConversationActionVisibility.cs" />
-    <Compile Include="..\Presentation\Conversation\ConversationMetadataAction.cs" Link="Presentation\Conversation\ConversationMetadataAction.cs" />
-    <Compile Include="..\Presentation\Conversation\ConversationItemKind.cs" Link="Presentation\Conversation\ConversationItemKind.cs" />
-    <Compile Include="..\Presentation\Conversation\ConversationItemViewModel.cs" Link="Presentation\Conversation\ConversationItemViewModel.cs" />
-    <Compile Include="..\Presentation\Conversation\IConversationAdapter.cs" Link="Presentation\Conversation\IConversationAdapter.cs" />
-    <Compile Include="..\Presentation\Conversation\ChatsAdapter.cs" Link="Presentation\Conversation\ChatsAdapter.cs" />
-    <Compile Include="..\Presentation\Conversation\MessageRenderPipeline.cs" Link="Presentation\Conversation\MessageRenderPipeline.cs" />
-    <Compile Include="..\Presentation\Conversation\MessageRenderState.cs" Link="Presentation\Conversation\MessageRenderState.cs" />
-    <Compile Include="..\Presentation\Conversation\ProjectsAdapter.cs" Link="Presentation\Conversation\ProjectsAdapter.cs" />
-    <Compile Include="..\Presentation\Conversation\StreamingBuffer.cs" Link="Presentation\Conversation\StreamingBuffer.cs" />
-    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownBlock.cs" Link="Presentation\Conversation\Markdown\MarkdownBlock.cs" />
-    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownParserService.cs" Link="Presentation\Conversation\Markdown\MarkdownParserService.cs" />
-    <Compile Include="..\Presentation\Conversation\Markdown\MarkdownRenderCache.cs" Link="Presentation\Conversation\Markdown\MarkdownRenderCache.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationCapabilities.cs" Link="UI\Rendering\Conversation\ConversationCapabilities.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationActionVisibility.cs" Link="UI\Rendering\Conversation\ConversationActionVisibility.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationMetadataAction.cs" Link="UI\Rendering\Conversation\ConversationMetadataAction.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationItemKind.cs" Link="UI\Rendering\Conversation\ConversationItemKind.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationItemViewModel.cs" Link="UI\Rendering\Conversation\ConversationItemViewModel.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\IConversationAdapter.cs" Link="UI\Rendering\Conversation\IConversationAdapter.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ConversationWebProjection.cs" Link="UI\Rendering\Conversation\ConversationWebProjection.cs" />
+    <Compile Include="..\UI\Text\AppText.cs" Link="UI\Text\AppText.cs" />
+    <Compile Include="..\UI\Modes\Chats\ChatsRuntimeController.cs" Link="UI\Modes\Chats\ChatsRuntimeController.cs" />
+    <Compile Include="..\UI\Modes\Chats\ChatsWebBridgeModels.cs" Link="UI\Modes\Chats\ChatsWebBridgeModels.cs" />
+    <Compile Include="..\UI\Modes\Projects\ProjectsRuntimeController.cs" Link="UI\Modes\Projects\ProjectsRuntimeController.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ChatsAdapter.cs" Link="UI\Rendering\Conversation\ChatsAdapter.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\MessageRenderPipeline.cs" Link="UI\Rendering\Conversation\MessageRenderPipeline.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\MessageRenderState.cs" Link="UI\Rendering\Conversation\MessageRenderState.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\ProjectsAdapter.cs" Link="UI\Rendering\Conversation\ProjectsAdapter.cs" />
+    <Compile Include="..\UI\Rendering\Conversation\StreamingBuffer.cs" Link="UI\Rendering\Conversation\StreamingBuffer.cs" />
+    <Compile Include="..\UI\Rendering\Markdown\MarkdownBlock.cs" Link="UI\Rendering\Markdown\MarkdownBlock.cs" />
+    <Compile Include="..\UI\Rendering\Markdown\MarkdownParserService.cs" Link="UI\Rendering\Markdown\MarkdownParserService.cs" />
+    <Compile Include="..\UI\Rendering\Markdown\MarkdownRenderCache.cs" Link="UI\Rendering\Markdown\MarkdownRenderCache.cs" />
+    <Compile Include="..\UI\Modes\Projects\Projections\ProjectWorkCycleProjection.cs" Link="UI\Modes\Projects\Projections\ProjectWorkCycleProjection.cs" />
+    <Compile Include="..\UI\Modes\Projects\Projections\ProjectsShellProjection.cs" Link="UI\Modes\Projects\Projections\ProjectsShellProjection.cs" />
+    <Compile Include="..\UI\Modes\Projects\Projections\ProjectWorkCycleQueryState.cs" Link="UI\Modes\Projects\Projections\ProjectWorkCycleQueryState.cs" />
+    <Compile Include="..\UI\Modes\Projects\WorkCycle\Actions\WorkCycleActionController.cs" Link="UI\Modes\Projects\WorkCycle\Actions\WorkCycleActionController.cs" />
     <Compile Include="..\Prompting\*.cs" Link="Prompting\%(Filename)%(Extension)" />
     <Compile Include="..\Boundary\*.cs" Link="Boundary\%(Filename)%(Extension)" />
     <Compile Include="..\Contexting\*.cs" Link="Contexting\%(Filename)%(Extension)" />
+    <Compile Include="..\Diagnostics\*.cs" Link="Diagnostics\%(Filename)%(Extension)" />
     <Compile Include="..\Demo\*.cs" Link="Demo\%(Filename)%(Extension)" />
     <Compile Include="..\Execution\*.cs" Link="Execution\%(Filename)%(Extension)" />
     <Compile Include="..\Orchestration\*.cs" Link="Orchestration\%(Filename)%(Extension)" />

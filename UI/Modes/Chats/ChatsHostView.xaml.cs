@@ -113,10 +113,10 @@ public sealed partial class ChatsHostView : UserControl
     public void SetComposerPlacement(bool hasConversation)
     {
         Grid.SetRow(ChatsComposerHost, hasConversation ? 2 : 1);
-        ChatsComposerHost.VerticalAlignment = hasConversation ? VerticalAlignment.Bottom : VerticalAlignment.Center;
+        ChatsComposerHost.VerticalAlignment = VerticalAlignment.Bottom;
         ChatsComposerHost.Margin = hasConversation
             ? new Thickness(0, 24, 0, 8)
-            : new Thickness(0, 0, 0, 120);
+            : new Thickness(0, 0, 0, 196);
     }
 
     private void ChatsComposerSendButton_Click(object sender, RoutedEventArgs e)

@@ -9,6 +9,7 @@ namespace zavod.UI.Rendering.Conversation;
 public sealed class ConversationItemViewModel : INotifyPropertyChanged
 {
     private string _text;
+    private int _revision;
     private MessageRenderState _renderState;
     private bool _isStreaming;
     private IReadOnlyList<MarkdownBlock> _blocks;
@@ -30,6 +31,7 @@ public sealed class ConversationItemViewModel : INotifyPropertyChanged
         AuthorLabel = authorLabel ?? string.Empty;
         _text = text ?? string.Empty;
         Timestamp = timestamp;
+        _revision = 1;
         _isStreaming = isStreaming;
         _renderState = renderState;
         Metadata = metadata;
@@ -44,6 +46,12 @@ public sealed class ConversationItemViewModel : INotifyPropertyChanged
     public string AuthorLabel { get; }
 
     public DateTimeOffset Timestamp { get; }
+
+    public int Revision
+    {
+        get => _revision;
+        private set => SetField(ref _revision, value);
+    }
 
     public IReadOnlyDictionary<string, string>? Metadata { get; }
 
@@ -78,6 +86,11 @@ public sealed class ConversationItemViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void AdvanceRevision()
+    {
+        Revision++;
+    }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using zavod.Contexting;
 using zavod.Prompting;
 
@@ -11,7 +13,9 @@ public static class TaskStateFactory
         string taskId,
         PromptRole createdByRole,
         PromptRole assignedRole,
-        DateTimeOffset timestamp)
+        DateTimeOffset timestamp,
+        IReadOnlyList<string>? scope = null,
+        IReadOnlyList<string>? acceptanceCriteria = null)
     {
         ArgumentNullException.ThrowIfNull(intent);
 
@@ -30,8 +34,8 @@ public static class TaskStateFactory
             intent.Status,
             TaskStateStatus.Active,
             intent.Description,
-            Array.Empty<string>(),
-            Array.Empty<string>(),
+            scope?.Where(static value => !string.IsNullOrWhiteSpace(value)).Select(static value => value.Trim()).ToArray() ?? Array.Empty<string>(),
+            acceptanceCriteria?.Where(static value => !string.IsNullOrWhiteSpace(value)).Select(static value => value.Trim()).ToArray() ?? Array.Empty<string>(),
             createdByRole,
             assignedRole,
             timestamp);

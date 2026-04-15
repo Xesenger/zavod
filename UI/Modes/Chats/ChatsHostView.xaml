@@ -27,7 +27,7 @@
                     AutomationProperties.AutomationId="Chats.NewChat"
                     Style="{StaticResource ChatsSidebarNewChatButtonStyle}"
                     Click="ChatsNewChatButton_Click"
-                    Content="+  Новый чат" />
+                    Content="+  &#x041D;&#x043E;&#x0432;&#x044B;&#x0439; &#x0447;&#x0430;&#x0442;" />
 
                 <StackPanel
                     x:Name="ChatsListPanel"
@@ -110,7 +110,7 @@
                         HorizontalAlignment="Center"
                         FontFamily="{StaticResource Ui.FontFamily.Chats.Regular}"
                         FontSize="15"
-                        Foreground="{StaticResource Ui.Chat.TextSecondaryBrush}"
+                        Foreground="{StaticResource Ui.Chat.TextPrimaryBrush}"
                         TextAlignment="Center"
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -141,69 +141,71 @@
                 VerticalAlignment="Bottom"
                 Margin="0,24,0,8"
                 Background="Transparent">
-                <Border
+                <Grid
                     x:Name="ChatsComposerCard"
                     HorizontalAlignment="Stretch"
-                    Padding="0"
-                    Background="Transparent"
-                    BorderBrush="{StaticResource Ui.Chat.DividerBrush}"
-                    BorderThickness="0,0,0,1"
-                    CornerRadius="0">
-                    <Grid ColumnSpacing="0" RowSpacing="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    MinHeight="44"
+                    ColumnSpacing="0"
+                    RowSpacing="0"
+                    Background="Transparent">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                        <TextBox
-                            x:Name="ChatsComposerTextBox"
-                            Grid.Column="0"
-                            Grid.ColumnSpan="3"
-                            MinHeight="58"
-                            Padding="{StaticResource Ui.Layout.Chats.ComposerInputPadding}"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            Foreground="{StaticResource Ui.Chat.TextPrimaryBrush}"
-                            PlaceholderForeground="{StaticResource Ui.Chat.TextSecondaryBrush}"
-                            FontFamily="{StaticResource Ui.FontFamily.Chats.Regular}"
-                            FontSize="{StaticResource Ui.Typography.Chats.Composer.FontSize}"
-                            PlaceholderText="Начни мысль..."
-                            TextWrapping="NoWrap"
-                            AcceptsReturn="False"
-                            VerticalContentAlignment="Center" />
+                    <Rectangle
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
+                        Height="1"
+                        VerticalAlignment="Bottom"
+                        Fill="{StaticResource Ui.Chat.DividerBrush}" />
 
-                        <Button
-                            x:Name="ChatsComposerAttachButton"
-                            Grid.Column="0"
-                            AutomationProperties.AutomationId="Chats.Composer.Attach"
-                            Style="{StaticResource ChatsIconButtonStyle}"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            ContentTemplate="{x:Null}"
-                            IsEnabled="False" />
+                    <TextBox
+                        x:Name="ChatsComposerTextBox"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
+                        Style="{StaticResource ChatsComposerTextBoxStyle}"
+                        MinHeight="44"
+                        VerticalAlignment="Stretch"
+                        Foreground="{StaticResource Ui.Chat.TextPrimaryBrush}"
+                        PlaceholderForeground="{StaticResource Ui.Chat.TextSecondaryBrush}"
+                        FontFamily="{StaticResource Ui.FontFamily.Chats.Regular}"
+                        FontSize="{StaticResource Ui.Typography.Chats.Composer.FontSize}"
+                        PlaceholderText="&#x041D;&#x0430;&#x0447;&#x043D;&#x0438; &#x043C;&#x044B;&#x0441;&#x043B;&#x044C;..."
+                        TextWrapping="NoWrap"
+                        AcceptsReturn="False" />
 
-                        <TextBlock
-                            x:Name="ChatsPersistenceText"
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            FontFamily="{StaticResource Ui.FontFamily.Chrome.Regular}"
-                            FontSize="14"
-                            Foreground="{StaticResource Ui.Chat.TextSecondaryBrush}"
-                            Visibility="Collapsed"
-                            TextWrapping="Wrap" />
+                    <Button
+                        x:Name="ChatsComposerAttachButton"
+                        Grid.Column="0"
+                        AutomationProperties.AutomationId="Chats.Composer.Attach"
+                        Style="{StaticResource ChatsIconButtonStyle}"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        ContentTemplate="{x:Null}"
+                        IsEnabled="True" />
 
-                        <Button
-                            x:Name="ChatsComposerSendButton"
-                            Grid.Column="2"
-                            AutomationProperties.AutomationId="ChatsComposerSendButton"
-                            Style="{StaticResource ChatsIconButtonStyle}"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Click="ChatsComposerSendButton_Click"
-                            ContentTemplate="{x:Null}" />
-                    </Grid>
-                </Border>
+                    <TextBlock
+                        x:Name="ChatsPersistenceText"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        FontFamily="{StaticResource Ui.FontFamily.Chrome.Regular}"
+                        FontSize="14"
+                        Foreground="{StaticResource Ui.Chat.TextSecondaryBrush}"
+                        Visibility="Collapsed"
+                        TextWrapping="Wrap" />
+
+                    <Button
+                        x:Name="ChatsComposerSendButton"
+                        Grid.Column="2"
+                        AutomationProperties.AutomationId="ChatsComposerSendButton"
+                        Style="{StaticResource ChatsIconButtonStyle}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Click="ChatsComposerSendButton_Click"
+                        ContentTemplate="{x:Null}" />
+                </Grid>
             </Border>
         </Grid>
     </Grid>

@@ -28,8 +28,11 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\Fonts\*.ttf" />
-    <Content Include="Assets\Fonts\*.otf" />
+    <Content Include="Assets\Fonts\*.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Fonts\*.otf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Chats\chats.surface.html" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Chats\chats.css" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Chats\chats.bridge.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\prompts\*.md" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\config\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

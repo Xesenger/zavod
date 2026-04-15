@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using zavod.Contexting;
@@ -9,7 +10,12 @@ namespace zavod.Bootstrap;
 
 public static class ValidatedIntentShiftStarter
 {
-    public static FirstShiftBootstrapResult Start(ProjectState projectState, TaskIntent intent, DateTimeOffset timestamp)
+    public static FirstShiftBootstrapResult Start(
+        ProjectState projectState,
+        TaskIntent intent,
+        DateTimeOffset timestamp,
+        IReadOnlyList<string>? scope = null,
+        IReadOnlyList<string>? acceptanceCriteria = null)
     {
         ArgumentNullException.ThrowIfNull(projectState);
         ArgumentNullException.ThrowIfNull(intent);
@@ -33,17 +39,21 @@ public static class ValidatedIntentShiftStarter
                 new FirstShiftBootstrapRequest(
                     intent.Description,
                     intent.Description,
-                    timestamp));
+                    timestamp,
+                    scope,
+                    acceptanceCriteria));
         }
 
-        return StartNextShift(projectState, intent, timestamp, shiftFiles);
+        return StartNextShift(projectState, intent, timestamp, shiftFiles, scope, acceptanceCriteria);
     }
 
     private static FirstShiftBootstrapResult StartNextShift(
         ProjectState projectState,
         TaskIntent intent,
         DateTimeOffset timestamp,
-        string[] shiftFiles)
+        string[] shiftFiles,
+        IReadOnlyList<string>? scope,
+        IReadOnlyList<string>? acceptanceCriteria)
     {
         var shiftId = BuildNextShiftId(shiftFiles);
         var shift = new ShiftState(
@@ -61,7 +71,9 @@ public static class ValidatedIntentShiftStarter
             shift,
             intent,
             "TASK-001",
-            timestamp);
+            timestamp,
+            scope: scope,
+            acceptanceCriteria: acceptanceCriteria);
 
         var persistedProjectState = ProjectStateStorage.Save(applied.ProjectState);
         var shiftFilePath = ShiftStateStorage.Save(persistedProjectState.Paths.ProjectRoot, applied.ShiftState);

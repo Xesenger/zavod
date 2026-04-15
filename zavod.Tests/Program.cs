@@ -40,7 +40,6 @@ using zavod.Outcome;
 using zavod.Persistence;
 using zavod.Planning;
 using zavod.Presentation;
-using zavod.Presentation.Conversation;
 using zavod.Prompting;
 using zavod.Retrieval;
 using zavod.Router;
@@ -48,6 +47,10 @@ using zavod.State;
 using zavod.Traceing;
 using zavod.Acceptance;
 using zavod.Tooling;
+using zavod.UI.Modes.Chats;
+using zavod.UI.Modes.Projects;
+using zavod.UI.Modes.Projects.WorkCycle.Actions;
+using zavod.UI.Rendering.Conversation;
 using zavod.Workspace;
 
 var tests = new (string Name, Action Run)[]
@@ -363,6 +366,23 @@ var tests = new (string Name, Action Run)[]
     ("Project state storage initializes shared and local persistence roots honestly", ProjectStateStorageInitializesSharedAndLocalPersistenceRootsHonestly),
     ("Resume stage storage persists under .zavod.local honestly", ResumeStageStoragePersistsUnderZavodLocalHonestly),
     ("Chats adapter persists local conversation separately from project truth honestly", ChatsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHonestly),
+    ("Conversation index tracks multiple chats independently honestly", ConversationIndexTracksMultipleChatsIndependentlyHonestly),
+    ("Conversation storage falls back to legacy active chat file honestly", ConversationStorageFallsBackToLegacyActiveChatFileHonestly),
+    ("Conversation storage windowing deduplicates logical items honestly", ConversationStorageWindowingDeduplicatesLogicalItemsHonestly),
+    ("Chats adapter stores full logs outside timeline honestly", ChatsAdapterStoresFullLogsOutsideTimelineHonestly),
+    ("Projects adapter stores artifacts as references honestly", ProjectsAdapterStoresArtifactsAsReferencesHonestly),
+    ("Project conversations stay separate on the same engine honestly", ProjectConversationsStaySeparateOnTheSameEngineHonestly),
+    ("Validated intent shift starter carries scope and acceptance honestly", ValidatedIntentShiftStarterCarriesScopeAndAcceptanceHonestly),
+    ("Conversation composer draft store stages files honestly", ConversationComposerDraftStoreStagesFilesHonestly),
+    ("Conversation composer draft store stages long text as artifact honestly", ConversationComposerDraftStoreStagesLongTextAsArtifactHonestly),
+    ("Conversation log storage writes readable utf8 honestly", ConversationLogStorageWritesReadableUtf8Honestly),
+    ("Chats web assets keep utf8 and plain text rendering honestly", ChatsWebAssetsKeepUtf8AndPlainTextRenderingHonestly),
+    ("Chats runtime controller includes attachment content in execution request honestly", ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHonestly),
+    ("Projects flow consumes attachments before work-cycle send honestly", ProjectsFlowConsumesAttachmentsBeforeWorkCycleSendHonestly),
+    ("Projects work cycle confirm preflight creates runtime-backed result honestly", ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly),
+    ("Projects work cycle accept result updates truth honestly", ProjectsWorkCycleAcceptResultUpdatesTruthHonestly),
+    ("Project sage finds relevant history honestly", ProjectSageFindsRelevantHistoryHonestly),
+    ("Project sage stays quiet without match honestly", ProjectSageStaysQuietWithoutMatchHonestly),
     ("Projects adapter persists local conversation separately from project truth honestly", ProjectsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHonestly),
     ("Accepted shift closure keeps shared truth separate from local conversation honestly", AcceptedShiftClosureKeepsSharedTruthSeparateFromLocalConversationHonestly),
     ("Git ignore keeps .zavod.local out of shared commits honestly", GitIgnoreKeepsZavodLocalOutOfSharedCommitsHonestly),
@@ -7361,13 +7381,14 @@ static void ChatsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHones
     try
     {
         _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-local", "ZAVOD Chat Local");
-        var adapter = new ChatsAdapter(storage: ConversationLogStorage.ForChats(workspaceRoot));
+        const string conversationId = "chat-local-001";
+        var adapter = new ChatsAdapter(storage: ConversationLogStorage.ForChatConversation(workspaceRoot, conversationId));
 
         _ = adapter.AddMessageAsync(ConversationItemKind.User, "User", "Chat hello").GetAwaiter().GetResult();
 
-        var localPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", "chats-active.jsonl");
+        var localPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", $"{conversationId}.jsonl");
         var sharedPath = Path.Combine(workspaceRoot, ".zavod", "conversations", "chats-active.jsonl");
-        var restored = new ChatsAdapter(storage: ConversationLogStorage.ForChats(workspaceRoot));
+        var restored = new ChatsAdapter(storage: ConversationLogStorage.ForChatConversation(workspaceRoot, conversationId));
         var restoredCount = restored.RestorePersistedAsync().GetAwaiter().GetResult();
 
         AssertTrue(File.Exists(localPath), "Chats history must persist under .zavod.local/conversations.");
@@ -7381,13 +7402,869 @@ static void ChatsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHones
     }
 }
 
+static void ConversationIndexTracksMultipleChatsIndependentlyHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-index", "ZAVOD Chat Index");
+        var firstStorage = ConversationLogStorage.ForChatConversation(workspaceRoot, "chat-a");
+        var secondStorage = ConversationLogStorage.ForChatConversation(workspaceRoot, "chat-b");
+
+        firstStorage.Append(
+            new ConversationLogSnapshot(
+                "msg-a",
+                new DateTimeOffset(2026, 04, 15, 10, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "First chat",
+                "First chat",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+        secondStorage.Append(
+            new ConversationLogSnapshot(
+                "msg-b",
+                new DateTimeOffset(2026, 04, 15, 11, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "Second chat",
+                "Second chat",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+
+        ConversationIndexStorage.Upsert(workspaceRoot, new ConversationIndexEntry("chat-a", "chat", null, "Alpha", new DateTimeOffset(2026, 04, 15, 10, 00, 00, TimeSpan.Zero)));
+        ConversationIndexStorage.Upsert(workspaceRoot, new ConversationIndexEntry("chat-b", "chat", null, "Beta", new DateTimeOffset(2026, 04, 15, 11, 00, 00, TimeSpan.Zero)));
+
+        var indexPath = Path.Combine(workspaceRoot, ".zavod.local", "index.json");
+        var index = ConversationIndexStorage.Load(workspaceRoot);
+        var firstPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", "chat-a.jsonl");
+        var secondPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", "chat-b.jsonl");
+
+        AssertTrue(File.Exists(firstPath), "First chat must persist into its own conversation file.");
+        AssertTrue(File.Exists(secondPath), "Second chat must persist into its own conversation file.");
+        AssertTrue(File.Exists(indexPath), "Conversation index must persist under .zavod.local/index.json.");
+        AssertEqual(2, index.Count, "Conversation index must track both chat conversations.");
+        AssertEqual("chat-b", index[0].ConversationId, "Most recently updated chat must sort first in the index.");
+        AssertEqual("chat-a", index[1].ConversationId, "Older chat must remain independently addressable in the index.");
+        AssertContains(File.ReadAllText(firstPath), "First chat", "First chat file must keep only its own conversation payload.");
+        AssertContains(File.ReadAllText(secondPath), "Second chat", "Second chat file must keep only its own conversation payload.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ConversationStorageFallsBackToLegacyActiveChatFileHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-fallback", "ZAVOD Chat Fallback");
+        var legacyStorage = ConversationLogStorage.ForChats(workspaceRoot);
+        legacyStorage.Append(
+            new ConversationLogSnapshot(
+                "legacy-msg",
+                new DateTimeOffset(2026, 04, 15, 12, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "Legacy chat",
+                "Legacy chat",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+
+        var routedStorage = ConversationLogStorage.ForChatConversation(workspaceRoot, "chat-routed", fallbackFileName: "chats-active.jsonl");
+        var restored = routedStorage.LoadLatest();
+
+        AssertEqual(1, restored.Count, "Conversation-specific storage must read legacy chat history as fallback when its own file does not exist.");
+        AssertEqual("Legacy chat", restored[0].Text, "Fallback read must keep the legacy record payload intact.");
+        AssertFalse(File.Exists(Path.Combine(workspaceRoot, ".zavod.local", "conversations", "chat-routed.jsonl")), "Fallback read alone must not materialize a new routed conversation file.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ConversationStorageWindowingDeduplicatesLogicalItemsHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-windowing", "ZAVOD Chat Windowing");
+        var storage = ConversationLogStorage.ForChatConversation(workspaceRoot, "chat-windowing");
+
+        storage.Append(
+            new ConversationLogSnapshot(
+                "msg-001",
+                new DateTimeOffset(2026, 04, 16, 9, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "draft",
+                "draft",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+        storage.Append(
+            new ConversationLogSnapshot(
+                "msg-001",
+                new DateTimeOffset(2026, 04, 16, 9, 01, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "final",
+                "final",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "final");
+        storage.Append(
+            new ConversationLogSnapshot(
+                "msg-002",
+                new DateTimeOffset(2026, 04, 16, 9, 02, 00, TimeSpan.Zero),
+                "Assistant",
+                ConversationItemKind.Assistant.ToString(),
+                "assistant",
+                "assistant",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+
+        var latestWindow = storage.LoadLatestWindow(12);
+        var olderWindow = storage.LoadWindowBefore(3, 12);
+
+        AssertEqual(2, latestWindow.TotalCount, "Logical total count must ignore duplicate raw event lines for the same message id.");
+        AssertEqual(2, latestWindow.Snapshots.Count, "Latest window must contain only deduplicated logical items.");
+        AssertEqual("final", latestWindow.Snapshots[0].Text, "Latest window must keep the final logical state of the duplicated message.");
+        AssertEqual(2, olderWindow.TotalCount, "Older window total count must also be based on logical deduplicated items.");
+        AssertEqual(2, olderWindow.WindowEndSeq, "Older window must use logical sequence numbers.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ChatsAdapterStoresFullLogsOutsideTimelineHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-logs", "ZAVOD Chat Logs");
+        const string conversationId = "chat-log-001";
+        var adapter = new ChatsAdapter(
+            storage: ConversationLogStorage.ForChatConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+
+        var fullLog = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(1, 20).Select(index => $"line-{index:D2}: heavy runtime output"));
+        var item = adapter.AddLogAsync("Runtime", fullLog).GetAwaiter().GetResult();
+        var restored = new ChatsAdapter(
+            storage: ConversationLogStorage.ForChatConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var restoredCount = restored.RestorePersistedAsync().GetAwaiter().GetResult();
+        var itemMetadata = item.Metadata;
+        AssertTrue(itemMetadata is not null, "Log timeline item must keep reference metadata.");
+        if (itemMetadata is null)
+        {
+            throw new InvalidOperationException("Log reference metadata is missing.");
+        }
+
+        var referencePath = itemMetadata["reference-path"];
+
+        AssertEqual(ConversationItemKind.Log, item.Kind, "Log spill must keep log kind on the timeline item.");
+        AssertTrue(File.Exists(referencePath), "Full log payload must be stored as a separate .log artifact file.");
+        AssertContains(referencePath, Path.Combine(".zavod.local", "artifacts", "logs"), "Log payload must live under .zavod.local/artifacts/logs.");
+        AssertContains(File.ReadAllText(referencePath), "line-01: heavy runtime output", "Stored log file must preserve the full payload.");
+        AssertContains(File.ReadAllText(referencePath), "line-20: heavy runtime output", "Stored log file must keep the tail as well.");
+        AssertFalse(string.Equals(item.Text, fullLog, StringComparison.Ordinal), "Timeline log item must not keep the full heavy payload inline.");
+        AssertContains(item.Text, "line-20: heavy runtime output", "Timeline log item must keep a readable tail preview.");
+        AssertEqual(1, restoredCount, "Persisted conversation must restore the lightweight log item.");
+        AssertEqual("log", restored.Items[0].Metadata!["payload-kind"], "Restored log item must keep reference metadata.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsAdapterStoresArtifactsAsReferencesHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-artifacts";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Artifacts");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+
+        var fullArtifact = "# Canonical plan" + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine, Enumerable.Range(1, 16).Select(index => $"- item {index:D2}"));
+        var item = adapter.AddArtifactAsync(
+            "Shift Lead",
+            "Plan Draft",
+            fullArtifact,
+            "md",
+            preview: "Plan draft prepared for review.").GetAwaiter().GetResult();
+        var restored = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var restoredCount = restored.RestorePersistedAsync().GetAwaiter().GetResult();
+        var itemMetadata = item.Metadata;
+        AssertTrue(itemMetadata is not null, "Artifact timeline item must keep reference metadata.");
+        if (itemMetadata is null)
+        {
+            throw new InvalidOperationException("Artifact reference metadata is missing.");
+        }
+
+        var referencePath = itemMetadata["reference-path"];
+
+        AssertEqual(ConversationItemKind.Artifact, item.Kind, "Artifact spill must keep artifact kind on the timeline item.");
+        AssertEqual("Plan draft prepared for review.", item.Text, "Timeline artifact item must keep only the short preview.");
+        AssertTrue(File.Exists(referencePath), "Artifact payload must be stored as a separate artifact file.");
+        AssertContains(referencePath, Path.Combine(".zavod.local", "artifacts"), "Artifact payload must live under .zavod.local/artifacts.");
+        AssertContains(referencePath, ".md", "Artifact payload must preserve the requested extension.");
+        AssertContains(File.ReadAllText(referencePath), "# Canonical plan", "Stored artifact file must preserve the full payload.");
+        AssertEqual(1, restoredCount, "Persisted project conversation must restore the lightweight artifact item.");
+        var restoredMetadata = restored.Items[0].Metadata;
+        AssertTrue(restoredMetadata is not null, "Restored artifact item must keep reference metadata.");
+        if (restoredMetadata is null)
+        {
+            throw new InvalidOperationException("Restored artifact metadata is missing.");
+        }
+
+        AssertEqual("artifact", restoredMetadata["payload-kind"], "Restored artifact item must keep artifact reference metadata.");
+        AssertEqual("Plan Draft", restoredMetadata["reference-label"], "Restored artifact item must keep the artifact label.");
+        AssertEqual("Plan draft prepared for review.", restored.Items[0].Text, "Restored artifact item must stay lightweight on the timeline.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectConversationsStaySeparateOnTheSameEngineHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-conversations";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Conversations");
+        var artifactStorage = new ConversationArtifactStorage(workspaceRoot);
+        var conversationA = "project-conv-a";
+        var conversationB = "project-conv-b";
+        var metadataA = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["mode"] = "project",
+            ["phase"] = "discussion",
+            ["step-id"] = "TASK-001"
+        };
+        var metadataB = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["mode"] = "project",
+            ["phase"] = "discussion",
+            ["step-id"] = "TASK-002"
+        };
+
+        var adapterA = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationA),
+            artifactStorage: artifactStorage);
+        var adapterB = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationB),
+            artifactStorage: artifactStorage);
+
+        _ = adapterA.AddMessageAsync(ConversationItemKind.User, "User", "Task one", metadata: metadataA).GetAwaiter().GetResult();
+        _ = adapterA.AddMessageAsync(ConversationItemKind.Status, "QC", "Preflight opened.", metadata: metadataA).GetAwaiter().GetResult();
+        _ = adapterA.AddLogAsync("Worker", "build-a-line-1\nbuild-a-line-2", preview: "build-a-preview", metadata: metadataA).GetAwaiter().GetResult();
+        _ = adapterA.AddArtifactAsync("Worker", "Execution brief", "# Brief A", "md", preview: "brief-a-preview", metadata: metadataA).GetAwaiter().GetResult();
+
+        _ = adapterB.AddMessageAsync(ConversationItemKind.User, "User", "Task two", metadata: metadataB).GetAwaiter().GetResult();
+        _ = adapterB.AddMessageAsync(ConversationItemKind.Lead, "Shift Lead", "Lead response", metadata: metadataB).GetAwaiter().GetResult();
+
+        ConversationIndexStorage.Upsert(workspaceRoot, new ConversationIndexEntry(conversationA, "project", projectId, "Task one", new DateTimeOffset(2026, 04, 15, 15, 00, 00, TimeSpan.Zero)));
+        ConversationIndexStorage.Upsert(workspaceRoot, new ConversationIndexEntry(conversationB, "project", projectId, "Task two", new DateTimeOffset(2026, 04, 15, 16, 00, 00, TimeSpan.Zero)));
+
+        var restoredA = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationA),
+            artifactStorage: artifactStorage);
+        var restoredB = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationB),
+            artifactStorage: artifactStorage);
+        var restoredACount = restoredA.RestorePersistedAsync().GetAwaiter().GetResult();
+        var restoredBCount = restoredB.RestorePersistedAsync().GetAwaiter().GetResult();
+        var indexEntries = ConversationIndexStorage.Load(workspaceRoot)
+            .Where(entry => string.Equals(entry.Mode, "project", StringComparison.Ordinal)
+                && string.Equals(entry.ProjectId, projectId, StringComparison.Ordinal))
+            .ToArray();
+
+        AssertEqual(4, restoredACount, "First project conversation must restore message, status, log, and artifact through the same engine.");
+        AssertEqual(2, restoredBCount, "Second project conversation must remain independent inside the same project.");
+        AssertEqual(ConversationItemKind.Status, restoredA.Items[1].Kind, "Project engine must preserve status items.");
+        AssertEqual(ConversationItemKind.Log, restoredA.Items[2].Kind, "Project engine must preserve log items.");
+        AssertEqual(ConversationItemKind.Artifact, restoredA.Items[3].Kind, "Project engine must preserve artifact items.");
+        AssertEqual("Task two", restoredB.Items[0].Text, "Second project conversation must restore only its own message timeline.");
+        AssertEqual(2, indexEntries.Length, "Project index must support multiple conversations under one project id.");
+        AssertEqual(conversationB, indexEntries[0].ConversationId, "Most recently updated project conversation must sort first.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectSageFindsRelevantHistoryHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-sage";
+        var projectState = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Sage");
+        var storage = ConversationLogStorage.ForProjectConversation(workspaceRoot, "project-sage-conv-001");
+        storage.Append(
+            new ConversationLogSnapshot(
+                "sage-msg-001",
+                new DateTimeOffset(2026, 04, 15, 10, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "We tried button layout with an extra layer and it failed in the shell.",
+                "We tried button layout with an extra layer and it failed in the shell.",
+                StepId: "TASK-001",
+                Phase: "discussion",
+                Attachments: Array.Empty<string>(),
+                Source: "projects",
+                Adapter: "projects",
+                IsStreaming: false,
+                Metadata: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["mode"] = "project"
+                }),
+            "append");
+        ConversationIndexStorage.Upsert(
+            workspaceRoot,
+            new ConversationIndexEntry(
+                "project-sage-conv-001",
+                "project",
+                projectId,
+                "Button layout failure",
+                new DateTimeOffset(2026, 04, 15, 10, 00, 00, TimeSpan.Zero)));
+
+        var task = CreateCustomTaskState(
+            "TASK-002",
+            TaskStateStatus.Abandoned,
+            "Button layout rework with a new layer was abandoned after shell duplication.",
+            new[] { "MainWindow.xaml" });
+        var shift = CreateShiftState(task, new[] { "Earlier attempt failed due to shell duplication." }) with
+        {
+            AcceptedResults = new[] { "Similar issue was solved via inline patch without new layers." },
+            Constraints = new[] { "Do not introduce new layers in the shell." }
+        };
+        _ = ShiftStateStorage.Save(workspaceRoot, shift);
+
+        File.WriteAllText(
+            projectState.TruthPointers.ProjectDocumentPath,
+            "# Project" + Environment.NewLine + Environment.NewLine + "- Prefer existing renderer and avoid extra shell layers.");
+
+        var sage = new ProjectSageService();
+        var constraintAdvisory = sage.BuildLeadAdvisory(workspaceRoot, projectId, "Need to fix button layout but maybe add a new layer.");
+        var historyAdvisory = sage.BuildLeadAdvisory(workspaceRoot, projectId, "Maybe the inline patch approach can solve the shell duplication again.");
+
+        AssertTrue(constraintAdvisory.HasNotes, "Project Sage should return advisory notes when similar history exists.");
+        AssertTrue(constraintAdvisory.Notes.Any(note => note.Contains("Constraint:", StringComparison.Ordinal) && note.Contains("new layers", StringComparison.OrdinalIgnoreCase)), "Project Sage should surface relevant constraints.");
+        AssertTrue(
+            historyAdvisory.Notes.Any(note =>
+                note.Contains("Earlier conversation:", StringComparison.Ordinal)
+                || note.Contains("Accepted before:", StringComparison.Ordinal)
+                || note.Contains("Abandoned earlier:", StringComparison.Ordinal)
+                || note.Contains("Project doc:", StringComparison.Ordinal)),
+            "Project Sage should surface relevant project history.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectSageStaysQuietWithoutMatchHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-sage-quiet";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Sage Quiet");
+        var storage = ConversationLogStorage.ForProjectConversation(workspaceRoot, "project-sage-conv-quiet");
+        storage.Append(
+            new ConversationLogSnapshot(
+                "sage-msg-quiet",
+                new DateTimeOffset(2026, 04, 15, 11, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "Archive parser failed on malformed zip metadata.",
+                "Archive parser failed on malformed zip metadata.",
+                StepId: "TASK-010",
+                Phase: "discussion",
+                Attachments: Array.Empty<string>(),
+                Source: "projects",
+                Adapter: "projects",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+        ConversationIndexStorage.Upsert(
+            workspaceRoot,
+            new ConversationIndexEntry(
+                "project-sage-conv-quiet",
+                "project",
+                projectId,
+                "Archive parser",
+                new DateTimeOffset(2026, 04, 15, 11, 00, 00, TimeSpan.Zero)));
+
+        var sage = new ProjectSageService();
+        var advisory = sage.BuildWorkerAdvisory(workspaceRoot, projectId, "Need a color pass for the dashboard hero.");
+
+        AssertFalse(advisory.HasNotes, "Project Sage must stay optional and quiet when no relevant history matches.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ValidatedIntentShiftStarterCarriesScopeAndAcceptanceHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var projectState = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-scope-accept", "ZAVOD Scope Accept");
+        var intent = TaskIntentFactory
+            .CreateCandidate("Implement the shell stabilization task.")
+            .MarkReadyForValidation()
+            .Validate();
+
+        var started = ValidatedIntentShiftStarter.Start(
+            projectState,
+            intent,
+            new DateTimeOffset(2026, 04, 16, 10, 00, 00, TimeSpan.Zero),
+            scope: new[] { Path.Combine(workspaceRoot, ".zavod", "project", "project.md") },
+            acceptanceCriteria: new[] { "Produce evidence-backed output.", "QC decision required." });
+
+        AssertEqual(1, started.Task!.Scope.Count, "First shift task must keep the provided scope.");
+        AssertEqual(2, started.Task.AcceptanceCriteria.Count, "First shift task must keep the provided acceptance criteria.");
+        AssertContains(started.Task.Scope[0], "project.md", "First shift task scope must preserve the provided project document path.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ConversationComposerDraftStoreStagesFilesHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-composer-files", "ZAVOD Composer Files");
+        var artifactStorage = new ConversationArtifactStorage(workspaceRoot);
+        var drafts = new ConversationComposerDraftStore(artifactStorage);
+        var sourcePath = Path.Combine(workspaceRoot, "sample.pdf");
+        File.WriteAllText(sourcePath, "fake pdf content");
+
+        var staged = drafts.StageFiles("conv-001", "proj-001", new[] { sourcePath });
+
+        AssertEqual(1, staged.Count, "File staging must create one pending draft item.");
+        AssertTrue(File.Exists(staged[0].Reference.FilePath), "Staged file artifact must be copied into conversation-owned storage.");
+        AssertContains(staged[0].Reference.FilePath, Path.Combine(".zavod.local", "artifacts", "conversations", "conv-001"), "Staged file must live under the conversation-scoped artifact root.");
+        AssertEqual("proj-001", staged[0].ProjectId, "Pending draft must preserve project grouping metadata.");
+        AssertTrue(drafts.RemoveDraft("conv-001", staged[0].DraftId), "Pending draft removal must succeed.");
+        AssertFalse(File.Exists(staged[0].Reference.FilePath), "Removing pending draft must clean up the staged file.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ConversationComposerDraftStoreStagesLongTextAsArtifactHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-composer-text", "ZAVOD Composer Text");
+        var artifactStorage = new ConversationArtifactStorage(workspaceRoot);
+        var drafts = new ConversationComposerDraftStore(artifactStorage);
+        var longText = string.Join(Environment.NewLine, Enumerable.Range(1, 60).Select(index => $"line {index:D2} of long pasted text"));
+
+        var staged = drafts.StageLongTextArtifact("conv-002", "proj-002", longText);
+
+        AssertTrue(ConversationComposerDraftStore.ShouldBecomeArtifact(longText), "Long pasted text must cross the artifact conversion threshold.");
+        AssertTrue(staged is not null, "Long pasted text must create a pending text artifact.");
+        AssertEqual("user_paste", staged!.Origin, "Text artifact staging must preserve paste origin.");
+        AssertEqual("text", staged.IntakeType, "Text artifact staging must classify the payload as text.");
+        AssertTrue(File.Exists(staged.Reference.FilePath), "Text artifact staging must persist the pasted payload into conversation-owned artifact storage.");
+        AssertContains(File.ReadAllText(staged.Reference.FilePath), "line 60 of long pasted text", "Persisted text artifact must preserve the full pasted payload.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ConversationLogStorageWritesReadableUtf8Honestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-conversation-utf8", "ZAVOD Conversation UTF8");
+        var storage = ConversationLogStorage.ForChatConversation(workspaceRoot, "chat-utf8-001");
+        storage.Append(
+            new ConversationLogSnapshot(
+                "utf8-msg-001",
+                new DateTimeOffset(2026, 04, 15, 18, 00, 00, TimeSpan.Zero),
+                "User",
+                ConversationItemKind.User.ToString(),
+                "Привет, мир. Это проверка UTF-8.",
+                "Привет, мир. Это проверка UTF-8.",
+                StepId: null,
+                Phase: null,
+                Attachments: Array.Empty<string>(),
+                Source: "chats",
+                Adapter: "chats",
+                IsStreaming: false,
+                Metadata: null),
+            "append");
+
+        var fileText = File.ReadAllText(storage.FilePath, Encoding.UTF8);
+        var restored = storage.LoadLatest();
+
+        AssertContains(fileText, "Привет, мир. Это проверка UTF-8.", "Conversation log jsonl should keep Cyrillic text readable in UTF-8.");
+        AssertFalse(fileText.Contains("\\u041f", StringComparison.Ordinal), "Conversation log jsonl should not re-escape Cyrillic into unicode sequences.");
+        AssertEqual("Привет, мир. Это проверка UTF-8.", restored[0].Text, "Conversation log restore must preserve Cyrillic text exactly.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ChatsWebAssetsKeepUtf8AndPlainTextRenderingHonestly()
+{
+    var repoRoot = Directory.GetCurrentDirectory();
+    var htmlPath = Path.Combine(repoRoot, "UI", "Web", "Chats", "chats.surface.html");
+    var jsPath = Path.Combine(repoRoot, "UI", "Web", "Chats", "chats.bridge.js");
+    var html = File.ReadAllText(htmlPath, Encoding.UTF8);
+    var js = File.ReadAllText(jsPath, Encoding.UTF8);
+
+    AssertContains(html, "<meta charset=\"utf-8\">", "Chats WebView html should declare UTF-8 explicitly.");
+    AssertContains(js, "appendPlainTextWithBreaks", "Chats bridge should render assistant raw text through a plain-text helper.");
+    AssertFalse(js.Contains("p.innerHTML = escapeHtml", StringComparison.Ordinal), "Chats bridge should not use innerHTML for raw assistant text rendering.");
+}
+
+static void ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-runtime-utf8", "ZAVOD Chat Runtime UTF8");
+        var openRouter = new FakeOpenRouterExecutionClient(request =>
+        {
+            var attachmentContent = request.Attachments is { Count: > 0 }
+                ? request.Attachments[0].Content
+                : string.Empty;
+            var reply = attachmentContent.Contains("строки 50", StringComparison.Ordinal)
+                ? "Текст о стабилизации UTF-8 и длинном кириллическом вложении."
+                : "Вложение не дошло до исполнения.";
+            return new OpenRouterExecutionResponse(true, reply, "openrouter/test", 200, null, "ok");
+        });
+        var controller = new ChatsRuntimeController(workspaceRoot, openRouter);
+        controller.EnsureInitializedAsync().GetAwaiter().GetResult();
+
+        var longText = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(1, 50).Select(index => $"Это длинный кириллический текст строки {index:D2} про стабилизацию UTF-8."));
+
+        AssertTrue(controller.StageLongTextArtifact(longText), "Chats runtime should stage long Cyrillic text as an attachment artifact.");
+        AssertTrue(controller.SendMessageAsync("о чем этот текст?").GetAwaiter().GetResult(), "Chats runtime should accept a user question with staged artifact context.");
+        AssertTrue(openRouter.LastRequest is not null, "Chats runtime should issue an OpenRouter execution request.");
+        AssertTrue(openRouter.LastRequest!.Attachments is not null && openRouter.LastRequest.Attachments.Count == 1, "Chats runtime request should carry the staged artifact as attachment input.");
+        AssertContains(openRouter.LastRequest.Attachments![0].Content, "строки 50", "Execution attachment content should include the full Cyrillic artifact payload.");
+
+        var snapshot = controller.BuildSnapshot();
+        AssertContains(snapshot.Messages[^1].Text, "стабилизации UTF-8", "Assistant reply should be able to depend on the attached Cyrillic content.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleRevisionCarriesAttachmentContentHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-revision-artifacts";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Revision Artifacts");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var artifactStorage = new ConversationArtifactStorage(workspaceRoot);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: artifactStorage);
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { });
+
+        _ = controller.SendProjectsMessageAsync("Подготовь краткий вывод по материалам.").GetAwaiter().GetResult();
+        _ = controller.EnterWorkAsync().GetAwaiter().GetResult();
+        _ = controller.ConfirmPreflightAsync().GetAwaiter().GetResult();
+        _ = controller.RequestRevisionAsync().GetAwaiter().GetResult();
+
+        var attachmentText = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(1, 45).Select(index => $"Кириллический файл строки {index:D2}: стабилизация UTF-8."));
+        var reference = artifactStorage.SaveConversationTextArtifact(conversationId, "Pasted text", attachmentText, "txt");
+        var draft = new ConversationComposerDraftItem(
+            "draft-revision-001",
+            conversationId,
+            projectId,
+            "user_paste",
+            "text",
+            "Pasted text",
+            reference.Preview,
+            "utf8 text artifact",
+            attachmentText.Length,
+            reference);
+
+        AssertTrue(
+            controller.SendProjectsMessageAsync(new ConversationComposerSubmission(conversationId, "о чем этот текст?", new[] { draft }, projectId)).GetAwaiter().GetResult(),
+            "Revision flow should accept text plus staged artifact submission together.");
+
+        var artifactItem = adapter.Items.LastOrDefault(item => item.Kind == ConversationItemKind.Artifact);
+        AssertTrue(artifactItem is not null, "Revision flow should emit a worker artifact item.");
+        var artifactMetadata = artifactItem!.Metadata;
+        AssertTrue(artifactMetadata is not null && artifactMetadata.TryGetValue("reference-path", out _), "Worker artifact should keep its persisted payload reference.");
+        if (artifactMetadata is null || !artifactMetadata.TryGetValue("reference-path", out var artifactPath))
+        {
+            throw new InvalidOperationException("Worker artifact reference path is missing.");
+        }
+
+        var artifactMarkdown = File.ReadAllText(artifactPath, Encoding.UTF8);
+        AssertContains(artifactMarkdown, "attached.content", "Revision artifact should record attached content as execution evidence.");
+        AssertContains(artifactMarkdown, "Кириллический файл строки 45", "Revision artifact should preserve attached Cyrillic content in UTF-8.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleRevisionCarriesAttachmentContentAsciiHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-revision-artifacts-ascii";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Revision Artifacts ASCII");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var artifactStorage = new ConversationArtifactStorage(workspaceRoot);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: artifactStorage);
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { });
+
+        AssertTrue(controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult(), "Revision setup should start from a ready discussion message.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Revision setup should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Revision setup should produce a runtime-backed result.");
+        AssertTrue(controller.RequestRevisionAsync().GetAwaiter().GetResult(), "Revision setup should enter revision intake.");
+
+        var attachmentText = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(1, 45).Select(index => $"Кириллический файл строки {index:D2}: стабилизация UTF-8."));
+        var reference = artifactStorage.SaveConversationTextArtifact(conversationId, "Pasted text", attachmentText, "txt");
+        var draft = new ConversationComposerDraftItem(
+            "draft-revision-ascii-001",
+            conversationId,
+            projectId,
+            "user_paste",
+            "text",
+            "Pasted text",
+            reference.Preview,
+            "utf8 text artifact",
+            attachmentText.Length,
+            reference);
+
+        AssertTrue(
+            controller.SendProjectsMessageAsync(new ConversationComposerSubmission(conversationId, "What is this text about?", new[] { draft }, projectId)).GetAwaiter().GetResult(),
+            "Revision flow should accept text plus staged artifact submission together.");
+
+        var artifactItem = adapter.Items.LastOrDefault(item => item.Kind == ConversationItemKind.Artifact);
+        AssertTrue(artifactItem is not null, "Revision flow should emit a worker artifact item.");
+        var artifactMetadata = artifactItem!.Metadata;
+        AssertTrue(artifactMetadata is not null && artifactMetadata.TryGetValue("reference-path", out _), "Worker artifact should keep its persisted payload reference.");
+        if (artifactMetadata is null || !artifactMetadata.TryGetValue("reference-path", out var artifactPath))
+        {
+            throw new InvalidOperationException("Worker artifact reference path is missing.");
+        }
+
+        var artifactMarkdown = File.ReadAllText(artifactPath, Encoding.UTF8);
+        AssertContains(artifactMarkdown, "attached.content", "Revision artifact should record attached content as execution evidence.");
+        AssertContains(artifactMarkdown, "Кириллический файл строки 45", "Revision artifact should preserve attached Cyrillic content in UTF-8.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsFlowConsumesAttachmentsBeforeWorkCycleSendHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-flow-artifacts";
+        var controller = new ProjectsRuntimeController(workspaceRoot);
+        controller.EnsureInitializedAsync(projectId, "ZAVOD Project Flow Artifacts").GetAwaiter().GetResult();
+
+        var longText = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(1, 50).Select(index => $"Это длинный кириллический текст строки {index:D2} про стабилизацию UTF-8."));
+
+        AssertTrue(controller.StageLongTextArtifact(longText), "Projects flow should stage long pasted text as an artifact.");
+        var submission = controller.ConsumeComposerSubmissionAsync("Summarize the attached text.").GetAwaiter().GetResult();
+
+        AssertTrue(submission.HasText, "Projects flow should preserve the typed text in the consumed submission.");
+        AssertEqual(1, submission.Attachments.Count, "Projects flow should pass staged artifacts into the consumed submission.");
+        AssertTrue(controller.ActiveAdapter.Items.Any(item => item.Kind == ConversationItemKind.Artifact), "Projects flow should append the artifact reference before work-cycle execution starts.");
+
+        var workCycle = new WorkCycleActionController(
+            workspaceRoot,
+            () => controller.ActiveAdapter,
+            () => Task.CompletedTask,
+            () => { });
+
+        AssertTrue(workCycle.SendProjectsMessageAsync(submission).GetAwaiter().GetResult(), "Work-cycle controller should accept the combined text plus artifact submission.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-runtime-flow";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Runtime Flow");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { });
+
+        _ = controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult();
+        _ = controller.EnterWorkAsync().GetAwaiter().GetResult();
+        _ = controller.ConfirmPreflightAsync().GetAwaiter().GetResult();
+
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertTrue(resume is not null, "Projects work cycle must persist a resume snapshot.");
+        AssertTrue(resume!.RuntimeState is not null, "Confirm preflight must persist typed execution runtime state.");
+        AssertEqual(SurfacePhase.Result, resume.PhaseState.Phase, "Confirm preflight must move the phase into a result-ready state after runtime-backed result production.");
+        AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Log), "Projects flow must emit worker log item from runtime-backed execution.");
+        AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Artifact), "Projects flow must emit worker artifact item from runtime-backed execution.");
+        AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Status && item.Text.Contains("QC accepted", StringComparison.Ordinal)), "Projects flow must emit QC status derived from runtime review.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleAcceptResultUpdatesTruthHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-accept-flow";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Accept Flow");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { });
+
+        _ = controller.SendProjectsMessageAsync("Implement the shell stabilization path.").GetAwaiter().GetResult();
+        _ = controller.EnterWorkAsync().GetAwaiter().GetResult();
+        _ = controller.ConfirmPreflightAsync().GetAwaiter().GetResult();
+        _ = controller.AcceptResultAsync().GetAwaiter().GetResult();
+
+        var projectState = ProjectStateStorage.Load(workspaceRoot);
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertEqual<string?>(null, projectState.ActiveTaskId, "Accept result must clear the active task binding in project truth.");
+        AssertTrue(resume is not null && resume.RuntimeState is null, "After apply, Projects work cycle must clear runtime state from resume snapshot.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
 static void ProjectsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHonestly()
 {
     var workspaceRoot = CreateScratchWorkspace();
     try
     {
-        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-project-local", "ZAVOD Project Local");
-        var adapter = new ProjectsAdapter(storage: ConversationLogStorage.ForProjects(workspaceRoot));
+        const string projectId = "zavod-project-local";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Local");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId));
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["mode"] = "project",
@@ -7405,17 +8282,18 @@ static void ProjectsAdapterPersistsLocalConversationSeparatelyFromProjectTruthHo
             metadata: metadata,
             metadataActions: null).GetAwaiter().GetResult();
 
-        var localPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", "projects-active.jsonl");
+        var localPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", $"{conversationId}.jsonl");
         var sharedPath = Path.Combine(workspaceRoot, ".zavod", "conversations", "projects-active.jsonl");
-        var restored = new ProjectsAdapter(storage: ConversationLogStorage.ForProjects(workspaceRoot));
+        var restored = new ProjectsAdapter(storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId));
         var restoredCount = restored.RestorePersistedAsync().GetAwaiter().GetResult();
 
         AssertTrue(File.Exists(localPath), "Projects conversation must persist under .zavod.local/conversations.");
         AssertFalse(File.Exists(sharedPath), "Projects conversation must not leak into shared .zavod.");
         AssertEqual(1, restoredCount, "Projects adapter must restore one persisted local conversation item.");
         AssertEqual("Project hello", restored.Items[0].Text, "Projects adapter must restore persisted project text honestly.");
-        AssertTrue(restored.Items[0].Metadata is not null &&
-                   restored.Items[0].Metadata.TryGetValue("step-id", out var stepId) &&
+        var restoredMetadata = restored.Items[0].Metadata;
+        AssertTrue(restoredMetadata is not null &&
+                   restoredMetadata.TryGetValue("step-id", out var stepId) &&
                    string.Equals(stepId, "TASK-LOCAL-001", StringComparison.Ordinal), "Projects adapter must preserve local step metadata for resume.");
     }
     finally
@@ -7429,7 +8307,8 @@ static void AcceptedShiftClosureKeepsSharedTruthSeparateFromLocalConversationHon
     var workspaceRoot = CreateScratchWorkspace();
     try
     {
-        var initial = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-close-local-split", "ZAVOD Close Local Split");
+        const string projectId = "zavod-close-local-split";
+        var initial = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Close Local Split");
         var activeState = ProjectStateStorage.Save(initial with { ActiveShiftId = "SHIFT-001", ActiveTaskId = null });
         var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Completed, PromptRole.Worker);
         var shift = CreateShiftState(task) with
@@ -7439,7 +8318,8 @@ static void AcceptedShiftClosureKeepsSharedTruthSeparateFromLocalConversationHon
         };
         _ = ShiftStateStorage.Save(workspaceRoot, shift);
 
-        var adapter = new ProjectsAdapter(storage: ConversationLogStorage.ForProjects(workspaceRoot));
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId));
         _ = adapter.AddMessageAsync(ConversationItemKind.Lead, "Shift Lead", "Local closure context").GetAwaiter().GetResult();
 
         var closure = ShiftClosureProcessor.CloseAcceptedShift(
@@ -7448,7 +8328,7 @@ static void AcceptedShiftClosureKeepsSharedTruthSeparateFromLocalConversationHon
             new DateTimeOffset(2026, 03, 31, 10, 30, 00, TimeSpan.Zero),
             "Close accepted shift.");
 
-        var localConversationPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", "projects-active.jsonl");
+        var localConversationPath = Path.Combine(workspaceRoot, ".zavod.local", "conversations", $"{conversationId}.jsonl");
         var sharedSnapshotPath = Path.Combine(workspaceRoot, ".zavod", "snapshots", $"{closure.Snapshot!.SnapshotId}.json");
         var sharedResumePath = Path.Combine(workspaceRoot, ".zavod", "meta", "resume-stage.json");
 

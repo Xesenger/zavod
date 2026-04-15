@@ -25,6 +25,18 @@ public static class ZavodLocalStorageLayout
 
     public static string GetAttachmentsRoot(string projectRootPath) => Path.Combine(GetRoot(projectRootPath), "attachments");
 
+    public static string GetArtifactsRoot(string projectRootPath) => Path.Combine(GetRoot(projectRootPath), "artifacts");
+
+    public static string GetConversationArtifactsRoot(string projectRootPath) => Path.Combine(GetArtifactsRoot(projectRootPath), "conversations");
+
+    public static string GetConversationArtifactsRoot(string projectRootPath, string conversationId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        return Path.Combine(GetConversationArtifactsRoot(projectRootPath), conversationId.Trim());
+    }
+
+    public static string GetArtifactLogsRoot(string projectRootPath) => Path.Combine(GetArtifactsRoot(projectRootPath), "logs");
+
     public static string GetMetaRoot(string projectRootPath) => Path.Combine(GetRoot(projectRootPath), "meta");
 
     public static void EnsureInitialized(string projectRootPath)
@@ -36,6 +48,9 @@ public static class ZavodLocalStorageLayout
         Directory.CreateDirectory(GetPreviewsRoot(projectRootPath));
         Directory.CreateDirectory(GetResumeRoot(projectRootPath));
         Directory.CreateDirectory(GetAttachmentsRoot(projectRootPath));
+        Directory.CreateDirectory(GetArtifactsRoot(projectRootPath));
+        Directory.CreateDirectory(GetConversationArtifactsRoot(projectRootPath));
+        Directory.CreateDirectory(GetArtifactLogsRoot(projectRootPath));
         Directory.CreateDirectory(GetMetaRoot(projectRootPath));
     }
 }

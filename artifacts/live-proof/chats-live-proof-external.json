@@ -1,0 +1,19 @@
+﻿{
+  "mode": "chats-live-proof",
+  "startedAt": "2026-04-15T23:41:40.7062401+07:00",
+  "conversationId": "d6204a55ac9d45d7ab3bbfae8bdd1686",
+  "submissionText": "О чем этот текст?",
+  "attachmentCount": 1,
+  "attachmentLabels": [
+    "Pasted text"
+  ],
+  "attachmentTypes": [
+    "text"
+  ],
+  "sendSucceeded": true,
+  "messageCount": 3,
+  "artifactVisible": true,
+  "cyrillicVisible": true,
+  "assistantText": "Этот текст содержит повторяющееся описание технических аспектов внутренней работы системы, включая миграцию интерфейса Projects UI на веб-платформу, обработку отправки композиций как связки текста и вложений, проверку кодировки UTF-8 и требования к модели отвечать на основе предоставленного содержимого.",
+  "success": true
+}

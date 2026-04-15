@@ -8,16 +8,16 @@
 
     <Border
         x:Name="ModeSwitchBorder"
-        Width="292"
-        Height="40"
+        Width="296"
+        Height="32"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Padding="4"
+        Padding="3"
         Background="{StaticResource Ui.Chat.ChromeSurfaceBrush}"
         BorderBrush="{StaticResource Ui.Chat.ChromeBorderBrush}"
         BorderThickness="1"
-        CornerRadius="{StaticResource Ui.CornerRadius.Xl}">
-        <Grid ColumnSpacing="4">
+        CornerRadius="{StaticResource Ui.CornerRadius.Lg}">
+        <Grid ColumnSpacing="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -27,14 +27,14 @@
                 x:Name="ChatsModeButton"
                 Grid.Column="0"
                 Style="{StaticResource ModeSwitchSegmentButtonStyle}"
-                Click="ChatsModeButton_Click"
-                Content="Chats" />
+                FontSize="13"
+                Click="ChatsModeButton_Click" />
             <Button
                 x:Name="ProjectsModeButton"
                 Grid.Column="1"
                 Style="{StaticResource ModeSwitchSegmentButtonStyle}"
-                Click="ProjectsModeButton_Click"
-                Content="Projects" />
+                FontSize="13"
+                Click="ProjectsModeButton_Click" />
         </Grid>
     </Border>
 </UserControl>

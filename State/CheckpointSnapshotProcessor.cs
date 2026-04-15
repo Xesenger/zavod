@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using zavod.Boundary;
 using zavod.Persistence;
@@ -121,7 +122,7 @@ public static class CheckpointSnapshotProcessor
 
     private static Snapshot ReadSnapshot(string snapshotFilePath)
     {
-        var serialized = File.ReadAllText(snapshotFilePath);
+        var serialized = File.ReadAllText(snapshotFilePath, Encoding.UTF8);
         return JsonSerializer.Deserialize<Snapshot>(serialized, JsonOptions)
             ?? throw new InvalidOperationException("Existing checkpoint snapshot file must deserialize correctly.");
     }

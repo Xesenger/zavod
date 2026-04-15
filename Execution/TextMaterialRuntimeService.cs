@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using zavod.Workspace;
 
 namespace zavod.Execution;
@@ -35,7 +36,7 @@ public sealed class TextMaterialRuntimeService
 
             try
             {
-                rawText = File.ReadAllText(request.FullPath);
+                rawText = File.ReadAllText(request.FullPath, Encoding.UTF8);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {

@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using zavod.UI.Modes.Projects.Screens;
+using zavod.UI.Text;
 
 namespace zavod.UI.Modes.Projects;
 
@@ -9,6 +10,7 @@ public sealed partial class ProjectsHostView : UserControl
     public ProjectsHostView()
     {
         InitializeComponent();
+        ScreenTitleText.Text = AppText.Current.Get("projects.host.title");
     }
 
     public ProjectListView ListView => ProjectListView;
