@@ -1,0 +1,492 @@
+﻿[
+  {
+    "Kind": "file_found",
+    "Value": "index.js",
+    "EvidencePath": "index.js"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "LICENSE.txt",
+    "EvidencePath": "LICENSE.txt"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "package.json",
+    "EvidencePath": "package.json"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL3_1.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL3_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL3_2.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL3_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL3_5.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL3_5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL4_2.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL4_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL4_3.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL4_3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL5_1.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL5_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CEIL5_2.png",
+    "EvidencePath": "public\\assets\\flats\\CEIL5_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CONS1_1.png",
+    "EvidencePath": "public\\assets\\flats\\CONS1_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CONS1_5.png",
+    "EvidencePath": "public\\assets\\flats\\CONS1_5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\CONS1_7.png",
+    "EvidencePath": "public\\assets\\flats\\CONS1_7.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\DEM1_1.png",
+    "EvidencePath": "public\\assets\\flats\\DEM1_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\DEM1_2.png",
+    "EvidencePath": "public\\assets\\flats\\DEM1_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\DEM1_3.png",
+    "EvidencePath": "public\\assets\\flats\\DEM1_3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\DEM1_4.png",
+    "EvidencePath": "public\\assets\\flats\\DEM1_4.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT1.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT10.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT10.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT14.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT14.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT18.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT18.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT2.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT20.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT20.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT22.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT22.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT23.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT23.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT5.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT5_4.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT5_4.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLAT5_5.png",
+    "EvidencePath": "public\\assets\\flats\\FLAT5_5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR0_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR0_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR0_3.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR0_3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR0_6.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR0_6.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR1_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR1_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR1_7.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR1_7.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR3_3.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR3_3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR4_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR4_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR4_5.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR4_5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR4_6.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR4_6.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR4_8.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR4_8.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR5_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR5_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR5_2.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR5_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR5_3.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR5_3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR5_4.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR5_4.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR6_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR6_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR6_2.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR6_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR7_1.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR7_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\FLOOR7_2.png",
+    "EvidencePath": "public\\assets\\flats\\FLOOR7_2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\F_SKY1.png",
+    "EvidencePath": "public\\assets\\flats\\F_SKY1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\MFLR8_1.png",
+    "EvidencePath": "public\\assets\\flats\\MFLR8_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\NUKAGE1.png",
+    "EvidencePath": "public\\assets\\flats\\NUKAGE1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\NUKAGE2.png",
+    "EvidencePath": "public\\assets\\flats\\NUKAGE2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\NUKAGE3.png",
+    "EvidencePath": "public\\assets\\flats\\NUKAGE3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\STEP1.png",
+    "EvidencePath": "public\\assets\\flats\\STEP1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\STEP2.png",
+    "EvidencePath": "public\\assets\\flats\\STEP2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\TLITE6_1.png",
+    "EvidencePath": "public\\assets\\flats\\TLITE6_1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\TLITE6_4.png",
+    "EvidencePath": "public\\assets\\flats\\TLITE6_4.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\TLITE6_5.png",
+    "EvidencePath": "public\\assets\\flats\\TLITE6_5.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\flats\\TLITE6_6.png",
+    "EvidencePath": "public\\assets\\flats\\TLITE6_6.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\fonts\\OFL.txt",
+    "EvidencePath": "public\\assets\\fonts\\OFL.txt"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\digit-info.json",
+    "EvidencePath": "public\\assets\\hud\\digit-info.json"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\DIGITS_SHEET.png",
+    "EvidencePath": "public\\assets\\hud\\DIGITS_SHEET.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\face-info.json",
+    "EvidencePath": "public\\assets\\hud\\face-info.json"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\FACE_SHEET.png",
+    "EvidencePath": "public\\assets\\hud\\FACE_SHEET.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
+    "EvidencePath": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STARMS.png",
+    "EvidencePath": "public\\assets\\hud\\STARMS.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STBAR.png",
+    "EvidencePath": "public\\assets\\hud\\STBAR.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFB0.png",
+    "EvidencePath": "public\\assets\\hud\\STFB0.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFB1.png",
+    "EvidencePath": "public\\assets\\hud\\STFB1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFB2.png",
+    "EvidencePath": "public\\assets\\hud\\STFB2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFB3.png",
+    "EvidencePath": "public\\assets\\hud\\STFB3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFDEAD0.png",
+    "EvidencePath": "public\\assets\\hud\\STFDEAD0.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFEVL0.png",
+    "EvidencePath": "public\\assets\\hud\\STFEVL0.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFEVL1.png",
+    "EvidencePath": "public\\assets\\hud\\STFEVL1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFEVL2.png",
+    "EvidencePath": "public\\assets\\hud\\STFEVL2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFEVL3.png",
+    "EvidencePath": "public\\assets\\hud\\STFEVL3.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFEVL4.png",
+    "EvidencePath": "public\\assets\\hud\\STFEVL4.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFGOD0.png",
+    "EvidencePath": "public\\assets\\hud\\STFGOD0.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFKILL0.png",
+    "EvidencePath": "public\\assets\\hud\\STFKILL0.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFKILL1.png",
+    "EvidencePath": "public\\assets\\hud\\STFKILL1.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFKILL2.png",
+    "EvidencePath": "public\\assets\\hud\\STFKILL2.png"
+  },
+  {
+    "Kind": "file_found",
+    "Value": "public\\assets\\hud\\STFKILL3.png",
+    "EvidencePath": "public\\assets\\hud\\STFKILL3.png"
+  },
+  {
+    "Kind": "source_root_detected",
+    "Value": ".",
+    "EvidencePath": "."
+  },
+  {
+    "Kind": "source_root_detected",
+    "Value": "src",
+    "EvidencePath": "src"
+  },
+  {
+    "Kind": "structural_anomaly_detected",
+    "Value": "MULTIPLE_SOURCE_ROOTS",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
+  },
+  {
+    "Kind": "structural_anomaly_detected",
+    "Value": "NESTED_NON_SOURCE_PAYLOADS",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
+  },
+  {
+    "Kind": "technical_preview_detected",
+    "Value": "web-build",
+    "EvidencePath": "package.json"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "TextDocument",
+    "EvidencePath": "README.md"
+  },
+  {
+    "Kind": "document_kind_detected",
+    "Value": "procedural_doc",
+    "EvidencePath": "README.md"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\icon.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\preview.jpg"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\DIGITS_SHEET.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\FACE_SHEET.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STARMS.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STBAR.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STFB0.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STFB1.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STFB2.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\hud\\STFB3.png"
+  }
+]

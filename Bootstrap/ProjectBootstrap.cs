@@ -17,6 +17,33 @@ public static class ProjectBootstrap
 
         var normalizedProjectRoot = Path.GetFullPath(projectRootPath);
         var projectName = DeriveProjectName(normalizedProjectRoot);
+        return InitializeCore(normalizedProjectRoot, projectName);
+    }
+
+    /// <summary>
+    /// Bootstraps a project at <paramref name="projectRootPath"/> with an explicit
+    /// human-readable <paramref name="projectName"/>. Used by the "new project" flow
+    /// where the project name is decoupled from the folder name (folder is fixed at
+    /// create time; name is metadata the user can rename later).
+    /// </summary>
+    public static BootstrapResult Initialize(string projectRootPath, string projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectRootPath))
+        {
+            throw new ArgumentException("Project root path is required.", nameof(projectRootPath));
+        }
+
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            throw new ArgumentException("Project name is required.", nameof(projectName));
+        }
+
+        var normalizedProjectRoot = Path.GetFullPath(projectRootPath);
+        return InitializeCore(normalizedProjectRoot, projectName.Trim());
+    }
+
+    private static BootstrapResult InitializeCore(string normalizedProjectRoot, string projectName)
+    {
         var projectId = DeriveProjectId(projectName);
 
         ProjectStateStorage.EnsureInitialized(normalizedProjectRoot, projectId, projectName);

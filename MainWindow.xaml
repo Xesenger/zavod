@@ -145,6 +145,11 @@
                 x:Name="ProjectsHostView"
                 Grid.Row="1"
                 Visibility="Collapsed" />
+
+            <projects:ProjectsWebRendererView
+                x:Name="ProjectsWebRendererView"
+                Grid.Row="1"
+                Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>

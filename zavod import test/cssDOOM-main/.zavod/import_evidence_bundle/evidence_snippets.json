@@ -1,0 +1,80 @@
+﻿[
+  {
+    "RelativePath": "package.json",
+    "Category": "web-build",
+    "PreviewText": "{ \"name\": \"cssdoom\", \"version\": \"1.0.0\", \"description\": \"A DOOM engine implemented in CSS\", \"type\": \"module\", \"scripts\": { \"dev\": \"vite\", \"build\": \"vite build\", \"preview\": \"vite preview\" }, \"keywords\": [ \"doom\", \"css\", \"game\", \"engine\", \"web\" ], \"author\": \"Niels Leenheer\", \"license\": \"GPL-2.0\", \"devDependencies\": { \"vite\": \"^8.0.0\" }, \"dependencies\": { \"gamecontroller.js\": \"^1.5.0\" } }",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "README.md",
+    "Category": "TextDocument",
+    "PreviewText": "# cssDOOM A recreation of the original DOOM rendered entirely with CSS. This isn't `<canvas>` or WebGL — every wall, floor, sprite, and effect is a styled DOM element positioned in 3D space via CSS transforms and `preserve-3d`. The game logic is written in JavaScript using id Software's [open-source release](https://github.com/id-Software/DOOM) as a reference. **[Play it live at cssdoom.wtf](https://cssdoom.wtf)** **[Read the blog post](https://nielsleenheer.com/articles/2026/css-is-doomed/)** ## How it works We start with the linedefs, sidedefs, and sectors from the DOOM WAD file and construct our scene by creating `<div>` elements placed in 3D space using CSS transforms. But we don't set those properties directly from JavaScript. Instead we set custom properties with the raw DOOM vertex geometry. These values come straight out of the WAD file. ```html <div class=\"wall\" style=\" --start-x: 2560; --start-y: -2112; --end-x: 2560; --end-y: -2496; --floor-z: 32; --ceiling-z: 88; \"> ``` CSS calculates the correct width, height and 3D transforms using trigonometry functions: ```css .wall { --delta-x: calc(var(--end-x) - var(--start-x)); --delta-y: calc(var(--end-y) - var(--start-y)); width: calc(hypot(var(--delta-x), var(--delta-y)) * 1px); height: calc((var(--ceiling-z) - var(--floor-z)) * 1px); transform: translate3d( calc(var(--start-x) * 1px), calc(var(--ceiling-z) * -1px), calc(var(--start-y) * -1px) ) rotateY(atan2(var(--delta-y), var(--delta-x))); } ``` DOOM's coordinate system doesn't map directly to CSS 3D. DOOM uses a top-down 2D system where Y increases going north. CSS 3D has Y going up and Z going toward the viewer. That's why you see `translate3d(x, -z, -y)` — our custom properties are in DOOM coordinates while the transform needs CSS coordinates. Once we've built our scene we run a game loop in JavaScript that tracks the game state — player position, input, collisions, enemy AI. This game loop is the least interesting part of this project, as it is basically a recreation of the original code in JavaScript. There is a strict separation between the game loop in JavaScript and the rendering in CSS. JavaScript sets a limited number of CSS custom properties such as `--player-x`, `--player-y`, `--player-z` and `--player-angle` which determine the location of the player in our scene. CSS does the rest — it moves the entire world in the opposite direction of the player, since CSS doesn't have a camera: ```css #scene { translate: 0 0 var(--perspective); transform: rotateY(calc(var(--player-angle) * -1rad)) translate3d( calc(var(--player-x) * -1px), calc(var(--player-z) * 1px), calc(var(--player-y) * 1px) ); } ``` Moving and looking around is just updating four custom properties. ## Input The game supports mouse, keyboard, touch, and gamepad input, all funnelled through a unified input system that combines contributions from each source every frame. Mouse-look uses the **Pointer Lock API**, which activates automatically when entering fullscreen using the ICON top right (not F11). Raw `movementX` deltas from `mousemove` are multiplied by a sensitivity constant and accumulated as a `turnDelta` each frame. The game loop adds that delta directly t",
+    "WasTruncated": true
+  },
+  {
+    "RelativePath": "public\\icon.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=512x512; mode=Format24bppRgb",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\preview.jpg",
+    "Category": "ImageAsset",
+    "PreviewText": "format=JPEG; size=1200x630; mode=Format24bppRgb",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\DIGITS_SHEET.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=168x16; mode=Format32bppArgb",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\FACE_SHEET.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=72x155; mode=Format32bppArgb",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=40x6; mode=Format32bppArgb",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STARMS.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=40x32; mode=Format8bppIndexed",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STBAR.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=320x32; mode=Format8bppIndexed",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STFB0.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=35x31; mode=Format8bppIndexed",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STFB1.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=35x31; mode=Format8bppIndexed",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STFB2.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=35x31; mode=Format8bppIndexed",
+    "WasTruncated": false
+  },
+  {
+    "RelativePath": "public\\assets\\hud\\STFB3.png",
+    "Category": "ImageAsset",
+    "PreviewText": "format=PNG; size=35x31; mode=Format8bppIndexed",
+    "WasTruncated": false
+  }
+]

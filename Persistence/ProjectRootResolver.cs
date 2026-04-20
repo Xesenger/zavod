@@ -39,7 +39,7 @@ public static class ProjectRootResolver
     {
         return File.Exists(Path.Combine(path, "zavod.csproj")) &&
                File.Exists(Path.Combine(path, "App.xaml")) &&
-               Directory.Exists(Path.Combine(path, "docs", "zavod", "canon"));
+               Directory.Exists(Path.Combine(path, "docs", "canon"));
     }
 
     private static IEnumerable<string> EnumerateSelfAndParents(string path)

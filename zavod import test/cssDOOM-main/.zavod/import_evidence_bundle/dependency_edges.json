@@ -1,0 +1,114 @@
+﻿[
+  {
+    "From": "Audio",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Audio' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "Game",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Game' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "Index.js",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Index.js' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "index.js",
+    "To": "src\\game\\state.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'index.js'.",
+    "EvidencePath": "index.js"
+  },
+  {
+    "From": "Input",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Input' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "LICENSE.txt",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'LICENSE.txt' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "package.json",
+    "To": "gamecontroller.js",
+    "Label": "direct",
+    "Reason": "Dependency surface extracted from 'package.json'.",
+    "EvidencePath": "package.json"
+  },
+  {
+    "From": "Package.json",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Package.json' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "package.json",
+    "To": "vite",
+    "Label": "dev",
+    "Reason": "Dependency surface extracted from 'package.json'.",
+    "EvidencePath": "package.json"
+  },
+  {
+    "From": "Renderer",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Renderer' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "src\\game\\line-of-sight.js",
+    "To": "src\\game\\state.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\game\\line-of-sight.js'.",
+    "EvidencePath": "src\\game\\line-of-sight.js"
+  },
+  {
+    "From": "src\\game\\movement.js",
+    "To": "src\\game\\state.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\game\\movement.js'.",
+    "EvidencePath": "src\\game\\movement.js"
+  },
+  {
+    "From": "src\\game\\sound-propagation.js",
+    "To": "src\\game\\state.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\game\\sound-propagation.js'.",
+    "EvidencePath": "src\\game\\sound-propagation.js"
+  },
+  {
+    "From": "src\\input\\gamepad.js",
+    "To": "src\\input\\gamepad.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\input\\gamepad.js'.",
+    "EvidencePath": "src\\input\\gamepad.js"
+  },
+  {
+    "From": "src\\input\\keyboard.js",
+    "To": "public\\assets\\weapons\\CHAINGUN.png",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\input\\keyboard.js'.",
+    "EvidencePath": "src\\input\\keyboard.js"
+  },
+  {
+    "From": "src\\input\\keyboard.js",
+    "To": "src\\input\\gamepad.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\input\\keyboard.js'.",
+    "EvidencePath": "src\\input\\keyboard.js"
+  }
+]

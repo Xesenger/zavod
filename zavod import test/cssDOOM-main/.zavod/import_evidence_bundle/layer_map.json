@@ -1,0 +1,8 @@
+﻿[
+  {
+    "Name": "Root",
+    "Responsibility": "Overall project structure",
+    "EvidenceNote": "Evidence shows multiple source roots and asset directories.",
+    "Confidence": 0
+  }
+]

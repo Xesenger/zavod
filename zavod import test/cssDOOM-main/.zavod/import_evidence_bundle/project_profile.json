@@ -1,0 +1,22 @@
+﻿{
+  "WorkspaceRoot": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main",
+  "ImportKind": 3,
+  "Health": 0,
+  "DriftStatus": 2,
+  "RelevantFileCount": 1017,
+  "SourceFileCount": 54,
+  "BuildFileCount": 1,
+  "ConfigFileCount": 15,
+  "DocumentFileCount": 3,
+  "AssetFileCount": 889,
+  "BinaryFileCount": 0,
+  "SourceRoots": [
+    ".",
+    "src"
+  ],
+  "BuildRoots": [],
+  "StructuralAnomalies": [
+    "MULTIPLE_SOURCE_ROOTS: Detected multiple top-level source roots: ., src.",
+    "NESTED_NON_SOURCE_PAYLOADS: Detected nested non-source payload roots alongside host project structure: public."
+  ]
+}

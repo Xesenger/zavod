@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAVOD · Projects</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#13120f;--bg2:#171612;--bg3:#1e1c18;--bg4:#242220;
+  --line:rgba(255,255,255,0.06);--line2:rgba(255,255,255,0.09);
+  --t:#e8e4dc;--tm:#9a9189;--td:#5a5550;
+  --accent:#b8a28d;--green:#4ade80;--red:#f87171;
+  --t-hi:rgba(232,228,220,0.92);--t-mid:rgba(232,228,220,0.78);--t-soft:rgba(232,228,220,0.6);--t-dim:rgba(232,228,220,0.22);
+  --accent-hi:rgba(184,162,141,0.88);--accent-mid:rgba(184,162,141,0.65);--accent-soft:rgba(184,162,141,0.45);--accent-mute:rgba(184,162,141,0.22);--accent-faint:rgba(184,162,141,0.12);--accent-bg:rgba(184,162,141,0.08);
+  --green-soft:rgba(74,222,128,0.7);--green-bg:rgba(74,222,128,0.07);--green-line:rgba(74,222,128,0.22);
+  --red-soft:rgba(248,113,113,0.8);--red-bg:rgba(248,113,113,0.07);--red-line:rgba(248,113,113,0.35);
+  --r-sm:3px;--r-md:6px;--r-lg:10px;--r-xl:14px;--r-2xl:16px;
+  --sans:'IBM Plex Sans',sans-serif;
+  --mono:'JetBrains Mono','Geist Mono',monospace;
+  --rail:min(760px,calc(100% - 48px));
+  --user-msg-w:520px;
+}
+html,body{height:100%;background:var(--bg);color:var(--t);font-family:var(--sans);font-size:15px;font-weight:300;line-height:2;letter-spacing:0.01em;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh;width:100vw;position:relative}
+
+/* TITLEBAR */
+.titlebar{height:42px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;position:relative}
+.dots{display:flex;gap:6px}
+.dot{width:11px;height:11px;border-radius:50%;background:#252320}
+.win-title{position:absolute;left:50%;transform:translateX(-50%);color:var(--tm);font-size:11px;letter-spacing:0.06em;font-family:var(--mono)}
+.phase-tag{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--accent-soft);transition:color 400ms}
+
+/* PHASE 1 */
+.feed{flex:1;overflow-y:auto;padding:40px 0 130px;display:flex;flex-direction:column;align-items:center;scroll-behavior:smooth}
+.feed::-webkit-scrollbar{width:0}
+.feed.frozen{pointer-events:none}
+.phase1-overlay{position:absolute;inset:0;z-index:11;background:rgba(13,12,10,0.88);pointer-events:none;opacity:0;transition:opacity 280ms ease}
+.phase1-overlay.active{opacity:1}
+.doc-block{width:var(--rail);padding:2px 0;line-height:2;color:var(--t-mid);font-size:15px;font-weight:300;font-family:var(--sans);letter-spacing:0.01em}
+.doc-block b{color:var(--t-hi);font-weight:400}
+.doc-block em{color:var(--tm);font-style:normal;font-size:12px;font-family:var(--mono);letter-spacing:0.02em}
+.doc-block code{font-family:var(--mono);font-size:12.5px;color:var(--accent-hi);background:var(--accent-bg);padding:1px 6px;border-radius:var(--r-sm)}
+.bubble-wrap{width:var(--rail);padding:3px 0;display:flex;justify-content:flex-end}
+.bubble{background:var(--accent-mute);border-radius:var(--r-xl);padding:10px 16px;color:var(--t);font-size:15px;line-height:1.65;max-width:var(--user-msg-w);font-weight:300;font-family:var(--sans);letter-spacing:0.01em}
+.meta-line{width:var(--rail);padding:0;font-family:var(--mono);font-size:11px;color:var(--td);letter-spacing:0.04em}
+.gap{height:20px;width:100%}
+.gap-sm{height:7px;width:100%}
+.typing-wrap{width:var(--rail);padding:4px 0}
+.typing-dots{display:inline-flex;gap:5px;align-items:center;height:22px}
+.typing-dots span{width:4px;height:4px;border-radius:50%;background:var(--td);animation:tdot 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,80%,100%{opacity:0.2}40%{opacity:0.85}}
+
+/* COMPOSER */
+.composer-wrap{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);width:var(--rail);z-index:10;display:flex;flex-direction:column;gap:10px;transition:opacity 250ms ease}
+.composer-wrap.hidden{opacity:0;pointer-events:none}
+.c-line{border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:12px;padding:11px 0;transition:border-color 200ms}
+.c-line:focus-within{border-color:rgba(255,255,255,0.14)}
+.c-plus{background:none;border:none;cursor:pointer;color:var(--td);font-size:18px;line-height:1;padding:0 2px;transition:color 150ms;font-weight:300;font-family:var(--sans)}
+.c-plus:hover{color:var(--tm)}
+.c-input{flex:1;outline:none;background:transparent;border:none;font-family:var(--sans);font-size:14.5px;font-weight:300;color:var(--t);caret-color:var(--accent);white-space:nowrap;overflow:hidden}
+.c-input::placeholder{color:var(--accent-soft)}
+.c-send{background:none;border:none;cursor:pointer;color:var(--td);display:flex;align-items:center;padding:0;transition:color 150ms}
+.c-send:hover{color:var(--tm)}
+.c-send svg{width:15px;height:15px}
+.intent-btn{align-self:flex-end;display:inline-flex;align-items:center;gap:7px;background:var(--accent-bg);border:1px solid var(--accent-bg);border-radius:var(--r-sm);padding:5px 12px 5px 9px;cursor:pointer;opacity:0.5;transition:background 240ms,border-color 240ms,opacity 240ms}
+.intent-btn:hover{opacity:0.7}
+.intent-btn.lvl1{opacity:0.55;border-color:var(--accent-mute)}
+.intent-btn.lvl2{opacity:0.75;border-color:var(--accent-mute);background:var(--accent-bg)}
+.intent-btn.lvl3{opacity:1;border-color:var(--accent-mute);background:var(--accent-mute)}
+.intent-btn.lvl3:hover{background:var(--accent-mute);border-color:var(--accent-mute)}
+.intent-kbd{font-family:var(--mono);font-size:9px;letter-spacing:0.06em;color:var(--accent-mid);background:var(--accent-mute);border:1px solid var(--accent-mute);border-radius:var(--r-sm);padding:2px 5px;line-height:1;transition:all 240ms}
+.intent-btn.lvl3 .intent-kbd{color:var(--accent-hi);background:var(--accent-mute);border-color:var(--accent-mute)}
+.intent-label{font-family:var(--mono);font-size:11px;letter-spacing:0.05em;color:var(--accent-soft);transition:color 240ms}
+.intent-btn.lvl3 .intent-label{color:var(--accent-hi)}
+input[type=file]{display:none}
+
+/* ── SCREENS ────────────────────────────────────── */
+.screen{display:none;flex-direction:column;height:100vh;overflow:hidden;opacity:0;transition:opacity 150ms ease}
+.screen.active{display:flex}
+.screen.visible{opacity:1}
+#screen-wc{flex-direction:column}
+#phase1{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-height:0}
+#phase3{flex:1;display:none;overflow:hidden}
+#phase3.active{display:grid;grid-template-columns:300px 1fr}
+
+/* back nav */
+.nav-bar{height:42px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:14px}
+.nav-back{background:none;border:none;cursor:pointer;color:var(--td);font-family:var(--mono);font-size:11px;letter-spacing:0.06em;display:flex;align-items:center;gap:7px;padding:0;transition:color 150ms}
+.nav-back:hover{color:var(--tm)}
+.nav-back svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.nav-crumb{font-family:var(--mono);font-size:11px;color:var(--td);display:flex;align-items:center;gap:8px}
+.nav-crumb span{color:rgba(255,255,255,0.1)}
+.nav-crumb .active{color:var(--tm)}
+
+/* ── PROJECT LIST ───────────────────────────── */
+#screen-list{background:var(--bg)}
+.list-body{flex:1;overflow-y:auto;padding:44px 0 60px;display:flex;flex-direction:column;align-items:center}
+.list-body::-webkit-scrollbar{width:0}
+.list-header{width:var(--rail);margin-bottom:32px;display:flex;align-items:baseline;justify-content:space-between}
+.list-title{font-family:var(--mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--td)}
+.proj-grid{width:var(--rail);display:flex;flex-direction:column;gap:1px}
+.proj-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 22px;cursor:pointer;transition:background 180ms,border-color 180ms;display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.proj-card:hover{background:var(--bg3);border-color:var(--line2)}
+.proj-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.proj-name{font-size:15px;font-weight:400;color:var(--t-hi)}
+.proj-status{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-sm)}
+.proj-status.active{color:var(--green-soft);background:var(--green-bg);border:1px solid var(--green-line)}
+.proj-status.idle{color:var(--td);background:rgba(255,255,255,0.03);border:1px solid var(--line)}
+.proj-status.review{color:var(--accent-mid);background:var(--accent-bg);border:1px solid var(--accent-mute)}
+.proj-desc{font-size:13px;font-weight:300;color:var(--tm);line-height:1.6}
+.proj-meta{display:flex;gap:16px;margin-top:4px;align-items:center;justify-content:space-between}
+.proj-meta-left{display:flex;gap:16px}
+.proj-meta-item{font-family:var(--mono);font-size:10px;color:var(--td);display:flex;align-items:center;gap:5px}
+.proj-meta-item svg{width:10px;height:10px;stroke:currentColor;stroke-width:1.5;fill:none;opacity:0.6}
+.proj-stack{display:flex;gap:4px;flex-shrink:0}
+.stack-tag{font-family:var(--mono);font-size:9px;letter-spacing:0.04em;color:var(--tm);background:var(--accent-bg);border:1px solid var(--accent-faint);border-radius:var(--r-sm);padding:2px 6px;line-height:1.4}
+.proj-actions{width:var(--rail);display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.proj-action-btn{border:1px dashed rgba(255,255,255,0.07);border-radius:var(--r-lg);padding:18px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;color:var(--td);font-family:var(--mono);font-size:11px;letter-spacing:0.06em;transition:border-color 180ms,color 180ms}
+.proj-action-btn:hover{border-color:rgba(255,255,255,0.12);color:var(--tm)}
+.proj-action-btn svg{width:13px;height:13px;stroke:currentColor;stroke-width:1.5;fill:none}
+
+/* ── PROJECT HOME ───────────────────────────── */
+#screen-home{background:var(--bg)}
+.home-body{flex:1;overflow-y:auto;padding:44px 0 80px;display:flex;flex-direction:column;align-items:center}
+.home-body::-webkit-scrollbar{width:0}
+.home-hero{width:var(--rail);margin-bottom:36px}
+.home-proj-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--td);margin-bottom:10px}
+.home-proj-name{font-size:22px;font-weight:400;color:var(--t-hi);margin-bottom:8px;line-height:1.2}
+.home-proj-desc{font-size:14px;font-weight:300;color:var(--tm);line-height:1.65;max-width:540px}
+.home-enter{margin-top:22px;display:inline-flex;align-items:center;gap:9px;background:var(--accent-bg);border:1px solid var(--accent-soft);border-radius:var(--r-md);padding:10px 20px;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--t-hi);transition:background 180ms,border-color 180ms}
+.home-enter:hover{background:var(--accent-mute);border-color:var(--accent-mid)}
+.home-enter svg{width:12px;height:12px;stroke:currentColor;stroke-width:1.5;fill:none}
+.home-section{width:var(--rail);margin-bottom:32px}
+.home-section-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--td);margin-bottom:14px}
+.home-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:32px;width:var(--rail)}
+.home-stat{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px}
+.home-stat-n{font-family:var(--mono);font-size:20px;font-weight:400;color:var(--t-hi);line-height:1}
+.home-stat-l{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--td);margin-top:6px}
+.doc-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;transition:opacity 150ms}
+.doc-row:last-child{border-bottom:none}
+.doc-row:hover{opacity:0.75}
+.doc-row-left{display:flex;align-items:center;gap:10px}
+.doc-row-icon{width:28px;height:28px;border-radius:var(--r-sm);background:var(--accent-bg);border:1px solid var(--accent-mute);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.doc-row-icon svg{width:12px;height:12px;stroke:var(--accent-soft);stroke-width:1.5;fill:none}
+.doc-row-name{font-size:13px;font-weight:300;color:var(--t-mid)}
+.doc-row-meta{font-family:var(--mono);font-size:10px;color:var(--td)}
+.anchor-row{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.anchor-row:last-child{border-bottom:none}
+.anchor-tag{font-family:var(--mono);font-size:9px;letter-spacing:0.06em;color:var(--td);min-width:52px}
+.anchor-val{font-family:var(--mono);font-size:11.5px;color:var(--accent-mid)}
+.anchor-conf{font-family:var(--mono);font-size:9px;margin-left:auto}
+.anchor-conf.confirmed{color:var(--green-soft)}
+.anchor-conf.likely{color:var(--accent-soft)}
+.anchor-conf.unknown{color:var(--td)}
+
+.udoc-category{margin-bottom:14px}
+.udoc-cat-label{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--td);padding:10px 0 4px;border-bottom:1px solid var(--line)}
+.udoc-cat-label svg{width:11px;height:11px;opacity:0.5}
+.udoc-category .doc-row{padding:8px 0 8px 4px}
+
+/* ── SCANNER REPORT PREVIEW ─────────────────────── */
+.report-card{width:var(--rail);margin-bottom:28px;border:1px solid var(--line2);border-radius:var(--r-lg);overflow:hidden;cursor:pointer;transition:border-color 200ms}
+.report-card:hover{border-color:var(--accent-mute)}
+.report-card-bar{height:36px;background:var(--bg2);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0}
+.report-card-label{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--td)}
+.report-card-open{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--accent-soft);display:flex;align-items:center;gap:5px;transition:color 150ms}
+.report-card:hover .report-card-open{color:var(--accent-mid)}
+.report-card-open svg{width:10px;height:10px;stroke:currentColor;stroke-width:1.5;fill:none}
+.report-preview{width:100%;height:220px;border:none;display:block;pointer-events:none;background:var(--bg2)}
+.report-preview-wrap{height:220px;overflow:hidden;position:relative}
+.report-preview-wrap::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(transparent,var(--bg))}
+
+/* ── MODAL ───────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(10,9,8,0.88);display:none;flex-direction:column;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-bar{height:42px;flex-shrink:0;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.modal-label{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--tm)}
+.modal-close{margin-left:auto;background:none;border:1px solid var(--line2);border-radius:var(--r-md);padding:6px 14px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--td);cursor:pointer;transition:color 150ms,border-color 150ms}
+.modal-close:hover{color:var(--t);border-color:rgba(255,255,255,0.15)}
+.modal-frame{flex:1;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.modal-frame iframe{width:100%;height:100%;border:none;display:block}
+
+/* PREFLIGHT CARD */
+.pf-card{position:absolute;z-index:20;left:50%;transform:translateX(-50%);width:var(--rail);bottom:24px;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r-2xl);box-shadow:0 8px 48px rgba(0,0,0,0.7);overflow:hidden;display:flex;flex-direction:column;pointer-events:none;opacity:0;max-height:52px;transition:max-height 500ms cubic-bezier(0.22,1,0.36,1),opacity 200ms ease}
+.pf-card.open{opacity:1;pointer-events:auto;max-height:700px}
+.pf-inner{display:flex;flex-direction:column;opacity:0;transition:opacity 200ms ease 260ms}
+.pf-card.open .pf-inner{opacity:1}
+.pf-top{padding:20px 24px 14px;flex-shrink:0;opacity:0;transition:opacity 200ms ease 100ms}
+.pf-card.open .pf-top{opacity:1}
+.pf-kicker{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--tm);margin-bottom:4px}
+.pf-title{font-size:17px;font-weight:400;color:var(--t-hi)}
+.pf-rows{padding:6px 0;border-top:1px solid rgba(255,255,255,0.05);margin:0 20px}
+.pf-row{display:grid;grid-template-columns:44px 1fr auto;align-items:baseline;padding:5px 24px;font-size:14px;line-height:1.7;opacity:0;transform:translateY(4px);transition:opacity 180ms,transform 180ms}
+.pf-row:last-child{border-bottom:none}
+.pf-row.in{opacity:1;transform:none}
+.pf-idx{font-family:var(--mono);font-size:10px;color:var(--accent-soft)}
+.pf-text{color:var(--t-mid);font-weight:300}
+.pf-text b{color:var(--t-hi);font-weight:500}
+.pf-text code{font-family:var(--mono);font-size:11.5px;color:var(--accent-mid);background:var(--accent-bg);padding:1px 5px;border-radius:var(--r-sm)}
+.pf-tag{font-family:var(--mono);font-size:9px;letter-spacing:0.06em;color:var(--td)}
+.pf-footer{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pf-actions{display:flex;gap:8px}
+.pf-btn{appearance:none;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:8px 16px;border-radius:var(--r-md);cursor:pointer;transition:all 120ms;display:inline-flex;align-items:center;gap:7px}
+.pf-btn svg{width:12px;height:12px;flex-shrink:0}
+.pf-btn.confirm{border:1px solid var(--green-line);background:var(--green-bg);color:var(--green-soft)}
+.pf-btn.confirm:hover{background:var(--green-line);border-color:var(--green-line)}
+.pf-btn.back{border:1px solid var(--line2);background:transparent;color:var(--tm)}
+.pf-btn.back:hover{background:rgba(255,255,255,0.04);color:var(--t)}
+.pf-btn.clarify{border:1px solid var(--accent-mute);background:var(--accent-bg);color:var(--accent-mid)}
+.pf-btn.clarify:hover{background:var(--accent-bg);border-color:var(--accent-mute)}
+.pf-meta{font-family:var(--mono);font-size:10px;color:var(--td)}
+.pf-clarify{overflow:hidden;max-height:0;transition:max-height 340ms cubic-bezier(0.22,1,0.36,1),border-top-color 340ms}
+.pf-clarify{border-top:1px solid transparent}
+.pf-clarify.open{max-height:130px;border-top-color:var(--line)}
+.pf-clarify-inner{padding:14px 24px 18px;display:flex;flex-direction:column;gap:10px}
+.pf-clarify-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-soft)}
+.pf-clarify-row{display:flex;align-items:center;border-bottom:1px solid var(--line2)}
+.pf-clarify-input{flex:1;outline:none;background:transparent;border:none;font-family:var(--sans);font-size:14px;font-weight:300;color:var(--t);padding:10px 0;caret-color:var(--accent);letter-spacing:0.01em}
+.pf-clarify-input::placeholder{color:var(--td)}
+.pf-clarify-send{appearance:none;background:none;border:none;font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-soft);padding:0 4px;cursor:pointer;transition:all 120ms}
+.pf-clarify-send:hover{color:var(--accent-hi)}
+
+/* PHASE 3 */
+/* (rules moved to SCREENS block above) */
+
+.col-left{border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.left-head{padding:14px 18px 10px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.left-pulse{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.28;transform:scale(0.85)}50%{opacity:1;transform:scale(1.1)}}
+.left-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-soft);flex:1}
+.left-timer{font-family:var(--mono);font-size:10px;color:var(--td)}
+
+.agent-feed{flex:1;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column}
+.agent-feed::-webkit-scrollbar{width:0}
+.agent-block{padding:7px 18px;display:flex;flex-direction:column;gap:4px;opacity:0;transform:translateY(6px);transition:opacity 300ms ease,transform 300ms ease}
+.agent-block.in{opacity:1;transform:none}
+.agent-action{font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:var(--t-mid);display:flex;align-items:center;gap:9px}
+.agent-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0.6;flex-shrink:0}
+.agent-action.dim{color:var(--t-dim);font-weight:300}
+.agent-action.dim .agent-dot{opacity:0.12;background:var(--tm)}
+.agent-details{display:flex;flex-direction:column;gap:2px;padding-left:13px;margin-left:2px;margin-top:2px}
+.agent-detail{font-family:var(--mono);font-size:11.5px;color:rgba(154,145,137,0.8);line-height:1.65;display:flex;gap:6px}
+.agent-detail.hi{color:var(--accent-mid)}
+.det-arrow{color:var(--td);flex-shrink:0;opacity:0.5}
+.agent-sep{height:1px;background:rgba(255,255,255,0.03);margin:4px 18px;flex-shrink:0}
+
+.task-strip{padding:10px 0 12px;flex-shrink:0}
+.ts-row{display:flex;align-items:center;gap:10px;padding:5px 18px;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:rgba(180,172,160,0.5);border-left:2px solid transparent;transition:all 220ms}
+.ts-row.run{border-left-color:var(--accent);color:var(--t);background:var(--accent-bg)}
+.ts-row.done{text-decoration:line-through;color:var(--td)}
+.ts-num{font-family:var(--mono);font-size:9px;color:var(--accent-soft);min-width:18px}
+.ts-row.run .ts-num{color:var(--accent-mid)}
+
+.col-right{display:flex;flex-direction:column;overflow:hidden;padding:12px 16px 16px;background:var(--bg)}
+.artifact-frame{flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r-xl);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.5),0 2px 8px rgba(0,0,0,0.3),0 0 0 1px rgba(255,255,255,0.03)}
+.artifact-bar{height:44px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;padding:0 14px;gap:8px;background:rgba(255,255,255,0.02)}
+.mode-sw{display:flex;gap:1px;background:rgba(0,0,0,0.2);border-radius:var(--r-md);padding:3px}
+.mbtn{font-family:var(--mono);font-size:10px;letter-spacing:0.04em;padding:4px 10px;border-radius:var(--r-sm);border:none;background:none;color:var(--td);cursor:pointer;transition:all 120ms;display:flex;align-items:center;gap:5px}
+.mbtn svg{width:11px;height:11px;opacity:0.6;flex-shrink:0}
+.mbtn.on svg{opacity:1}
+.mbtn.on{background:rgba(255,255,255,0.08);color:var(--t-hi)}
+.mbtn:hover:not(.on){color:var(--tm)}
+.a-title{font-family:var(--mono);font-size:10px;color:var(--td);flex:1;text-align:center;letter-spacing:0.06em}
+.a-actions{display:flex;gap:2px;margin-left:auto}
+.a-action{width:28px;height:28px;border-radius:var(--r-md);border:none;background:none;color:var(--td);cursor:pointer;transition:all 120ms;display:flex;align-items:center;justify-content:center}
+.a-action:hover{background:rgba(255,255,255,0.06);color:var(--tm)}
+.a-action svg{width:13px;height:13px}
+.artifact-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px}
+.artifact-body::-webkit-scrollbar{width:0}
+
+/* DIFF CARDS — V4 IDE-style */
+.diff-card{background:var(--bg2);border-radius:var(--r-lg);overflow:hidden;flex-shrink:0;opacity:0;transform:translateY(8px);transition:opacity 380ms ease,transform 380ms ease}
+.diff-card.in{opacity:1;transform:none}
+.diff-card-head{height:38px;padding:0 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0}
+.diff-card-file{font-family:var(--mono);font-size:12px;color:var(--td);flex-shrink:0}
+.diff-card-sep{color:rgba(255,255,255,0.1);font-size:12px;flex-shrink:0}
+.diff-card-title{font-size:13px;font-weight:300;color:var(--t-soft);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.diff-tag{font-family:var(--mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0}
+.diff-tag.fix{color:var(--red-soft)}
+.diff-tag.add{color:var(--green-soft)}
+.diff-tag.refactor{color:rgba(96,165,250,0.45)}
+.diff-tag.test{color:rgba(167,139,250,0.45)}
+.diff-tag.verify{color:var(--accent-soft)}
+.diff-lines{padding:6px 0}
+.diff-line{display:flex;font-family:'JetBrains Mono','Geist Mono',monospace;font-size:12px;line-height:1.95}
+.dl-n{width:38px;flex-shrink:0;color:rgba(255,255,255,0.1);font-size:9px;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;user-select:none}
+.dl-m{width:16px;flex-shrink:0;display:flex;align-items:center;font-size:11px;user-select:none}
+.dl-c{flex:1;padding-right:16px;white-space:pre;overflow:hidden}
+.diff-line.add{background:rgba(74,222,128,0.06)}
+.diff-line.add .dl-m{color:var(--green-soft)}
+.diff-line.add .dl-c{color:rgba(165,248,190,0.88)}
+.diff-line.rm{background:rgba(248,113,113,0.045)}
+.diff-line.rm .dl-m{color:var(--red-soft)}
+.diff-line.rm .dl-c{color:rgba(252,165,155,0.58);text-decoration:line-through;text-decoration-color:rgba(248,113,113,0.22)}
+.diff-line.ctx .dl-m{color:rgba(255,255,255,0.08)}
+.diff-line.ctx .dl-c{color:var(--td)}
+.diff-caption{padding:12px 16px 16px;font-size:14px;font-weight:300;color:rgba(154,145,137,0.95);line-height:1.7;border-top:1px solid rgba(255,255,255,0.04)}
+.diff-caption b{color:var(--t-hi);font-weight:400}
+
+/* ACTION BAR — появляется снизу artifact-frame после завершения */
+.action-bar{flex-shrink:0;border-top:1px solid rgba(255,255,255,0.05);padding:12px 16px;display:flex;align-items:center;gap:8px;background:var(--bg2);opacity:0;pointer-events:none;transform:translateY(4px);transition:opacity 320ms ease,transform 320ms ease}
+.action-bar.visible{opacity:1;pointer-events:auto;transform:none}
+.action-status{font-family:var(--mono);font-size:10px;color:var(--tm);flex-shrink:0;display:flex;align-items:center;gap:10px}
+.action-status-dot{width:5px;height:5px;border-radius:50%;background:var(--green);opacity:0.7;flex-shrink:0}
+.action-stat{color:var(--tm)}
+.action-stat span{color:var(--t-soft)}
+.action-divider{width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0}
+.action-btns{display:flex;gap:6px}
+.ab-btn{appearance:none;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:7px 14px;border-radius:var(--r-md);cursor:pointer;transition:all 120ms;display:inline-flex;align-items:center;gap:6px}
+.ab-btn svg{width:11px;height:11px;flex-shrink:0}
+.ab-btn.confirm{border:1px solid var(--green-line);background:var(--green-bg);color:var(--green-soft)}
+.ab-btn.confirm:hover{background:var(--green-line);border-color:rgba(74,222,128,0.38)}
+.ab-btn.revise{border:1px solid var(--line2);background:transparent;color:var(--tm)}
+.ab-btn.revise:hover{background:rgba(255,255,255,0.04);color:var(--t)}
+.ab-btn.reject{border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--td)}
+.ab-btn.reject:hover{background:var(--red-bg);border-color:var(--red-line);color:var(--red-soft)}
+/* revise inline input */
+.ab-revise-wrap{flex:1;overflow:hidden;opacity:0;transition:opacity 240ms ease;pointer-events:none}
+.ab-revise-wrap.open{opacity:1;pointer-events:auto}
+.ab-revise-inner{display:flex;align-items:center;gap:8px;padding:0 12px;height:100%}
+.ab-revise-input{outline:none;background:transparent;border:none;font-family:var(--sans);font-size:13px;font-weight:300;color:var(--t);caret-color:var(--accent);letter-spacing:0.01em;width:100%}
+.ab-revise-input::placeholder{color:var(--td)}
+.ab-revise-send{appearance:none;background:none;border:none;font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-soft);cursor:pointer;padding:0;white-space:nowrap;transition:color 120ms;flex-shrink:0}
+.ab-revise-send:hover{color:var(--accent-hi)}
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+
+  <!-- ══ SCREEN: PROJECT LIST ══════════════════════════════ -->
+  <div class="screen active" id="screen-list">
+    <div class="titlebar">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="win-title">ZAVOD · Projects</div>
+      <div class="phase-tag">list</div>
+    </div>
+    <div class="list-body">
+      <div class="list-header">
+        <div class="list-title">проекты</div>
+      </div>
+      <div class="proj-grid">
+        <div class="proj-card" data-proj="myapp-desktop" onclick="openHome('myapp-desktop')">
+          <div class="proj-card-top">
+            <div class="proj-name">MyApp.Desktop</div>
+            <div class="proj-status active">в работе</div>
+          </div>
+          <div class="proj-desc">Десктопное приложение на WinUI 3. Нестабильный старт — невалидный конфиг, молчащие ошибки в bootstrap.</div>
+          <div class="proj-meta">
+            <div class="proj-meta-left">
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><rect x="1" y="2" width="10" height="9" rx="1.5"/><line x1="1" y1="5" x2="11" y2="5"/></svg>сегодня</div>
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><path d="M6 1l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6 8.1 3.22 9.55l.53-3.1L1.5 4.25l3.1-.45z"/></svg>31 файл · 6 якорей</div>
+            </div>
+            <div class="proj-stack"><span class="stack-tag">c++</span><span class="stack-tag">qt</span><span class="stack-tag">cmake</span></div>
+          </div>
+        </div>
+        <div class="proj-card" data-proj="backend-api" onclick="openHome('backend-api')">
+          <div class="proj-card-top">
+            <div class="proj-name">backend-api</div>
+            <div class="proj-status review">review</div>
+          </div>
+          <div class="proj-desc">REST API сервис. Миграция на новую схему БД, рефакторинг слоя авторизации.</div>
+          <div class="proj-meta">
+            <div class="proj-meta-left">
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><rect x="1" y="2" width="10" height="9" rx="1.5"/><line x1="1" y1="5" x2="11" y2="5"/></svg>вчера</div>
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><path d="M6 1l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6 8.1 3.22 9.55l.53-3.1L1.5 4.25l3.1-.45z"/></svg>84 файла · 12 якорей</div>
+            </div>
+            <div class="proj-stack"><span class="stack-tag">c#</span><span class="stack-tag">.net</span><span class="stack-tag">ef core</span></div>
+          </div>
+        </div>
+        <div class="proj-card" data-proj="dashboard-web" onclick="openHome('dashboard-web')">
+          <div class="proj-card-top">
+            <div class="proj-name">dashboard-web</div>
+            <div class="proj-status idle">ожидает</div>
+          </div>
+          <div class="proj-desc">Веб-дашборд для мониторинга. Компоненты на React, интеграция с backend-api.</div>
+          <div class="proj-meta">
+            <div class="proj-meta-left">
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><rect x="1" y="2" width="10" height="9" rx="1.5"/><line x1="1" y1="5" x2="11" y2="5"/></svg>3 дня назад</div>
+              <div class="proj-meta-item"><svg viewBox="0 0 12 12"><path d="M6 1l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6 8.1 3.22 9.55l.53-3.1L1.5 4.25l3.1-.45z"/></svg>22 файла · 8 якорей</div>
+            </div>
+            <div class="proj-stack"><span class="stack-tag">ts</span><span class="stack-tag">react</span><span class="stack-tag">vite</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="proj-actions">
+        <div class="proj-action-btn">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10v2h10v-2"/><line x1="7" y1="1" x2="7" y2="9"/><polyline points="4,6 7,9 10,6"/></svg>
+          импортировать проект
+        </div>
+        <div class="proj-action-btn">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          новый проект
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: PROJECT HOME ══════════════════════════════ -->
+  <div class="screen" id="screen-home">
+    <div class="nav-bar">
+      <button class="nav-back" onclick="goList()">
+        <svg viewBox="0 0 14 14"><polyline points="8,3 3,7 8,11"/></svg>
+        проекты
+      </button>
+      <div class="nav-crumb"><span>·</span><span class="active" id="home-crumb-name">—</span></div>
+      <div class="phase-tag" style="margin-left:auto">home</div>
+    </div>
+    <div class="home-body">
+      <div class="home-stats">
+        <div class="home-stat"><div class="home-stat-n" id="hs-files">31</div><div class="home-stat-l">файлов</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-anchors">6</div><div class="home-stat-l">фактов найдено</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-tasks">6</div><div class="home-stat-l">задач</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-docs">4</div><div class="home-stat-l">документов</div></div>
+      </div>
+      <div class="home-hero">
+        <div class="home-proj-label">текущий проект</div>
+        <div class="home-proj-name" id="home-proj-name">runtime-boot-refactor</div>
+        <div class="home-proj-desc" id="home-proj-desc">Нестабильный старт — невалидный конфиг, молчащие ошибки в bootstrap, утечка в SessionManager.</div>
+
+        <div class="report-card" onclick="openReport()" style="margin-top:20px">
+          <div class="report-card-bar">
+            <div class="report-card-label">отчёт сканера</div>
+            <div class="report-card-open"><svg viewBox="0 0 12 12"><path d="M2 10L10 2M10 2H5M10 2v5"/></svg>открыть</div>
+          </div>
+          <div class="report-preview-wrap">
+            <iframe class="report-preview" src="preview.html" scrolling="no" tabindex="-1"></iframe>
+          </div>
+        </div>
+
+        <button class="home-enter" onclick="enterWorkCycle()">
+          <svg viewBox="0 0 14 14"><polyline points="4,3 9,7 4,11"/><line x1="10" y1="3" x2="10" y2="11"/></svg>
+          войти в рабочий цикл
+        </button>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-label">анализ сканера</div>
+        <div class="anchor-row"><span class="anchor-tag">файл</span><span class="anchor-val">main.cpp — точка входа, startup path</span><span class="anchor-conf confirmed">точно</span></div>
+        <div class="anchor-row"><span class="anchor-tag">файл</span><span class="anchor-val">runtime_bootstrap.cpp — три ветки обработки ошибок</span><span class="anchor-conf confirmed">точно</span></div>
+        <div class="anchor-row"><span class="anchor-tag">файл</span><span class="anchor-val">config_loader.cpp — валидация конфига</span><span class="anchor-conf confirmed">точно</span></div>
+        <div class="anchor-row"><span class="anchor-tag">проблема</span><span class="anchor-val">ConfigError молча проглатывается в одной из веток</span><span class="anchor-conf confirmed">точно</span></div>
+        <div class="anchor-row"><span class="anchor-tag">проблема</span><span class="anchor-val">session_manager — утечка ресурсов при раннем выходе</span><span class="anchor-conf likely">вероятно</span></div>
+        <div class="anchor-row"><span class="anchor-tag">зависимость</span><span class="anchor-val">Qt 6.5 · CMake 3.26 · MSVC</span><span class="anchor-conf confirmed">точно</span></div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-label">пользовательские документы</div>
+        <div class="udoc-category">
+          <div class="udoc-cat-label">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 1h6l2 2v9H2z"/><line x1="4" y1="5" x2="8" y2="5"/><line x1="4" y1="7" x2="7" y2="7"/></svg>
+            markdown · txt
+          </div>
+          <div class="doc-row"><div class="doc-row-left"><div class="doc-row-name">README.md</div></div><div class="doc-row-meta">корень проекта</div></div>
+          <div class="doc-row"><div class="doc-row-left"><div class="doc-row-name">CHANGELOG.md</div></div><div class="doc-row-meta">корень проекта</div></div>
+          <div class="doc-row"><div class="doc-row-left"><div class="doc-row-name">notes.txt</div></div><div class="doc-row-meta">docs/</div></div>
+        </div>
+        <div class="udoc-category">
+          <div class="udoc-cat-label">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 1h6l2 2v9H2z"/><line x1="4" y1="5" x2="8" y2="5"/><line x1="4" y1="7" x2="8" y2="7"/><line x1="4" y1="9" x2="6" y2="9"/></svg>
+            pdf
+          </div>
+          <div class="doc-row"><div class="doc-row-left"><div class="doc-row-name">architecture-spec.pdf</div></div><div class="doc-row-meta">docs/</div></div>
+        </div>
+        <div class="udoc-category">
+          <div class="udoc-cat-label">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2" width="10" height="8" rx="1"/><line x1="1" y1="5" x2="11" y2="5"/></svg>
+            html
+          </div>
+          <div class="doc-row"><div class="doc-row-left"><div class="doc-row-name">api-reference.html</div></div><div class="doc-row-meta">docs/api/</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: WORK CYCLE ════════════════════════════════ -->
+  <div class="screen" id="screen-wc">
+  <div class="titlebar">
+    <div class="nav-back" onclick="goHome()" style="cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--td);font-family:var(--mono);font-size:11px;letter-spacing:0.06em">
+      <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,3 3,7 8,11"/></svg>home
+    </div>
+    <div class="win-title" id="win-title" style="position:absolute;left:50%;transform:translateX(-50%)">ZAVOD / runtime-boot-refactor</div>
+    <div class="phase-tag" id="phase-tag">phase-1</div>
+  </div>
+
+  <div id="phase1">
+    <div class="phase1-overlay" id="phase1-overlay"></div>
+    <div class="feed" id="feed">
+      <div class="gap"></div>
+      <div class="meta-line">сканер завершён — 31 файл · опорные точки: main.cpp, config_loader.cpp, runtime_bootstrap.cpp</div>
+      <div class="gap"></div>
+      <div class="bubble-wrap"><div class="bubble">приложение иногда стартует с невалидным конфигом и падает где-то в runtime. не всегда воспроизводится</div></div>
+      <div class="gap-sm"></div>
+      <div class="doc-block">понял — нестабильный старт. в <code>main.cpp</code> startup path резолвится после runtime init — это окно для невалидного состояния</div>
+      <div class="gap-sm"></div>
+      <div class="doc-block">нашёл ещё: в <code>runtime_bootstrap.cpp</code> три ветки обработки ошибок, одна молча глотает <code>ConfigError</code> — объясняет "ничего в логах"</div>
+      <div class="gap"></div>
+      <div class="bubble-wrap"><div class="bubble">да, похоже на правду. что предлагаешь?</div></div>
+      <div class="gap-sm"></div>
+      <div class="doc-block">план на <b>6 задач</b></div>
+      <div class="gap-sm"></div>
+      <div class="doc-block"><b>01</b> — перенести резолв startup path до runtime init</div>
+      <div class="doc-block"><b>02</b> — добавить валидацию конфига как pre-condition</div>
+      <div class="doc-block"><b>03</b> — схлопнуть дублирующие ветки ошибок bootstrap</div>
+      <div class="doc-block"><b>04</b> — unit тест для <code>FailConfig</code> path</div>
+      <div class="doc-block"><b>05</b> — починить утечку в <code>SessionManager</code> при раннем выходе</div>
+      <div class="doc-block"><b>06</b> — smoke test полного boot цикла</div>
+      <div class="gap-sm"></div>
+      <div class="meta-line">намерение сформировано — нажми "в работу" когда готов</div>
+      <div class="gap"></div>
+    </div>
+    <div class="composer-wrap" id="composer-wrap">
+      <div class="c-line">
+        <button class="c-plus" id="c-plus">+</button>
+        <input class="c-input" id="cinput" data-l10n-placeholder="composer.placeholder" placeholder="Опишите задачу..." spellcheck="false" autocomplete="off">
+        <input type="file" id="file-input" multiple>
+        <button class="c-send" id="c-send">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="13" x2="8" y2="3"/><polyline points="4,7 8,3 12,7"/></svg>
+        </button>
+      </div>
+      <button class="intent-btn" id="intent-btn">
+        <span class="intent-kbd" data-l10n="composer.intent.kbd">tab</span>
+        <span class="intent-label" data-l10n="composer.intent">в работу</span>
+      </button>
+    </div>
+    <div class="pf-card" id="pf-card">
+      <div class="pf-inner">
+        <div class="pf-top">
+          <div class="pf-kicker">План выполнения · 6 задач</div>
+          <div class="pf-title">Runtime boot refactor</div>
+        </div>
+        <div class="pf-rows" id="pf-rows">
+          <div class="pf-row"><span class="pf-idx">01</span><span class="pf-text"><b>fix</b> startup path — резолв до runtime init в <code>main.cpp</code></span><span class="pf-tag">fix</span></div>
+          <div class="pf-row"><span class="pf-idx">02</span><span class="pf-text"><b>add</b> валидация конфига как pre-condition</span><span class="pf-tag">add</span></div>
+          <div class="pf-row"><span class="pf-idx">03</span><span class="pf-text"><b>refactor</b> ветки ошибок bootstrap — единый канал</span><span class="pf-tag">refactor</span></div>
+          <div class="pf-row"><span class="pf-idx">04</span><span class="pf-text"><b>add</b> unit тест для <code>FailConfig</code> path</span><span class="pf-tag">test</span></div>
+          <div class="pf-row"><span class="pf-idx">05</span><span class="pf-text"><b>fix</b> утечка в <code>SessionManager</code> при раннем выходе</span><span class="pf-tag">fix</span></div>
+          <div class="pf-row"><span class="pf-idx">06</span><span class="pf-text"><b>verify</b> smoke test полного boot цикла</span><span class="pf-tag">verify</span></div>
+        </div>
+        <div class="pf-clarify" id="pf-clarify">
+          <div class="pf-clarify-inner">
+            <div class="pf-clarify-label" data-l10n="pf.clarify.label">уточнение</div>
+            <div class="pf-clarify-row">
+              <input class="pf-clarify-input" id="pf-clarify-input" placeholder="что нужно скорректировать..." spellcheck="false" autocomplete="off">
+              <button class="pf-clarify-send" id="pf-clarify-send" data-l10n="pf.clarify.send">отправить ↑</button>
+            </div>
+          </div>
+        </div>
+        <div class="pf-footer">
+          <div class="pf-actions">
+            <button class="pf-btn confirm" id="btn-pf-confirm">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+              <span data-l10n="pf.confirm"></span>
+            </button>
+            <button class="pf-btn clarify" id="btn-pf-clarify">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="6" x2="7" y2="10"/><circle cx="7" cy="4" r="0.5" fill="currentColor" stroke="none"/></svg>
+              <span data-l10n="pf.clarify"></span>
+            </button>
+            <button class="pf-btn back" id="btn-pf-back">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,3 3,7 8,11"/></svg>
+              <span data-l10n="pf.back"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="phase3">
+    <div class="col-left">
+      <div class="left-head">
+        <div class="left-pulse" id="left-pulse"></div>
+        <div class="left-label" data-l10n="worker.label">worker</div>
+        <div class="left-timer" id="left-timer">0:00</div>
+      </div>
+      <div class="agent-feed" id="agent-feed"></div>
+      <div class="task-strip">
+        <div class="ts-row" id="ts1"><span class="ts-num">01</span>fix startup path</div>
+        <div class="ts-row" id="ts2"><span class="ts-num">02</span>config validation</div>
+        <div class="ts-row" id="ts3"><span class="ts-num">03</span>refactor bootstrap</div>
+        <div class="ts-row" id="ts4"><span class="ts-num">04</span>unit test FailConfig</div>
+        <div class="ts-row" id="ts5"><span class="ts-num">05</span>fix SessionManager</div>
+        <div class="ts-row" id="ts6"><span class="ts-num">06</span>smoke test boot</div>
+      </div>
+    </div>
+    <div class="col-right">
+      <div class="artifact-frame">
+        <div class="artifact-bar">
+          <div class="mode-sw">
+            <button class="mbtn on">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,4 5,6 2,8"/><line x1="6" y1="8" x2="10" y2="8"/></svg>code
+            </button>
+            <button class="mbtn">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2" width="9" height="8" rx="1.5"/><line x1="1.5" y1="4.5" x2="10.5" y2="4.5"/></svg>preview
+            </button>
+          </div>
+          <div class="a-title" id="artifact-title" data-l10n="artifact.waiting">ожидание изменений...</div>
+          <div class="a-actions">
+            <button class="a-action" title="refresh">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 7A5 5 0 1 1 9.5 2.8"/><polyline points="9.5,1 9.5,3.2 11.7,3.2"/></svg>
+            </button>
+            <button class="a-action" title="share">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L12 5L9 8"/><path d="M12 5H5.5A3.5 3.5 0 0 0 2 8.5V11"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="artifact-body" id="artifact-body"></div>
+        <div class="action-bar" id="action-bar">
+          <div class="action-status">
+            <div class="action-status-dot"></div>
+            <span class="action-stat"><span>6</span> задач</span>
+            <span class="action-stat"><span>6</span> файлов</span>
+            <span class="action-stat"><span>0</span> ошибок</span>
+          </div>
+          <div class="action-divider"></div>
+          <div class="ab-revise-wrap" id="ab-revise-wrap">
+            <div class="ab-revise-inner">
+              <input class="ab-revise-input" id="ab-revise-input" placeholder="что доработать..." spellcheck="false" autocomplete="off">
+              <button class="ab-revise-send" id="ab-revise-send">отправить ↑</button>
+            </div>
+          </div>
+          <div class="action-btns">
+            <button class="ab-btn revise" id="btn-revise">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10.5l1.5-4L10 1l3 3-6.5 6.5L2 10.5z"/><line x1="8" y1="3" x2="11" y2="6"/></svg>
+              На доработку
+            </button>
+            <button class="ab-btn reject" id="btn-reject">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+              <span id="btn-reject-label">Отклонить</span>
+            </button>
+            <button class="ab-btn confirm" id="btn-confirm">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+              Подтвердить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /screen-wc -->
+</div><!-- /shell -->
+
+<!-- ══ MODAL: SCANNER REPORT ══════════════════════════════ -->
+<div class="modal-overlay" id="report-modal">
+  <div class="modal-bar">
+    <div class="modal-label">отчёт сканера · <span id="modal-proj-name">—</span></div>
+    <button class="modal-close" onclick="closeReport()">закрыть ✕</button>
+  </div>
+  <div class="modal-frame">
+    <iframe src="preview.html" id="report-iframe"></iframe>
+  </div>
+</div>
+
+<script>
+// ── Screen navigation ─────────────────────────────────────────
+const PROJ_DATA = {
+  'myapp-desktop': {
+    name:'MyApp.Desktop',
+    desc:'Десктопное приложение на WinUI 3. Нестабильный старт — невалидный конфиг, молчащие ошибки в bootstrap.',
+    files:31,anchors:6,tasks:6,docs:5
+  },
+  'backend-api': {
+    name:'backend-api',
+    desc:'REST API сервис. Миграция на новую схему БД, рефакторинг слоя авторизации.',
+    files:84,anchors:12,tasks:9,docs:3
+  },
+  'dashboard-web': {
+    name:'dashboard-web',
+    desc:'Веб-дашборд для мониторинга. Компоненты на React, интеграция с backend-api.',
+    files:22,anchors:8,tasks:4,docs:2
+  }
+};
+let currentProj = null;
+
+function showScreen(id){
+  const next = document.getElementById(id);
+  const current = document.querySelector('.screen.active');
+  if(current && current !== next){
+    current.classList.remove('visible');
+    setTimeout(()=>{
+      current.classList.remove('active');
+      next.classList.add('active');
+      requestAnimationFrame(()=>requestAnimationFrame(()=>next.classList.add('visible')));
+    }, 150);
+  } else {
+    next.classList.add('active');
+    requestAnimationFrame(()=>requestAnimationFrame(()=>next.classList.add('visible')));
+  }
+}
+
+function openHome(projId){
+  currentProj = projId;
+  const d = PROJ_DATA[projId];
+  document.getElementById('home-crumb-name').textContent = d.name;
+  document.getElementById('home-proj-name').textContent = d.name;
+  document.getElementById('home-proj-desc').textContent = d.desc;
+  document.getElementById('hs-files').textContent = d.files;
+  document.getElementById('hs-anchors').textContent = d.anchors;
+  document.getElementById('hs-tasks').textContent = d.tasks;
+  document.getElementById('hs-docs').textContent = d.docs;
+  showScreen('screen-home');
+}
+
+function goList(){showScreen('screen-list')}
+function goHome(){showScreen('screen-home')}
+
+function enterWorkCycle(){
+  showScreen('screen-wc');
+  setTimeout(()=>cinput && cinput.focus(), 80);
+}
+
+function openReport(){
+  document.getElementById('modal-proj-name').textContent = currentProj || '—';
+  document.getElementById('report-modal').classList.add('open');
+}
+
+function closeReport(){
+  document.getElementById('report-modal').classList.remove('open');
+}
+
+document.getElementById('report-modal').addEventListener('click', e=>{
+  if(e.target === document.getElementById('report-modal')) closeReport();
+});
+
+// ── Локализация ──────────────────────────────────────────────
+const L10N = {
+  'composer.placeholder': 'Опишите задачу...',
+  'composer.intent':      'В работу',
+  'composer.intent.kbd':  'tab',
+  'pf.kicker':            'План выполнения · 6 задач',
+  'pf.title':             'Runtime boot refactor',
+  'pf.confirm':           'Запустить',
+  'pf.clarify':           'Уточнить',
+  'pf.back':              'Назад',
+  'pf.clarify.label':     'Уточнение',
+  'pf.clarify.placeholder':'Что нужно скорректировать...',
+  'pf.clarify.send':      'Отправить ↑',
+  'dec.kicker':           'Результат готов',
+  'dec.title':            'Принять изменения?',
+  'dec.sub':              'Все задачи выполнены, тесты прошли без ошибок.',
+  'dec.confirm':          'Подтвердить',
+  'dec.revise':           'На доработку',
+  'dec.reject':           'Отказаться',
+  'dec.revise.label':     'Что доработать',
+  'dec.revise.placeholder':'Опиши что нужно изменить...',
+  'dec.revise.send':      'Отправить ↑',
+  'worker.label':         'Выполнение',
+  'artifact.waiting':     'Ожидание изменений...',
+  'btn.code':             'Код',
+  'btn.preview':          'Превью',
+};
+function applyL10N(){
+  document.querySelectorAll('[data-l10n]').forEach(el=>{
+    const key=el.dataset.l10n;
+    if(L10N[key]!==undefined)el.textContent=L10N[key];
+  });
+  document.querySelectorAll('[data-l10n-placeholder]').forEach(el=>{
+    const key=el.dataset.l10nPlaceholder;
+    if(L10N[key]!==undefined)el.placeholder=L10N[key];
+  });
+}
+applyL10N();
+// ────────────────────────────────────────────────────────────
+const SCENES=[
+  {task:1,actions:[{text:'читаю main.cpp',details:[{t:'startup path инициализируется на строке 12'},{t:'резолв происходит после runtime init — проблема'}]},{text:'вношу изменения',hi:true,details:[{t:'ResolveStartupPath() перемещён выше',hi:true},{t:'добавлена проверка на пустой путь',hi:true}]}],diff:{title:'Fixing startup path',file:'main.cpp',tag:'fix',caption:'Переместили резолв пути <b>до старта runtime</b> — невалидный путь теперь блокирует запуск сразу.',lines:[{t:'ctx',n:11,c:'  auto cfg = LoadConfig(path);'},{t:'rm',n:12,c:'  auto startupPath = argv[0];'},{t:'add',n:12,c:'  auto startupPath = ResolveStartupPath(argv[0], cfg);'},{t:'ctx',n:13,c:'  if (startupPath.empty()) return false;'}]}},
+  {task:2,actions:[{text:'открываю config_loader.cpp',details:[{t:'нет проверки обязательных полей'},{t:'Validate() вызывается без предусловий'}]},{text:'добавляю раннюю валидацию',hi:true,details:[{t:'проверка workspaceRoot и profile до старта',hi:true},{t:'понятное сообщение об ошибке вместо crash',hi:true}]}],diff:{title:'Config pre-condition',file:'config_loader.cpp',tag:'add',caption:'Теперь приложение <b>скажет что именно не так</b> вместо молчаливого падения.',lines:[{t:'add',n:8,c:'  if (!cfg.Has("workspaceRoot"))'},{t:'add',n:9,c:'    return FailConfig("workspaceRoot missing");'},{t:'add',n:10,c:'  if (!cfg.Has("profile"))'},{t:'add',n:11,c:'    return FailConfig("profile missing");'},{t:'ctx',n:12,c:'  return cfg.Validate();'}]}},
+  {task:3,actions:[{text:'анализирую runtime_bootstrap.cpp',details:[{t:'3 ветки catch — одна глотает ConfigError молча'},{t:'это причина "ничего в логах"'}]},{text:'схлопываю в единый канал',hi:true,details:[{t:'все ошибки через ReportBootstrapFailure',hi:true},{t:'ни одна ошибка больше не потеряется',hi:true}]}],diff:{title:'Collapsing error branches',file:'runtime_bootstrap.cpp',tag:'refactor',caption:'Убрали ветку которая <b>скрывала ошибки</b> — теперь всё видно в логах.',lines:[{t:'rm',n:44,c:'  catch (ConfigError& e) { Log(e); return false; }'},{t:'rm',n:45,c:'  catch (RuntimeError& e) { Panic(); return false; }'},{t:'add',n:44,c:'  catch (const BootError& e) {'},{t:'add',n:45,c:'    return ReportBootstrapFailure(e);'},{t:'add',n:46,c:'  }'}]}},
+  {task:4,actions:[{text:'создаю config_loader_test.cpp',details:[{t:'пишу тест для FailConfig path'},{t:'проверяю оба сценария'}]},{text:'тест проходит',hi:true,details:[{t:'FailsOnMissingRoot — passed',hi:true},{t:'FailsOnMissingProfile — passed',hi:true}]}],diff:{title:'Unit test — FailConfig',file:'config_loader_test.cpp',tag:'test',caption:'Тест <b>поймает регрессию</b> если кто-то случайно уберёт проверку.',lines:[{t:'add',n:1,c:'TEST(ConfigLoader, FailsOnMissingRoot) {'},{t:'add',n:2,c:'  Config cfg;'},{t:'add',n:3,c:'  EXPECT_FALSE(ValidateConfig(cfg));'},{t:'add',n:4,c:'  EXPECT_EQ(cfg.LastError(), "workspaceRoot missing");'},{t:'add',n:5,c:'}'}]}},
+  {task:5,actions:[{text:'трейсирую SessionManager',details:[{t:'ранний выход без освобождения session_'},{t:'утечка при каждом failed boot'}]},{text:'патчу release',hi:true,details:[{t:'session_.Release() добавлен перед return false',hi:true},{t:'утечка закрыта',hi:true}]}],diff:{title:'Sealing resource leak',file:'session_manager.cpp',tag:'fix',caption:'Ресурсы теперь <b>освобождаются даже при ошибке</b> запуска.',lines:[{t:'ctx',n:88,c:'  if (earlyExit) {'},{t:'rm',n:89,c:'    return false;'},{t:'add',n:89,c:'    session_.Release();'},{t:'add',n:90,c:'    return false;'},{t:'ctx',n:91,c:'  }'}]}},
+  {task:6,actions:[{text:'запускаю smoke test suite',details:[{t:'boot cycle · 6 assertions'},{t:'тестирую полный путь от конфига до Ready'}]},{text:'все тесты прошли',hi:true,details:[{t:'Boot.FullCycleSmoke — passed (8ms)',hi:true},{t:'ConfigLoader.FailsOnMissingRoot — passed (2ms)',hi:true}]}],diff:{title:'Smoke test — boot cycle',file:'boot_smoke_test.cpp',tag:'verify',caption:'Полный boot цикл проверен — система <b>стартует корректно</b>.',lines:[{t:'add',n:1,c:'TEST(Boot, FullCycleSmoke) {'},{t:'add',n:2,c:'  ASSERT_TRUE(InitRuntime(testCfg));'},{t:'add',n:3,c:'  ASSERT_TRUE(ValidateState());'},{t:'add',n:4,c:'  EXPECT_EQ(GetStatus(), Status::Ready);'},{t:'add',n:5,c:'}'}]}},
+];
+
+const phase1=document.getElementById('phase1'),phase3=document.getElementById('phase3');
+const feed=document.getElementById('feed'),cinput=document.getElementById('cinput');
+const composerWrap=document.getElementById('composer-wrap'),pfCard=document.getElementById('pf-card');
+const pfRowEls=pfCard.querySelectorAll('.pf-row'),phaseTag=document.getElementById('phase-tag');
+const intentBtn=document.getElementById('intent-btn');
+const agentFeed=document.getElementById('agent-feed'),artifactBody=document.getElementById('artifact-body');
+const artifactTitle=document.getElementById('artifact-title'),leftTimer=document.getElementById('left-timer');
+const leftPulse=document.getElementById('left-pulse');
+
+let curPhase=1,pfOpen=false,sceneIdx=0,secs=0,timerInt=null,typingEl=null,rIdx=0;
+
+function getLevel(v){const w=v.trim().split(/\s+/).filter(Boolean).length,l=v.trim().length;if(w>=6||l>=32)return 3;if(w>=3||l>=14)return 2;if(w>=1||l>=3)return 1;return 0}
+function syncIntent(){const lvl=getLevel(cinput.value);intentBtn.className='intent-btn'+(lvl>0?' lvl'+lvl:'')}
+function mk(cls,html){const e=document.createElement('div');e.className=cls;if(html)e.innerHTML=html;return e}
+function addBubble(t){feed.appendChild(mk('bubble-wrap','<div class="bubble">'+t+'</div>'));feed.appendChild(mk('gap-sm'));feed.scrollTop=feed.scrollHeight}
+function addDoc(h){const d=mk('doc-block');d.innerHTML=h;feed.appendChild(d);feed.scrollTop=feed.scrollHeight}
+function showTyping(){typingEl=mk('typing-wrap','<div class="typing-dots"><span></span><span></span><span></span></div>');feed.appendChild(typingEl);feed.scrollTop=feed.scrollHeight}
+function hideTyping(){if(typingEl){typingEl.remove();typingEl=null}}
+const RESPONSES=[t=>`понял — "${t.slice(0,50)}". изучаю детали`,()=>'уточни: это при любом рестарте или только холодный старт?',()=>'хорошо, это уточняет приоритет задачи 02',()=>'принято — <em>намерение обновлено</em>'];
+function send(){const t=cinput.value.trim();if(!t)return;addBubble(t);cinput.value='';syncIntent();showTyping();setTimeout(()=>{hideTyping();addDoc(RESPONSES[Math.min(rIdx,RESPONSES.length-1)](t));rIdx++;feed.appendChild(mk('gap'));feed.scrollTop=feed.scrollHeight},700+Math.random()*400)}
+
+const phase1Overlay=document.getElementById('phase1-overlay');
+
+function openPreflight(){if(pfOpen)return;pfOpen=true;curPhase=2;phaseTag.textContent='phase-2';phase1Overlay.classList.add('active');composerWrap.classList.add('hidden');pfCard.classList.add('open');pfRowEls.forEach((r,i)=>setTimeout(()=>r.classList.add('in'),260+i*60))}
+function closePreflight(){if(!pfOpen)return;pfOpen=false;curPhase=1;phaseTag.textContent='phase-1';pfRowEls.forEach(r=>r.classList.remove('in'));pfCard.classList.remove('open');setTimeout(()=>{phase1Overlay.classList.remove('active');composerWrap.classList.remove('hidden');cinput.focus()},300)}
+
+function enterExecution(){
+  curPhase=3;phaseTag.textContent='phase-3';pfCard.classList.remove('open');
+  phase1.style.display='none';phase3.classList.add('active');
+  timerInt=setInterval(()=>{secs++;leftTimer.textContent=Math.floor(secs/60)+':'+(secs%60<10?'0':'')+secs%60},1000);
+  setTimeout(()=>playScene(0),500);
+}
+
+function setTask(idx){document.querySelectorAll('.ts-row').forEach((r,i)=>{r.className='ts-row'+(i<idx?' done':i===idx?' run':'')})}
+
+function addAgentBlock(action,isFirst){
+  const block=mk('agent-block');
+  const aEl=document.createElement('div');
+  aEl.className='agent-action'+(action.hi?'':!isFirst?' dim':'');
+  const dot=document.createElement('div');dot.className='agent-dot';
+  if(action.hi)dot.style.cssText='background:var(--green);opacity:0.7';
+  aEl.appendChild(dot);aEl.appendChild(document.createTextNode(action.text));block.appendChild(aEl);
+  if(action.details){
+    const det=mk('agent-details');
+    action.details.forEach(d=>{const dl=mk('agent-detail'+(d.hi?' hi':''));dl.innerHTML='<span class="det-arrow">↳</span>'+d.t;det.appendChild(dl)});
+    block.appendChild(det);
+  }
+  agentFeed.appendChild(block);requestAnimationFrame(()=>requestAnimationFrame(()=>block.classList.add('in')));
+  agentFeed.scrollTop=agentFeed.scrollHeight;
+}
+
+function addAgentSep(){const s=mk('agent-sep');agentFeed.appendChild(s);agentFeed.scrollTop=agentFeed.scrollHeight}
+
+function addDiffCard(diff){
+  artifactTitle.textContent=diff.file;
+  const card=mk('diff-card');
+  card.innerHTML=`<div class="diff-card-head"><span class="diff-card-file">${diff.file}</span><span class="diff-card-sep">·</span><span class="diff-card-title">${diff.title}</span><span class="diff-tag ${diff.tag}">${diff.tag}</span></div><div class="diff-lines">${diff.lines.map(l=>`<div class="diff-line ${l.t}"><div class="dl-n">${l.n}</div><div class="dl-m">${l.t==='add'?'+':l.t==='rm'?'−':' '}</div><div class="dl-c">${l.c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`).join('')}</div><div class="diff-caption">${diff.caption}</div>`;
+  artifactBody.appendChild(card);requestAnimationFrame(()=>requestAnimationFrame(()=>card.classList.add('in')));
+  artifactBody.scrollTop=artifactBody.scrollHeight;
+}
+
+function playScene(si){
+  if(si>=SCENES.length){
+    clearInterval(timerInt);
+    leftPulse.style.animation='none';leftPulse.style.background='var(--green)';leftPulse.style.opacity='0.6';
+    const finalTime = leftTimer.textContent;
+    addAgentSep();
+    const done=mk('agent-block');
+    done.innerHTML=`<div class="agent-action"><div class="agent-dot" style="background:var(--green);opacity:0.7"></div>все задачи выполнены · 0 ошибок · ${finalTime}</div>`;
+    agentFeed.appendChild(done);requestAnimationFrame(()=>requestAnimationFrame(()=>done.classList.add('in')));
+    setTimeout(showDecision,1000);return;
+  }
+  const s=SCENES[si];setTask(si);
+  let delay=0;
+  s.actions.forEach((a,i)=>{setTimeout(()=>addAgentBlock(a,i===0),delay);delay+=800});
+  setTimeout(()=>{addAgentSep();addDiffCard(s.diff)},delay+100);
+  setTimeout(()=>playScene(si+1),delay+2400);
+}
+
+function showDecision(){
+  curPhase=4;phaseTag.textContent='phase-4';
+  document.getElementById('action-bar').classList.add('visible');
+}
+
+function backToPhase1(){
+  document.getElementById('action-bar').classList.remove('visible');
+  document.getElementById('ab-revise-wrap').classList.remove('open');
+  setTimeout(()=>{
+    phase3.classList.remove('active');
+    phase1.style.display='';
+    phase1Overlay.classList.remove('active');
+    composerWrap.classList.remove('hidden');
+    pfCard.classList.remove('open');
+    pfRowEls.forEach(r=>r.classList.remove('in'));
+    phaseTag.textContent='phase-1';curPhase=1;cinput.focus();
+  },350);
+}
+
+cinput.addEventListener('input',syncIntent);
+cinput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}if(e.key==='Tab'){e.preventDefault();openPreflight()}});
+document.getElementById('c-send').addEventListener('click',send);
+document.getElementById('c-plus').addEventListener('click',()=>document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change',e=>{Array.from(e.target.files).forEach(f=>{const w=mk('bubble-wrap');const c=document.createElement('div');c.style.cssText='display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r-sm);padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--tm)';c.textContent=f.name;w.appendChild(c);feed.appendChild(w);feed.appendChild(mk('gap-sm'));feed.scrollTop=feed.scrollHeight});e.target.value=''});
+intentBtn.addEventListener('click',openPreflight);
+document.getElementById('btn-pf-confirm').addEventListener('click',enterExecution);
+document.getElementById('btn-pf-back').addEventListener('click',closePreflight);
+
+const pfClarify=document.getElementById('pf-clarify');
+const pfClarifyInput=document.getElementById('pf-clarify-input');
+let pfClarifyOpen=false;
+document.getElementById('btn-pf-clarify').addEventListener('click',()=>{
+  pfClarifyOpen=!pfClarifyOpen;
+  pfClarify.classList.toggle('open',pfClarifyOpen);
+  if(pfClarifyOpen)setTimeout(()=>pfClarifyInput.focus(),340);
+});
+document.getElementById('pf-clarify-send').addEventListener('click',()=>{
+  if(!pfClarifyInput.value.trim())return;
+  pfClarifyInput.value='';
+  pfClarify.classList.remove('open');
+  pfClarifyOpen=false;
+});
+pfClarifyInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('pf-clarify-send').click()}
+  if(e.key==='Escape'){pfClarify.classList.remove('open');pfClarifyOpen=false}
+});
+
+document.getElementById('btn-confirm').addEventListener('click', backToPhase1);
+document.getElementById('btn-reject').addEventListener('click', ()=>{
+  const btn = document.getElementById('btn-reject');
+  const label = document.getElementById('btn-reject-label');
+  if(btn.dataset.guard === '1'){
+    backToPhase1();
+    return;
+  }
+  btn.dataset.guard = '1';
+  label.textContent = 'точно отклонить?';
+  btn.style.borderColor = 'var(--red-line)';
+  btn.style.color = 'var(--red-soft)';
+  btn.style.background = 'var(--red-bg)';
+  document.getElementById('btn-confirm').style.opacity = '0.2';
+  document.getElementById('btn-confirm').style.pointerEvents = 'none';
+  document.getElementById('btn-revise').style.opacity = '0.2';
+  document.getElementById('btn-revise').style.pointerEvents = 'none';
+  const reset = ()=>{
+    btn.dataset.guard = '';
+    label.textContent = 'Отклонить';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.style.background = '';
+    document.getElementById('btn-confirm').style.opacity = '';
+    document.getElementById('btn-confirm').style.pointerEvents = '';
+    document.getElementById('btn-revise').style.opacity = '';
+    document.getElementById('btn-revise').style.pointerEvents = '';
+    document.removeEventListener('click', outside);
+  };
+  const outside = e=>{ if(!btn.contains(e.target)) reset(); };
+  setTimeout(()=>document.addEventListener('click', outside), 0);
+  setTimeout(reset, 4000);
+});
+
+let abReviseOpen = false;
+document.getElementById('btn-revise').addEventListener('click', ()=>{
+  abReviseOpen = !abReviseOpen;
+  document.getElementById('ab-revise-wrap').classList.toggle('open', abReviseOpen);
+  if(abReviseOpen) setTimeout(()=>document.getElementById('ab-revise-input').focus(), 360);
+});
+document.getElementById('ab-revise-send').addEventListener('click', ()=>{
+  const inp = document.getElementById('ab-revise-input');
+  if(!inp.value.trim()) return;
+  inp.value = '';
+  document.getElementById('ab-revise-wrap').classList.remove('open');
+  abReviseOpen = false;
+  backToPhase1();
+});
+document.getElementById('ab-revise-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('ab-revise-send').click();}
+  if(e.key==='Escape'){document.getElementById('ab-revise-wrap').classList.remove('open');abReviseOpen=false;}
+});
+
+cinput.focus();syncIntent();
+document.querySelector('.screen.active').classList.add('visible');
+</script>
+</body>
+</html>

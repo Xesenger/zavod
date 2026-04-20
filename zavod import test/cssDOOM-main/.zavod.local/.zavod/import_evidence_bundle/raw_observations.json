@@ -1,0 +1,17 @@
+﻿[
+  {
+    "Kind": "structural_anomaly_detected",
+    "Value": "NO_RELEVANT_FILES",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod.local"
+  },
+  {
+    "Kind": "structural_anomaly_detected",
+    "Value": "NO_SOURCE_FILES",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod.local"
+  },
+  {
+    "Kind": "structural_anomaly_detected",
+    "Value": "NO_BUILD_MARKERS",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod.local"
+  }
+]

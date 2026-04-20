@@ -1,0 +1,65 @@
+Как встраивать Projects Web UI
+Область	Правильный источник	Что делает UI	Чего нельзя делать
+Truth / state	typed backend state	только читает и показывает	парсить текст, вычислять taskId/phase из строк
+Work-cycle	real execution / QC / apply loop	отражает текущую фазу	симулировать фазы в UI
+Conversation items	общий message engine	рендерит message / status / log / artifact	придумывать отдельную модель items только для Projects
+Markdown	один общий web renderer	использует тот же renderer, что и Chats	делать второй markdown pipeline “специально для Projects”
+Text / language	общий AppText / host-owned language source	показывает RU/EN строки	хардкодить RU/EN в html/js/xaml/c#
+Encoding	UTF-8 end-to-end	просто рендерит текст	хранить/вставлять кривые literals или делать ручные decode/encode
+Artifacts	typed attachments/artifact refs из submission/runtime	показывает artifact cards/rows	считать artifact просто “красивым текстом”
+Submission	atomic submission = text + attachments	отправляет одно сообщение	делать send text, а потом отдельный flush attachments
+Storage	snapshot-store-first conversation storage	читает latest window / prepend older	тащить raw event-lines прямо в UI
+Windowing	existing window model	latest window + prepend older	full rerender / full history load
+Role display	typed/runtime-backed state	показывает Lead/Worker/QC/System outputs	считать role просто текстовой подписью без backend смысла
+MainWindow	shell host only	хостит, роутит high-level	пихать туда доменную логику Projects
+Projects-specific UI	thin projection over existing engine	3-pane / layout / visual rhythm	строить отдельный “Projects engine”
+Каноническая схема
+Core / State / Execution truth
+        ↓
+ProjectsRuntimeController / projection contract
+        ↓
+Web snapshot / typed items
+        ↓
+Shared web renderer
+Что обязательно должно быть общим с Chats
+Общее	Должно быть одно
+message engine	✅
+typed items	✅
+keyed incremental rendering	✅
+windowing / prepend older	✅
+artifact path	✅
+atomic submission model	✅
+markdown renderer	✅
+RU/EN text source	✅
+UTF-8 rules	✅
+Что может отличаться у Projects
+Отличается	Но не становится новой истиной
+layout (3-pane)	ок
+visual chrome	ок
+какие item kinds чаще встречаются	ок
+execution/result panels	ок
+role emphasis	ок
+Красные флаги — если увидишь, стопайся
+Красный флаг	Почему плохо
+Projects парсит display string	возвращает truth-from-strings
+отдельный markdown renderer для Projects	две разные истины рендера
+отдельные RU/EN строки прямо в projects html/js	ломает text-layer
+отдельный artifact pipeline	раздвоение submission/runtime
+отдельный storage path “только для Projects UI”	ломает conversation engine
+full rerender списка при updates	убивает Phase 1 foundation
+доменная логика в MainWindow	снова god-object
+Самая короткая памятка
+Вопрос	Правильный ответ
+Где truth?	в typed backend state
+Где execution truth?	в real execution/QC/apply loop
+Где renderer truth?	один shared web renderer
+Где language truth?	один bilingual text source
+Где attachment truth?	atomic submission + artifact refs
+Где UI логика?	только projection/render
+Формула, которую держать в голове
+
+Projects UI = не новая система, а новый вид на тот же engine.
+
+И ещё важнее:
+
+Если для Projects нужно “чуть-чуть отдельно”, это почти всегда подозрительно.

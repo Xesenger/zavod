@@ -1,0 +1,10 @@
+﻿[
+  {
+    "Signal": "origin.native",
+    "Score": 0.3
+  },
+  {
+    "Signal": "structure.single_root",
+    "Score": 0.25
+  }
+]

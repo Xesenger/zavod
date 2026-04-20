@@ -33,6 +33,9 @@
     <Content Include="UI\Web\Chats\chats.surface.html" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="UI\Web\Chats\chats.css" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="UI\Web\Chats\chats.bridge.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Projects\projects.surface.html" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Projects\projects.css" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI\Web\Projects\projects.bridge.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\prompts\*.md" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\config\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

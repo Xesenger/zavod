@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZAVOD Projects Mode</title>
+<link rel="stylesheet" href="projects.css">
+</head>
+<body>
+<div class="shell" id="shell">
+
+  <!-- ══ SCREEN: PROJECT LIST ══════════════════════════════ -->
+  <div class="screen active" id="screen-list">
+    <div class="list-body">
+      <div class="list-header">
+        <div class="list-title" data-l10n="projects.list.title">проекты</div>
+      </div>
+      <div class="proj-grid" id="proj-grid"></div>
+      <div class="proj-empty" id="proj-empty" hidden>No projects yet — click Import to add your first one.</div>
+      <div class="proj-actions">
+        <div class="proj-action-btn" data-action="import-project">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 10v2h10v-2"/><line x1="7" y1="1" x2="7" y2="9"/><polyline points="4,6 7,9 10,6"/></svg>
+          <span data-l10n="projects.list.import">импортировать проект</span>
+        </div>
+        <div class="proj-action-btn" data-action="create-project">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          <span data-l10n="projects.list.new">новый проект</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: PROJECT HOME ══════════════════════════════ -->
+  <div class="screen" id="screen-home">
+    <div class="nav-bar">
+      <button class="nav-back" data-action="back-to-list">
+        <svg viewBox="0 0 14 14"><polyline points="8,3 3,7 8,11"/></svg>
+        <span data-l10n="projects.nav.toList">проекты</span>
+      </button>
+      <div class="nav-crumb"><span>·</span><span class="active" id="home-crumb-name">—</span></div>
+      <div class="phase-tag" style="margin-left:auto" data-l10n="projects.phase.home">home</div>
+    </div>
+    <div class="home-body">
+      <div class="home-stats">
+        <div class="home-stat"><div class="home-stat-n" id="hs-files">0</div><div class="home-stat-l" data-l10n="projects.stats.files">файлов</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-anchors">0</div><div class="home-stat-l" data-l10n="projects.stats.anchors">фактов найдено</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-tasks">0</div><div class="home-stat-l" data-l10n="projects.stats.tasks">задач</div></div>
+        <div class="home-stat"><div class="home-stat-n" id="hs-docs">0</div><div class="home-stat-l" data-l10n="projects.stats.docs">документов</div></div>
+      </div>
+      <div class="home-hero">
+        <div class="home-proj-label" data-l10n="projects.home.currentLabel">текущий проект</div>
+        <div class="home-proj-name" id="home-proj-name">—</div>
+        <div class="home-proj-desc" id="home-proj-desc"></div>
+
+        <div class="report-card" id="report-card" data-action="open-report" style="margin-top:20px" hidden>
+          <div class="report-card-bar">
+            <div class="report-card-label" data-l10n="projects.report.label">отчёт сканера</div>
+            <div class="report-card-open"><svg viewBox="0 0 12 12"><path d="M2 10L10 2M10 2H5M10 2v5"/></svg><span data-l10n="projects.report.open">открыть</span></div>
+          </div>
+          <div class="report-preview-wrap">
+            <iframe class="report-preview" id="report-preview" src="about:blank" scrolling="no" tabindex="-1"></iframe>
+          </div>
+        </div>
+
+        <button class="home-enter" data-action="enter-work">
+          <svg viewBox="0 0 14 14"><polyline points="4,3 9,7 4,11"/><line x1="10" y1="3" x2="10" y2="11"/></svg>
+          <span data-l10n="projects.home.enterWork">войти в рабочий цикл</span>
+        </button>
+      </div>
+
+      <div class="home-section" id="home-anchors-section" hidden>
+        <div class="home-section-label" data-l10n="projects.home.scannerAnalysis">scanner analysis</div>
+        <div id="home-anchors"></div>
+      </div>
+
+      <div class="home-section" id="home-docs-section" hidden>
+        <div class="home-section-label" data-l10n="projects.home.userDocs">user documents</div>
+        <div id="home-docs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: WORK CYCLE ════════════════════════════════ -->
+  <div class="screen" id="screen-wc">
+  <div class="nav-bar">
+    <button class="nav-back" data-action="back-to-home">
+      <svg viewBox="0 0 14 14"><polyline points="8,3 3,7 8,11"/></svg>
+      <span data-l10n="projects.nav.toHome">home</span>
+    </button>
+    <div class="phase-tag" id="phase-tag" style="margin-left:auto" data-l10n="projects.phase.workCycle">work cycle</div>
+  </div>
+
+  <div id="phase1">
+    <div class="phase1-overlay" id="phase1-overlay"></div>
+    <div class="feed" id="feed"></div>
+    <div class="composer-wrap" id="composer-wrap">
+      <div class="composer-attachments" id="composer-attachments" hidden></div>
+      <div class="c-line">
+        <button class="c-plus" id="c-plus">+</button>
+        <input class="c-input" id="cinput" data-l10n-placeholder="projects.composer.placeholder" placeholder="Опишите задачу..." spellcheck="false" autocomplete="off">
+        <button class="c-send" id="c-send">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="13" x2="8" y2="3"/><polyline points="4,7 8,3 12,7"/></svg>
+        </button>
+      </div>
+      <button class="intent-btn" id="intent-btn">
+        <span class="intent-kbd" data-l10n="projects.composer.intent.kbd">tab</span>
+        <span class="intent-label" data-l10n="projects.composer.intent">в работу</span>
+      </button>
+    </div>
+    <div class="pf-card" id="pf-card">
+      <div class="pf-inner">
+        <div class="pf-top">
+          <div class="pf-kicker" data-l10n="projects.preflight.kicker">План выполнения · 6 задач</div>
+          <div class="pf-title" data-l10n="projects.preflight.title">Runtime boot refactor</div>
+        </div>
+        <div class="pf-rows" id="pf-rows"></div>
+        <div class="pf-clarify" id="pf-clarify">
+          <div class="pf-clarify-inner">
+            <div class="pf-clarify-label" data-l10n="projects.preflight.clarify.label">уточнение</div>
+            <div class="pf-clarify-row">
+              <input class="pf-clarify-input" id="pf-clarify-input" data-l10n-placeholder="projects.preflight.clarify.placeholder" placeholder="что нужно скорректировать..." spellcheck="false" autocomplete="off">
+              <button class="pf-clarify-send" id="pf-clarify-send" data-l10n="projects.preflight.clarify.send">отправить ↑</button>
+            </div>
+          </div>
+        </div>
+        <div class="pf-footer">
+          <div class="pf-actions">
+            <button class="pf-btn confirm" id="btn-pf-confirm">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+              <span data-l10n="projects.preflight.confirm">Запустить</span>
+            </button>
+            <button class="pf-btn clarify" id="btn-pf-clarify">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="6" x2="7" y2="10"/><circle cx="7" cy="4" r="0.5" fill="currentColor" stroke="none"/></svg>
+              <span data-l10n="projects.preflight.clarify">Уточнить</span>
+            </button>
+            <button class="pf-btn back" id="btn-pf-back">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,3 3,7 8,11"/></svg>
+              <span data-l10n="projects.preflight.back">Назад</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="phase3">
+    <div class="col-left">
+      <div class="left-head">
+        <div class="left-pulse" id="left-pulse"></div>
+        <div class="left-label" data-l10n="projects.worker.label">worker</div>
+        <div class="left-timer" id="left-timer">0:00</div>
+      </div>
+      <div class="agent-feed" id="agent-feed"></div>
+      <div class="task-strip" id="task-strip"></div>
+    </div>
+    <div class="col-right">
+      <div class="artifact-frame">
+        <div class="artifact-bar">
+          <div class="mode-sw">
+            <button class="mbtn on">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,4 5,6 2,8"/><line x1="6" y1="8" x2="10" y2="8"/></svg><span data-l10n="projects.artifact.code">code</span>
+            </button>
+            <button class="mbtn">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2" width="9" height="8" rx="1.5"/><line x1="1.5" y1="4.5" x2="10.5" y2="4.5"/></svg><span data-l10n="projects.artifact.preview">preview</span>
+            </button>
+          </div>
+          <div class="a-title" id="artifact-title" data-l10n="projects.artifact.waiting">ожидание изменений...</div>
+        </div>
+        <div class="artifact-body" id="artifact-body"></div>
+        <div class="action-bar" id="action-bar">
+          <div class="action-status">
+            <div class="action-status-dot"></div>
+            <span class="action-stat"><span id="ab-stat-tasks">0</span> <span data-l10n="projects.action.tasks">задач</span></span>
+            <span class="action-stat"><span id="ab-stat-files">0</span> <span data-l10n="projects.action.files">файлов</span></span>
+            <span class="action-stat"><span id="ab-stat-errors">0</span> <span data-l10n="projects.action.errors">ошибок</span></span>
+          </div>
+          <div class="action-divider"></div>
+          <div class="ab-revise-wrap" id="ab-revise-wrap">
+            <div class="ab-revise-inner">
+              <input class="ab-revise-input" id="ab-revise-input" data-l10n-placeholder="projects.action.revise.placeholder" placeholder="что доработать..." spellcheck="false" autocomplete="off">
+              <button class="ab-revise-send" id="ab-revise-send" data-l10n="projects.action.revise.send">отправить ↑</button>
+            </div>
+          </div>
+          <div class="action-btns">
+            <button class="ab-btn revise" id="btn-revise">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10.5l1.5-4L10 1l3 3-6.5 6.5L2 10.5z"/><line x1="8" y1="3" x2="11" y2="6"/></svg>
+              <span data-l10n="projects.action.revise">На доработку</span>
+            </button>
+            <button class="ab-btn reject" id="btn-reject">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+              <span id="btn-reject-label" data-l10n="projects.action.reject">Отклонить</span>
+            </button>
+            <button class="ab-btn confirm" id="btn-confirm">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+              <span data-l10n="projects.action.confirm">Подтвердить</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /screen-wc -->
+</div><!-- /shell -->
+
+<!-- ══ MODAL: SCANNER REPORT ══════════════════════════════ -->
+<div class="modal-overlay" id="report-modal">
+  <div class="modal-bar">
+    <div class="modal-label"><span data-l10n="projects.report.modal.label">отчёт сканера</span> · <span id="modal-proj-name">—</span></div>
+    <button class="modal-close" data-action="close-report" data-l10n="projects.report.modal.close">закрыть ✕</button>
+  </div>
+  <div class="modal-frame">
+    <iframe src="preview.html" id="report-iframe"></iframe>
+  </div>
+</div>
+
+<div class="modal-overlay np-modal-overlay" id="new-project-modal">
+  <div class="np-modal-card">
+    <div class="np-modal-title" data-l10n="projects.newProject.title">Новый проект</div>
+    <div class="np-field">
+      <label class="np-label" for="np-name" data-l10n="projects.newProject.nameLabel">Название</label>
+      <input class="np-input" id="np-name" type="text" autocomplete="off" spellcheck="false" data-l10n-placeholder="projects.newProject.namePlaceholder" placeholder="Мой новый проект">
+    </div>
+    <div class="np-field">
+      <label class="np-label" for="np-kind" data-l10n="projects.newProject.kindLabel">Что это (примерно)</label>
+      <select class="np-input" id="np-kind">
+        <option value="generic" data-l10n="projects.kind.generic">Прочее</option>
+        <option value="webFrontend" data-l10n="projects.kind.webFrontend">Веб-приложение (фронтенд)</option>
+        <option value="webBackend" data-l10n="projects.kind.webBackend">Бэкенд-сервис</option>
+        <option value="game" data-l10n="projects.kind.game">Игра</option>
+        <option value="library" data-l10n="projects.kind.library">Библиотека / SDK</option>
+        <option value="mobile" data-l10n="projects.kind.mobile">Мобильное приложение</option>
+        <option value="cli" data-l10n="projects.kind.cli">CLI-утилита</option>
+        <option value="docs" data-l10n="projects.kind.docs">Документация</option>
+      </select>
+    </div>
+    <div class="np-field">
+      <div class="np-label" data-l10n="projects.newProject.pathLabel">Будет создан в</div>
+      <div class="np-path" id="np-path">Documents/ZAVOD/—</div>
+      <div class="np-hint" data-l10n="projects.newProject.pathHint">Имя папки фиксируется при создании. Название проекта можно менять потом.</div>
+    </div>
+    <div class="np-actions">
+      <button class="np-btn np-btn-cancel" id="np-cancel" data-l10n="projects.newProject.cancel">Отмена</button>
+      <button class="np-btn np-btn-create" id="np-create" data-l10n="projects.newProject.create">Создать</button>
+    </div>
+  </div>
+</div>
+
+<script src="projects.bridge.js"></script>
+</body>
+</html>

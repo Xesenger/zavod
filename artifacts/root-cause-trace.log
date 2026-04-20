@@ -1,0 +1,66 @@
+[2026-04-20T14:09:39.2737191+02:00] +     0ms | app_ctor
+[2026-04-20T14:09:39.2866325+02:00] +     8ms | on_launched_start
+[2026-04-20T14:09:39.2968287+02:00] +    18ms | root_trace_initialized | C:\Users\Boris\Development\zavod
+[2026-04-20T14:09:39.3456967+02:00] +    67ms | bootstrap_complete
+[2026-04-20T14:09:39.4199459+02:00] +   142ms | loading_overlay_initially_visible
+[2026-04-20T14:09:39.4359351+02:00] +   158ms | loading_overlay_initially_visible
+[2026-04-20T14:09:39.4485379+02:00] +   170ms | projects_webview_construct
+[2026-04-20T14:09:39.5257107+02:00] +   247ms | main_window_created
+[2026-04-20T14:09:39.5536449+02:00] +   275ms | storage_latest_window_loaded | conversation=b6bcd04add2349d58e5353bbadc8cd01, start=1, end=2, total=2, loaded=2
+[2026-04-20T14:09:39.5772033+02:00] +   299ms | window_activated
+[2026-04-20T14:09:39.5821572+02:00] +   304ms | webview_prewarm_start
+[2026-04-20T14:09:39.5834779+02:00] +   305ms | webview_ensure_start
+[2026-04-20T14:09:39.6075736+02:00] +   329ms | webview_loaded
+[2026-04-20T14:09:39.6077965+02:00] +   329ms | webview_ensure_join_existing
+[2026-04-20T14:09:39.6082903+02:00] +   330ms | webview_loaded
+[2026-04-20T14:09:39.6085007+02:00] +   330ms | webview_ensure_start
+[2026-04-20T14:09:39.6102140+02:00] +   332ms | projects_webview_loaded
+[2026-04-20T14:09:39.6111985+02:00] +   333ms | projects_webview_ensure_start
+[2026-04-20T14:09:39.8138436+02:00] +   536ms | webview_ensure_end
+[2026-04-20T14:09:39.8218492+02:00] +   544ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-20T14:09:39.8385466+02:00] +   560ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-20T14:09:39.8388338+02:00] +   560ms | webview_ensure_skipped_initialized
+[2026-04-20T14:09:39.8572645+02:00] +   579ms | webview_ensure_end
+[2026-04-20T14:09:39.8577415+02:00] +   579ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-20T14:09:39.8641553+02:00] +   586ms | projects_webview_ensure_end
+[2026-04-20T14:09:39.8646452+02:00] +   586ms | projects_webview_source_set | https://appassets.zavod/UI/Web/Projects/projects.surface.html
+[2026-04-20T14:09:39.8714643+02:00] +   593ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-20T14:09:39.8718813+02:00] +   594ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-20T14:09:39.8723209+02:00] +   594ms | projects_webview_navigation_starting | https://appassets.zavod/UI/Web/Projects/projects.surface.html
+[2026-04-20T14:09:41.8818722+02:00] +  2604ms | web_message_received | dom_ready
+[2026-04-20T14:09:41.8843845+02:00] +  2606ms | web_message_received | renderer_ready
+[2026-04-20T14:09:41.8860029+02:00] +  2608ms | web_message_received | dom_ready
+[2026-04-20T14:09:41.8872419+02:00] +  2609ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-20T14:09:41.8874959+02:00] +  2609ms | webview_ensure_skipped_initialized
+[2026-04-20T14:09:41.8878498+02:00] +  2610ms | web_message_received | renderer_ready
+[2026-04-20T14:09:41.8882402+02:00] +  2610ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-20T14:09:41.8885312+02:00] +  2610ms | webview_ensure_skipped_initialized
+[2026-04-20T14:09:41.8964623+02:00] +  2618ms | webview_navigation_completed | True
+[2026-04-20T14:09:41.8969996+02:00] +  2619ms | webview_navigation_completed | True
+[2026-04-20T14:09:41.8975219+02:00] +  2619ms | state_snapshot_posted
+[2026-04-20T14:09:41.9040103+02:00] +  2626ms | conversation_patch_stats | {"pass":1,"mode":"reset","conversationKey":"chats:b6bcd04add2349d58e5353bbadc8cd01","fullReset":true,"createdCount":2,"updatedCount":0,"removedCount":0,"ignoredCount":0,"movedCount":0,"nodeCount":2,"createdIds":["8a5f3de9e359496b9e6d1230082b22c2","fe65ce0823e9451e81ebf9ee0225df6c"],"createdKinds":["message","message"],"updatedIds":[],"ignoredIds":[]}
+[2026-04-20T14:09:41.9042908+02:00] +  2626ms | web_message_received | conversation_patch_stats
+[2026-04-20T14:09:41.9053674+02:00] +  2627ms | windowing_stats | {"action":"reset","fullReset":true,"windowStartSeq":1,"windowEndSeq":2,"hasOlder":false,"loadedCount":2}
+[2026-04-20T14:09:41.9056635+02:00] +  2627ms | web_message_received | windowing_stats
+[2026-04-20T14:09:41.9060218+02:00] +  2628ms | render_complete_received
+[2026-04-20T14:09:41.9062457+02:00] +  2628ms | loading_overlay_hidden
+[2026-04-20T14:09:41.9248324+02:00] +  2646ms | projects_web_message_received | dom_ready
+[2026-04-20T14:09:41.9270003+02:00] +  2649ms | projects_web_message_received | renderer_ready
+[2026-04-20T14:09:41.9334112+02:00] +  2655ms | projects_webview_navigation_completed | True
+[2026-04-20T14:09:43.5658445+02:00] +  4288ms | projects_storage_latest_window_loaded | conversation=0e96cdd9dcdb4dd3a90db9ea08f4de83, start=1, end=11, total=11, loaded=11
+[2026-04-20T14:09:43.9222157+02:00] +  4644ms | projects_state_snapshot_window | screen=list, hasOlder=False, count=11
+[2026-04-20T14:09:43.9229573+02:00] +  4645ms | projects_state_snapshot_posted
+[2026-04-20T14:09:43.9329221+02:00] +  4655ms | projects_render_complete_received
+[2026-04-20T14:09:44.9001630+02:00] +  5622ms | projects_web_message_received | select_project
+[2026-04-20T14:09:44.9020606+02:00] +  5624ms | projects_selected_folder_mapped | C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main\.zavod.local
+[2026-04-20T14:09:44.9186662+02:00] +  5640ms | projects_state_snapshot_window | screen=home, hasOlder=False, count=11
+[2026-04-20T14:09:44.9191590+02:00] +  5641ms | projects_state_snapshot_posted
+[2026-04-20T14:09:44.9209398+02:00] +  5643ms | projects_render_complete_received
+[2026-04-20T14:09:45.9869682+02:00] +  6709ms | projects_web_message_received | navigate_screen
+[2026-04-20T14:09:45.9892478+02:00] +  6711ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=False, count=11
+[2026-04-20T14:09:45.9897757+02:00] +  6711ms | projects_state_snapshot_posted
+[2026-04-20T14:09:45.9919311+02:00] +  6714ms | projects_render_complete_received
+[2026-04-20T14:09:49.8637772+02:00] + 10585ms | projects_web_message_received | send_message
+[2026-04-20T14:09:49.8859296+02:00] + 10608ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=False, count=12
+[2026-04-20T14:09:49.8864339+02:00] + 10608ms | projects_state_snapshot_posted
+[2026-04-20T14:09:49.8915118+02:00] + 10613ms | projects_render_complete_received

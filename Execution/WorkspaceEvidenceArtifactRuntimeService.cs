@@ -316,6 +316,9 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var entryPoints = interpretation.EntryPoints ?? Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>();
         var selection = _projectDocumentRuntime.SelectSources(projectRootPath);
         var mainDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Project);
+        var directionDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Direction);
+        var roadmapDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Roadmap);
+        var canonDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Canon);
         var companionDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Capsule);
         var title = ResolvePreviewTitle(runResult);
         var styleBlock = ExtractTemplateStyle(TryLoadPreviewTemplate());
@@ -364,6 +367,17 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 .mini-card li { margin: 0 0 8px; }
 .diagram-preview { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--line-soft); background: rgba(255,255,255,0.02); margin-top: 12px; }
 .truth-note { margin-top: 10px; color: var(--muted); font-size: 13px; }
+.doc-cards { display: grid; gap: 16px; }
+.doc-card { border-radius: var(--radius-md); border: 1px solid var(--line-soft); overflow: hidden; }
+.doc-card.doc-missing { opacity: 0.55; }
+.doc-card-head { padding: 12px 18px 11px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); }
+.doc-card-label { font-size: 13px; font-weight: 500; flex: 1; }
+.doc-card-filename { font-family: ""JetBrains Mono"", ""Consolas"", monospace; font-size: 11px; color: var(--muted); }
+.doc-card-body { padding: 16px 18px; }
+.doc-card-body .markdown { font-size: 14px; }
+.doc-card-body .markdown h1 { font-size: 18px; }
+.doc-card-body .markdown h2 { font-size: 15px; }
+.doc-missing-note { font-size: 13px; color: var(--muted); font-style: italic; }
 @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } body { padding: 32px 16px 40px; } .hero { padding: 30px 24px; } .content-card { padding: 24px 22px; } }";
         var subtitle = selection.ActiveStage switch
         {
@@ -383,10 +397,10 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
                 : BuildProjectReport(runResult);
         // Note: if mainDocument does not exist, content is rebuilt from the current run result.
         // This is expected at ImportPreview stage. The stage badge and truthNote already reflect this.
-        var mainHtml = RenderMarkdownToHtml(mainMarkdown);
-        var companionHtml = companionDocument.Exists
-            ? $"<section class=\"card content-card\"><div class=\"section-title\">Companion Document</div><div class=\"source-note\">Source: {HtmlEncode(DescribeSource(companionDocument.Stage, companionDocument.Path))}</div><div class=\"markdown\">{RenderMarkdownToHtml(companionDocument.Markdown)}</div></section>"
-            : string.Empty;
+        var mainDocForSection = mainDocument.Exists
+            ? mainDocument
+            : new ProjectDocumentReadResult(ProjectDocumentKind.Project, mainDocument.Stage, mainDocument.Path, Exists: true, mainMarkdown);
+        var documentsSection = BuildDocumentsSectionHtml(mainDocForSection, directionDocument, roadmapDocument, canonDocument, companionDocument);
         var healthLabel = pack?.ProjectProfile.Health.ToString() ?? "Unknown";
         var importKindLabel = runResult.PreviewPacket.ImportKind.ToString();
         var sourceRootsLabel = sourceRoots.Count > 0
@@ -494,13 +508,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
       <main class="content">
         {{warning}}
         <div class="content-grid">
-          <section class="card content-card">
-            <div class="section-title">Main Document</div>
-            <div class="source-note">Source: {{HtmlEncode(DescribeSource(mainDocument.Stage, mainDocument.Path))}}</div>
-            <div class="truth-note">{{HtmlEncode(truthNote)}}</div>
-            <div class="markdown">{{mainHtml}}</div>
-          </section>
-          {{companionHtml}}
+          {{documentsSection}}
           {{structureSection}}
         </div>
       </main>
@@ -508,6 +516,71 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
   </div>
 </body>
 </html>
+""";
+    }
+
+    private static string BuildDocumentsSectionHtml(
+        ProjectDocumentReadResult project,
+        ProjectDocumentReadResult direction,
+        ProjectDocumentReadResult roadmap,
+        ProjectDocumentReadResult canon,
+        ProjectDocumentReadResult capsule)
+    {
+        var cards = new[]
+        {
+            BuildDocCardHtml("Project", "project.md", project),
+            BuildDocCardHtml("Direction", "direction.md", direction),
+            BuildDocCardHtml("Roadmap", "roadmap.md", roadmap),
+            BuildDocCardHtml("Canon", "canon.md", canon),
+            BuildDocCardHtml("Capsule", "capsule.md", capsule),
+        };
+
+        return $"""
+<section class="card content-card">
+  <div class="section-title">Canonical Documents</div>
+  <div class="doc-cards">
+    {string.Join("\n    ", cards)}
+  </div>
+</section>
+""";
+    }
+
+    private static string BuildDocCardHtml(string label, string fileName, ProjectDocumentReadResult doc)
+    {
+        var (stageClass, stageName) = doc.Stage switch
+        {
+            ProjectDocumentStage.CanonicalDocs => ("good", "Canonical"),
+            ProjectDocumentStage.PreviewDocs => ("unknown", "Preview"),
+            _ => ("warn", "Import")
+        };
+
+        if (!doc.Exists)
+        {
+            return $"""
+<div class="doc-card doc-missing">
+  <div class="doc-card-head">
+    <span class="doc-card-label">{HtmlEncode(label)}</span>
+    <span class="doc-card-filename">{HtmlEncode(fileName)}</span>
+    <span class="badge warn">Not created</span>
+  </div>
+  <div class="doc-card-body">
+    <div class="doc-missing-note">This document has not been created yet.</div>
+  </div>
+</div>
+""";
+        }
+
+        return $"""
+<div class="doc-card">
+  <div class="doc-card-head">
+    <span class="doc-card-label">{HtmlEncode(label)}</span>
+    <span class="doc-card-filename">{HtmlEncode(fileName)}</span>
+    <span class="badge {stageClass}">{HtmlEncode(stageName)}</span>
+  </div>
+  <div class="doc-card-body">
+    <div class="markdown">{RenderMarkdownToHtml(doc.Markdown)}</div>
+  </div>
+</div>
 """;
     }
 

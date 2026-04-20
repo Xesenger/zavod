@@ -1,0 +1,247 @@
+﻿{
+  "EntryPoints": [],
+  "ModuleCandidates": [
+    {
+      "Name": "Audio",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 1 files clustered under 'audio' from source root 'src'."
+    },
+    {
+      "Name": "Game",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 21 files clustered under 'game' from source root 'src'."
+    },
+    {
+      "Name": "Index.js",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 1 files clustered under 'index.js' from source root '.'."
+    },
+    {
+      "Name": "Input",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 5 files clustered under 'input' from source root 'src'."
+    },
+    {
+      "Name": "LICENSE.txt",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 1 files clustered under 'LICENSE.txt' from source root '.'."
+    },
+    {
+      "Name": "Package.json",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 1 files clustered under 'package.json' from source root '.'."
+    },
+    {
+      "Name": "Renderer",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 21 files clustered under 'renderer' from source root 'src'."
+    },
+    {
+      "Name": "Ui",
+      "Role": "subsystem-cluster",
+      "LayerName": "root",
+      "EvidenceNote": "Observed 4 files clustered under 'ui' from source root 'src'."
+    }
+  ],
+  "FileRoles": [
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL3_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL3_2.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL3_5.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL4_2.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL4_3.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL5_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CEIL5_2.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CONS1_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CONS1_5.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\CONS1_7.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\DEM1_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\DEM1_2.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\DEM1_3.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\DEM1_4.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT10.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT14.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT18.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT2.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT20.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT22.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT23.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT5.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT5_4.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLAT5_5.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR0_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR0_3.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR0_6.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR1_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR1_7.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR3_3.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    },
+    {
+      "RelativePath": "public\\assets\\flats\\FLOOR4_1.png",
+      "Role": "asset",
+      "Confidence": 0.85,
+      "Reason": "Path or extension markers indicate asset content."
+    }
+  ]
+}

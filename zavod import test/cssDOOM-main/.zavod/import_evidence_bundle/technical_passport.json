@@ -1,0 +1,35 @@
+﻿{
+  "ObservedLanguages": [
+    "JavaScript"
+  ],
+  "BuildSystems": [
+    "package_json"
+  ],
+  "Toolchains": [],
+  "Frameworks": [],
+  "VersionHints": [],
+  "TargetPlatforms": [
+    "Web"
+  ],
+  "RuntimeSurfaces": [
+    "web"
+  ],
+  "ConfigMarkers": [
+    "digit-info.json",
+    "E1M1.json",
+    "E1M2.json",
+    "E1M3.json",
+    "E1M4.json",
+    "E1M5.json",
+    "E1M6.json",
+    "E1M7.json",
+    "E1M8.json",
+    "E1M9.json",
+    "face-info.json",
+    "package.json"
+  ],
+  "BuildVariants": [
+    "release"
+  ],
+  "NotableOptions": []
+}

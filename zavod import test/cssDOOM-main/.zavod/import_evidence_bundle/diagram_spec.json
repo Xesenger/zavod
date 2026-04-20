@@ -1,0 +1,49 @@
+﻿{
+  "Title": "Project Architecture",
+  "Nodes": [
+    {
+      "Id": "root",
+      "Label": "Project root",
+      "Kind": "Unknown",
+      "GroupId": null,
+      "Confidence": 0
+    },
+    {
+      "Id": "src",
+      "Label": "Source code directory",
+      "Kind": "Unknown",
+      "GroupId": null,
+      "Confidence": 0
+    },
+    {
+      "Id": "public",
+      "Label": "Assets and public resources",
+      "Kind": "Unknown",
+      "GroupId": null,
+      "Confidence": 0
+    }
+  ],
+  "Edges": [
+    {
+      "From": "root",
+      "To": "src",
+      "Label": "contains",
+      "Kind": "folder",
+      "Confidence": 0
+    },
+    {
+      "From": "root",
+      "To": "public",
+      "Label": "contains",
+      "Kind": "folder",
+      "Confidence": 0
+    }
+  ],
+  "Groups": [],
+  "Notes": [],
+  "RenderHints": {
+    "LayoutDirection": "left-to-right",
+    "EmphasisNodes": [],
+    "ShowLegend": true
+  }
+}

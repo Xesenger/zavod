@@ -315,11 +315,13 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Scanner / Import / Evidence | Functional | Core flow works, but accuracy and depth are still evolving |
-| Preview → Canonical pipeline | Functional | Stage-based truth pipeline exists and is actively used, but still evolving |
+| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving |
+| Preview → Canonical pipeline | Functional | Stage-based truth pipeline active, still evolving |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | Roles and boundaries exist, further refinement expected |
-| Acceptance / Apply Boundary | Functional | Controlled result application boundary exists and is separated from execution |
+| Acceptance / Apply Boundary | Functional | Controlled result boundary separated from execution |
+| Dispatching / Router | Functional | ExecutionDispatcher + Bootstrap/ActiveShift/Idle subsystems + ProjectRouter |
+| Advisory layer (Sage) | Functional | ProjectSageService — context hints for Lead/Worker from project history |
 
 ---
 
@@ -328,8 +330,9 @@ It is a factual snapshot, not a claim of completeness.
 | Area | Status | Notes |
 |------|--------|------|
 | Execution lifecycle | Partial | Core flow exists, not yet formalized as a full DSL |
-| LLM orchestration | Partial | Lead/Importer are active, full loop not yet complete |
-| Worker execution pipeline | Partial | Concept and fragments exist, not fully connected |
+| LLM orchestration (OpenRouter) | Partial | Client implemented, full end-to-end loop not yet complete |
+| Worker execution pipeline | Partial | Fragments connected, not fully stabilized |
+| Execution verification pipeline | Planned | Architecture defined in canon, not yet implemented |
 | Autonomous runtime planning | Not yet | No model-driven planning layer yet |
 
 ---
@@ -338,8 +341,8 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Runtime profiles & isolation | Functional | Runtime profiles and isolation policies exist for local/container/vm/remote paths |
-| Tool routing & governance | Functional | Policy-driven execution is implemented |
+| Runtime profiles & isolation | Functional | Local/container/vm/remote profiles and isolation policies exist |
+| Tool routing & governance | Functional | Policy-driven execution implemented |
 | External tool orchestration (IDE/CLI) | Early | Initial integration paths exist, not end-to-end |
 | Environment preparation (setup) | Early | Detection exists, guided setup not implemented |
 | Run / Test inside ZAVOD | Partial | Execution capabilities exist, UX layer incomplete |
@@ -350,19 +353,23 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
+| Chats mode (web renderer) | Functional | WebView2 bridge with HTML/JS surface, streaming, markdown rendering |
+| Projects mode (XAML shell) | Partial | Screens and projections exist; web migration in progress |
+| Markdown rendering | Functional | Parser + WinUI 3 renderer, two typography modes (Chats/Projects) |
 | Guided user flow | Early | Intent system exists, user journey not fully shaped |
 | Internal editor | Not yet | No built-in editing surface |
 | External change tracking | Not yet | No realtime file monitoring yet |
-| Approval UX | Partial | Policy exists, product-level UX is not finalized |
+| Approval UX | Partial | Policy exists, product-level UX not finalized |
 
 ---
 
 ### Summary
 
-- Core architectural layers are in place and already interacting
-- Several subsystems are functional but still evolving
-- Product-level experience and UI are currently under active reconstruction
-- External changes are detected via scan/baseline/acceptance checks; realtime file watching is not implemented yet.
+- Core architectural layers are in place and interacting
+- Chats mode has a working web renderer; Projects mode is in active web migration
+- Dispatching, Router, and Sage are functional additions since initial snapshot
+- Execution verification pipeline is planned but not yet implemented
+- External changes detected via scan/baseline/acceptance; realtime file watching not implemented
 
 ZAVOD at this stage can be described as:
 

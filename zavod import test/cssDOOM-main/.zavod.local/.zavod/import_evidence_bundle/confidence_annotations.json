@@ -1,0 +1,14 @@
+﻿[
+  {
+    "TargetKind": "signal",
+    "TargetId": "origin.native",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "structure.single_root",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.25."
+  }
+]

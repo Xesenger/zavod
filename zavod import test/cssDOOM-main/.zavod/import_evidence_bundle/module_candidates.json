@@ -1,0 +1,20 @@
+﻿[
+  {
+    "Name": "Audio",
+    "Role": "Subsystem",
+    "EvidenceNote": "Candidate module for audio features, grouped under root/subsystem-cluster.",
+    "Confidence": 1
+  },
+  {
+    "Name": "Game",
+    "Role": "Subsystem",
+    "EvidenceNote": "Core game logic and state management, grouped under root/subsystem-cluster.",
+    "Confidence": 1
+  },
+  {
+    "Name": "Index.js",
+    "Role": "Entry point",
+    "EvidenceNote": "Main script initiating the game, loading maps, and starting the game loop.",
+    "Confidence": 1
+  }
+]

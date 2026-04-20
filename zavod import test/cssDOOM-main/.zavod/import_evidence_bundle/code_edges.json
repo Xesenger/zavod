@@ -1,0 +1,86 @@
+﻿[
+  {
+    "FromPath": "index.js",
+    "ToPath": "src\\game\\state.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'index.js'."
+  },
+  {
+    "FromPath": "src\\game\\line-of-sight.js",
+    "ToPath": "src\\game\\state.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\game\\line-of-sight.js'."
+  },
+  {
+    "FromPath": "src\\game\\movement.js",
+    "ToPath": "src\\game\\state.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\game\\movement.js'."
+  },
+  {
+    "FromPath": "src\\game\\sound-propagation.js",
+    "ToPath": "src\\game\\state.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\game\\sound-propagation.js'."
+  },
+  {
+    "FromPath": "src\\input\\gamepad.js",
+    "ToPath": "src\\input\\gamepad.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\input\\gamepad.js'."
+  },
+  {
+    "FromPath": "src\\input\\keyboard.js",
+    "ToPath": "public\\assets\\weapons\\CHAINGUN.png",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\input\\keyboard.js'."
+  },
+  {
+    "FromPath": "src\\input\\keyboard.js",
+    "ToPath": "src\\input\\gamepad.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\input\\keyboard.js'."
+  },
+  {
+    "FromPath": "src\\input\\mouse.js",
+    "ToPath": "src\\input\\gamepad.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\input\\mouse.js'."
+  },
+  {
+    "FromPath": "src\\input\\touch.js",
+    "ToPath": "src\\input\\gamepad.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\input\\touch.js'."
+  },
+  {
+    "FromPath": "src\\renderer\\effects.js",
+    "ToPath": "src\\renderer\\dom.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\renderer\\effects.js'."
+  },
+  {
+    "FromPath": "src\\renderer\\hud.js",
+    "ToPath": "src\\renderer\\dom.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\renderer\\hud.js'."
+  },
+  {
+    "FromPath": "src\\renderer\\hud.js",
+    "ToPath": "src\\renderer\\weapons.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\renderer\\hud.js'."
+  },
+  {
+    "FromPath": "src\\renderer\\weapons.js",
+    "ToPath": "src\\renderer\\dom.js",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\renderer\\weapons.js'."
+  },
+  {
+    "FromPath": "src\\ui\\menu.js",
+    "ToPath": "public\\maps\\E1M1.json",
+    "Kind": "import",
+    "Reason": "Observed import reference in 'src\\ui\\menu.js'."
+  }
+]

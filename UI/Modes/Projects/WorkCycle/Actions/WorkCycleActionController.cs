@@ -7,6 +7,7 @@ using zavod.Bootstrap;
 using zavod.Contexting;
 using zavod.Execution;
 using zavod.Flow;
+using zavod.Lead;
 using zavod.Persistence;
 using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Rendering.Conversation;
@@ -23,6 +24,7 @@ internal sealed class WorkCycleActionController
     private readonly Func<Task> _refreshShellAsync;
     private readonly Action _updateDiscussionPreview;
     private readonly ProjectSageService _sage = new();
+    private readonly LeadAgentRuntime _leadAgentRuntime;
 
     private sealed record ActiveExecutionContext(
         ProjectState ProjectState,
@@ -40,12 +42,14 @@ internal sealed class WorkCycleActionController
         string projectRoot,
         Func<ProjectsAdapter> getProjectsAdapter,
         Func<Task> refreshShellAsync,
-        Action updateDiscussionPreview)
+        Action updateDiscussionPreview,
+        LeadAgentRuntime? leadAgentRuntime = null)
     {
         _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
         _getProjectsAdapter = getProjectsAdapter ?? throw new ArgumentNullException(nameof(getProjectsAdapter));
         _refreshShellAsync = refreshShellAsync ?? throw new ArgumentNullException(nameof(refreshShellAsync));
         _updateDiscussionPreview = updateDiscussionPreview ?? throw new ArgumentNullException(nameof(updateDiscussionPreview));
+        _leadAgentRuntime = leadAgentRuntime ?? new LeadAgentRuntime();
     }
 
     private ProjectsAdapter ProjectsAdapter => _getProjectsAdapter();
@@ -164,13 +168,58 @@ internal sealed class WorkCycleActionController
         }
 
         var leadAdvisory = _sage.BuildLeadAdvisory(context.QueryState.ProjectRoot, context.QueryState.ProjectId, executionInput.PromptText);
+        var leadAgentInput = new LeadAgentInput(
+            ProjectName: context.QueryState.ProjectName,
+            ProjectRoot: context.QueryState.ProjectRoot,
+            ProjectKind: ReadProjectKind(context.QueryState.ProjectRoot),
+            UserMessage: normalizedText,
+            PreClassifierIntentState: nextState.IntentState.ToString(),
+            CurrentIntentSummary: intentSummary,
+            AdvisoryNotes: leadAdvisory.HasNotes ? leadAdvisory.Notes : Array.Empty<string>());
+        var leadAgentResult = await Task.Run(() => _leadAgentRuntime.Run(leadAgentInput));
+
+        string leadMessageContent;
+        if (leadAgentResult.Success)
+        {
+            leadMessageContent = leadAgentResult.Reply;
+            if (leadAgentResult.Parsed?.Warnings is { Count: > 0 } leadWarnings)
+            {
+                leadMessageContent = leadMessageContent
+                    + Environment.NewLine + Environment.NewLine
+                    + "Warnings: " + string.Join("; ", leadWarnings);
+            }
+        }
+        else
+        {
+            var fallbackBody = leadAdvisory.HasNotes
+                ? $"{leadReply}{Environment.NewLine}{Environment.NewLine}{leadAdvisory.BuildLeadContextBlock()}"
+                : leadReply;
+            var diagnosticCode = leadAgentResult.DiagnosticCode ?? "LEAD_UNAVAILABLE";
+            leadMessageContent = $"{fallbackBody}{Environment.NewLine}{Environment.NewLine}[lead.fallback={diagnosticCode}]";
+        }
+
+        var leadMetadata = BuildProjectConversationMetadata("discussion", context.QueryState.ActiveTaskId);
+        leadMetadata["lab.lead.model"] = leadAgentResult.ModelId ?? string.Empty;
+        leadMetadata["lab.lead.latency_ms"] = leadAgentResult.LatencyMs.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        leadMetadata["lab.lead.success"] = leadAgentResult.Success ? "true" : "false";
+        if (!string.IsNullOrEmpty(leadAgentResult.Parsed?.IntentState))
+        {
+            leadMetadata["lab.lead.intent_state"] = leadAgentResult.Parsed.IntentState;
+        }
+        if (!string.IsNullOrEmpty(leadAgentResult.TelemetryDirectory))
+        {
+            leadMetadata["lab.lead.telemetry_dir"] = leadAgentResult.TelemetryDirectory!;
+        }
+        if (!leadAgentResult.Success && !string.IsNullOrEmpty(leadAgentResult.DiagnosticCode))
+        {
+            leadMetadata["lab.lead.diagnostic"] = leadAgentResult.DiagnosticCode!;
+        }
+
         await ProjectsAdapter.AddMessageAsync(
             ConversationItemKind.Lead,
             AppText.Current.Get("role.shift_lead"),
-            leadAdvisory.HasNotes
-                ? $"{leadReply}{Environment.NewLine}{Environment.NewLine}{leadAdvisory.BuildLeadContextBlock()}"
-                : leadReply,
-            metadata: BuildProjectConversationMetadata("discussion", context.QueryState.ActiveTaskId));
+            leadMessageContent,
+            metadata: leadMetadata);
 
         SaveWorkCycleSnapshot(context.QueryState.ProjectRoot, nextState, intentSummary, isClarificationActive: false, clarificationDraft: string.Empty);
         _updateDiscussionPreview();
@@ -472,6 +521,30 @@ internal sealed class WorkCycleActionController
             runtimeState: null);
         await _refreshShellAsync();
         return true;
+    }
+
+    internal static string ReadProjectKind(string projectRoot)
+    {
+        if (string.IsNullOrWhiteSpace(projectRoot))
+        {
+            return "unknown";
+        }
+
+        try
+        {
+            var path = Path.Combine(projectRoot, ".zavod", "meta", "project_kind.txt");
+            if (!File.Exists(path))
+            {
+                return "unknown";
+            }
+
+            var value = File.ReadAllText(path).Trim();
+            return string.IsNullOrWhiteSpace(value) ? "unknown" : value;
+        }
+        catch
+        {
+            return "unknown";
+        }
     }
 
     internal static Dictionary<string, string> BuildProjectConversationMetadata(string phase, string? activeTaskId)

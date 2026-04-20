@@ -1,0 +1,200 @@
+﻿[
+  {
+    "TargetKind": "signal",
+    "TargetId": "structure.multi_root",
+    "Confidence": 1,
+    "Reason": "Derived from cold signal score 0.46."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "structure.nested_payloads",
+    "Confidence": 1,
+    "Reason": "Derived from cold signal score 0.46."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "runtime.web",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.43."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "build.package_json",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.40."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "structure.mixed_import",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.40."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "behavior.content_rendering",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "behavior.ui_rendering",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "origin.native",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "stage.build_present",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "stage.current_activity",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
+    "TargetId": "stage.docs_present",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Audio",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Game",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Index.js",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Input",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "LICENSE.txt",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Package.json",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Renderer",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Ui",
+    "Confidence": 0,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "dependency",
+    "TargetId": "package.json:gamecontroller.js",
+    "Confidence": 2,
+    "Reason": "Derived from manifest/build dependency surface extraction."
+  },
+  {
+    "TargetKind": "dependency",
+    "TargetId": "package.json:vite",
+    "Confidence": 1,
+    "Reason": "Derived from manifest/build dependency surface extraction."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "README.md",
+    "Confidence": 1,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\icon.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\preview.jpg",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\DIGITS_SHEET.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\FACE_SHEET.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STARMS.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STBAR.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STFB0.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STFB1.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STFB2.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\hud\\STFB3.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  }
+]

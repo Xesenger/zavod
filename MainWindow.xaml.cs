@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -22,11 +22,13 @@ using Windows.UI;
 using WinRT.Interop;
 using zavod.Bootstrap;
 using zavod.Contexting;
+using zavod.Workspace;
 using zavod.Flow;
 using zavod.Persistence;
 using zavod.UI.Rendering.Conversation;
 using zavod.UI.Modes.Chats;
 using zavod.UI.Modes.Projects;
+using zavod.UI.Modes.Projects.Bridge;
 using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Shell.Verification;
 using zavod.UI.Shell.Windowing;
@@ -51,6 +53,16 @@ namespace zavod
         private const int ShellMinimumHeight = 640;
         private readonly bool _shellPassEnabled = true;
         private bool _shellPassWebRefreshRequested;
+
+        // Pass 1 step 3a: feature flag for the new Projects WebView2 renderer.
+        // When false, the legacy XAML ProjectsHostView is used (current production path).
+        // When true, ProjectsWebRendererView is shown instead and consumes
+        // ProjectsWebSnapshotBuilder output. Step 3b wires navigation intents
+        // (select_project, navigate_screen) so screens flip on click; no core
+        // mutations and no real project payloads yet.
+        private const bool UseProjectsWebRenderer = true;
+        private bool _projectsWebInitialSnapshotPushed;
+        private readonly ProjectsWebSnapshotBuilder _projectsWebSnapshotBuilder;
         private readonly string? _verificationCaptureMode;
         private readonly string? _verificationCapturePath;
         private readonly string? _verificationProofTextPath;
@@ -68,6 +80,7 @@ namespace zavod
             InitializeComponent();
             _chatsController = new ChatsRuntimeController(Path.GetFullPath(_projectRoot));
             _projectsController = new ProjectsRuntimeController(Path.GetFullPath(_projectRoot));
+            _projectsWebSnapshotBuilder = new ProjectsWebSnapshotBuilder(_projectsController);
 
             _workCycleActions = new WorkCycleActionController(
                 _projectRoot,
@@ -103,6 +116,7 @@ namespace zavod
 
             ChatsWebRendererView.IntentReceived += ChatsWebRendererView_IntentReceived;
             ChatsWebRendererView.FirstFrameReady += ChatsWebRendererView_FirstFrameReady;
+            ProjectsWebRendererView.IntentReceived += ProjectsWebRendererView_IntentReceived;
             ProjectsHostView.WorkCycleView.ConversationRenderer.IntentReceived += ProjectsConversationRenderer_IntentReceived;
 
             if (_shellPassEnabled)
@@ -1053,10 +1067,17 @@ namespace zavod
             if (_shellPassEnabled)
             {
                 var chats = _selectedMode == AppMode.Chats;
+                var projectsWebActive = !chats && UseProjectsWebRenderer;
 
                 ChatsWebRendererView.Visibility = chats ? Visibility.Visible : Visibility.Collapsed;
-                ProjectsHostView.Visibility = chats ? Visibility.Collapsed : Visibility.Visible;
+                ProjectsHostView.Visibility = chats || projectsWebActive ? Visibility.Collapsed : Visibility.Visible;
+                ProjectsWebRendererView.Visibility = projectsWebActive ? Visibility.Visible : Visibility.Collapsed;
                 TestSurface.Visibility = Visibility.Collapsed;
+
+                if (projectsWebActive)
+                {
+                    PushProjectsWebInitialSnapshotIfNeeded();
+                }
 
                 WindowRoot.Background = chats
                     ? Brush("Ui.Chat.BackgroundBrush")
@@ -1081,9 +1102,16 @@ namespace zavod
             }
 
             var chatsMode = _selectedMode == AppMode.Chats;
+            var projectsWebActiveFallback = !chatsMode && UseProjectsWebRenderer;
 
             ChatsWebRendererView.Visibility = chatsMode ? Visibility.Visible : Visibility.Collapsed;
-            ProjectsHostView.Visibility = chatsMode ? Visibility.Collapsed : Visibility.Visible;
+            ProjectsHostView.Visibility = chatsMode || projectsWebActiveFallback ? Visibility.Collapsed : Visibility.Visible;
+            ProjectsWebRendererView.Visibility = projectsWebActiveFallback ? Visibility.Visible : Visibility.Collapsed;
+
+            if (projectsWebActiveFallback)
+            {
+                PushProjectsWebInitialSnapshotIfNeeded();
+            }
 
             WindowRoot.Background = chatsMode
                 ? Brush("Ui.Chat.BackgroundBrush")
@@ -1318,6 +1346,345 @@ namespace zavod
         private static string GetWindowTitle()
         {
             return Application.Current.Resources["Ui.WindowTitle"] as string ?? "ZAVOD";
+        }
+
+        // Pass 1 step 3a: pushes the initial Projects Web snapshot the first time the
+        // Web renderer becomes visible. Step 3c: also ensures the runtime controller is
+        // initialized so that the snapshot's Conversation portion is valid.
+        private void PushProjectsWebInitialSnapshotIfNeeded()
+        {
+            if (_projectsWebInitialSnapshotPushed)
+            {
+                return;
+            }
+
+            _projectsWebInitialSnapshotPushed = true;
+            _ = EnsureProjectsWebReadyAndPushAsync();
+        }
+
+        private async Task EnsureProjectsWebReadyAndPushAsync()
+        {
+            var projection = ProjectsShellProjection.Build(_projectRoot);
+            await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
+            PushProjectsWebSnapshot();
+        }
+
+        private void PushProjectsWebSnapshot()
+        {
+            var snapshot = _projectsWebSnapshotBuilder.Build();
+            _ = ProjectsWebRendererView.ApplySnapshotAsync(snapshot);
+        }
+
+        // Pass 1 step 3b: navigation intents (navigate_screen, select_project).
+        // Pass 1 step 3c: composer intents (send_message, request_attach_files,
+        // stage_text_artifact) routed to the shared ProjectsRuntimeController so
+        // attachments / long text / atomic submission all flow through the engine
+        // that already powers Chats. Snapshot pushed after each state-changing intent.
+        private void ProjectsWebRendererView_IntentReceived(object? sender, ChatsWebIntentReceivedEventArgs e)
+        {
+            var type = e.Message.Type;
+            var payload = e.Message.Payload;
+            Debug.WriteLine($"[ProjectsWeb intent] type={type} payload={payload.GetRawText()}");
+
+            switch (type)
+            {
+                case "navigate_screen":
+                    if (payload.ValueKind == JsonValueKind.Object &&
+                        payload.TryGetProperty("screen", out var screenProp) &&
+                        screenProp.ValueKind == JsonValueKind.String)
+                    {
+                        var screen = screenProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(screen) && _projectsWebSnapshotBuilder.NavigateTo(screen))
+                        {
+                            PushProjectsWebSnapshot();
+                        }
+                    }
+                    break;
+
+                case "select_project":
+                    if (payload.ValueKind == JsonValueKind.Object &&
+                        payload.TryGetProperty("projectId", out var projectIdProp) &&
+                        projectIdProp.ValueKind == JsonValueKind.String)
+                    {
+                        var projectId = projectIdProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(projectId))
+                        {
+                            var entry = ProjectRegistryStorage.Load().Projects
+                                .FirstOrDefault(p => string.Equals(p.Id, projectId, StringComparison.Ordinal));
+                            if (entry is not null)
+                            {
+                                ProjectsWebRendererView.SetSelectedProjectFolder(entry.RootPath);
+                                ProjectRegistryStorage.Touch(projectId);
+                            }
+                            if (_projectsWebSnapshotBuilder.SelectProject(projectId))
+                            {
+                                PushProjectsWebSnapshot();
+                            }
+                        }
+                    }
+                    break;
+
+                case "send_message":
+                    if (TryGetMessageText(payload, out var messageText))
+                    {
+                        _ = SendProjectsWebMessageAsync(messageText);
+                    }
+                    break;
+
+                case "request_attach_files":
+                    _ = HandleProjectsWebAttachFilesAsync();
+                    break;
+
+                case "stage_text_artifact":
+                    if (payload.ValueKind == JsonValueKind.Object &&
+                        payload.TryGetProperty("text", out var stagedTextProp) &&
+                        stagedTextProp.ValueKind == JsonValueKind.String)
+                    {
+                        var stagedText = stagedTextProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(stagedText) &&
+                            _projectsController.StageLongTextArtifact(stagedText))
+                        {
+                            PushProjectsWebSnapshot();
+                        }
+                    }
+                    break;
+
+                case "remove_attachment":
+                    if (TryGetDraftId(payload, out var removeDraftId) &&
+                        _projectsController.RemovePendingComposerInput(removeDraftId))
+                    {
+                        PushProjectsWebSnapshot();
+                    }
+                    break;
+
+                case "import_project":
+                    _ = HandleProjectsWebImportAsync();
+                    break;
+
+                case "create_project":
+                    {
+                        var newName = string.Empty;
+                        var newKind = "generic";
+                        if (payload.ValueKind == JsonValueKind.Object)
+                        {
+                            if (payload.TryGetProperty("name", out var newNameProp) &&
+                                newNameProp.ValueKind == JsonValueKind.String)
+                            {
+                                newName = newNameProp.GetString() ?? string.Empty;
+                            }
+                            if (payload.TryGetProperty("kind", out var newKindProp) &&
+                                newKindProp.ValueKind == JsonValueKind.String)
+                            {
+                                newKind = newKindProp.GetString() ?? "generic";
+                            }
+                        }
+                        _ = HandleProjectsWebCreateAsync(newName, newKind);
+                    }
+                    break;
+            }
+        }
+
+        // Pass 1 step 4b: "new project" via in-app modal — receives {name, kind} from JS,
+        // resolves a unique folder under ~/Documents/ZAVOD/, runs Bootstrap with the
+        // explicit name (decoupled from folder), persists kind hint as plain text for
+        // future Lead orientation, adds to registry. No FilePicker — folder is implicit.
+        private async Task HandleProjectsWebCreateAsync(string name, string kind)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Debug.WriteLine("[ProjectsWeb create] empty name, cancelled");
+                return;
+            }
+
+            var trimmedName = name.Trim();
+            var trimmedKind = string.IsNullOrWhiteSpace(kind) ? "generic" : kind.Trim();
+
+            string resolvedFolder;
+            try
+            {
+                resolvedFolder = ResolveUniqueProjectFolder(trimmedName);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb create] folder resolution failed: {ex.Message}");
+                return;
+            }
+
+            Debug.WriteLine($"[ProjectsWeb create] start name={trimmedName} kind={trimmedKind} path={resolvedFolder}");
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    Directory.CreateDirectory(resolvedFolder);
+                    ProjectBootstrap.Initialize(resolvedFolder, trimmedName);
+                    WriteProjectKindHint(resolvedFolder, trimmedKind);
+                });
+
+                var entry = ProjectRegistryStorage.Add(trimmedName, resolvedFolder);
+                Debug.WriteLine($"[ProjectsWeb create] registry entry id={entry.Id} name={entry.Name}");
+                PushProjectsWebSnapshot();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb create] FAILED: {ex}");
+            }
+        }
+
+        private static string ResolveUniqueProjectFolder(string projectName)
+        {
+            var hub = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "ZAVOD");
+            Directory.CreateDirectory(hub);
+
+            var baseSlug = SlugifyForFolder(projectName);
+            if (string.IsNullOrWhiteSpace(baseSlug))
+            {
+                baseSlug = "project";
+            }
+
+            var candidate = Path.Combine(hub, baseSlug);
+            var suffix = 2;
+            while (Directory.Exists(candidate))
+            {
+                candidate = Path.Combine(hub, $"{baseSlug}-{suffix}");
+                suffix++;
+            }
+
+            return candidate;
+        }
+
+        private static string SlugifyForFolder(string value)
+        {
+            var builder = new StringBuilder(value.Length);
+            var previousWasSeparator = false;
+            foreach (var character in value)
+            {
+                if (char.IsLetterOrDigit(character))
+                {
+                    builder.Append(char.ToLowerInvariant(character));
+                    previousWasSeparator = false;
+                    continue;
+                }
+                if (previousWasSeparator || builder.Length == 0)
+                {
+                    continue;
+                }
+                builder.Append('-');
+                previousWasSeparator = true;
+            }
+            return builder.ToString().Trim('-');
+        }
+
+        private static void WriteProjectKindHint(string projectRoot, string kind)
+        {
+            try
+            {
+                var metaDir = Path.Combine(projectRoot, ".zavod", "meta");
+                Directory.CreateDirectory(metaDir);
+                File.WriteAllText(Path.Combine(metaDir, "project_kind.txt"), kind, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                // Kind is a soft hint — failing to persist must not abort project creation.
+                Debug.WriteLine($"[ProjectsWeb create] kind hint write failed: {ex.Message}");
+            }
+        }
+
+        // Pass 1 step 4a: minimal end-to-end import roundtrip.
+        // Picks a folder, runs Bootstrap + Scanner + Importer (gpt-4.1-nano) off the UI
+        // thread, opens the generated preview.html on success. No registry persistence yet
+        // — the project sits on disk with its own .zavod/, user can re-open via OS.
+        private async Task HandleProjectsWebImportAsync()
+        {
+            string? folderPath;
+            try
+            {
+                folderPath = await PickFolderAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb import] folder picker failed: {ex.Message}");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                Debug.WriteLine("[ProjectsWeb import] cancelled");
+                return;
+            }
+
+            var resolvedFolder = Path.GetFullPath(folderPath);
+            Debug.WriteLine($"[ProjectsWeb import] start path={resolvedFolder}");
+
+            try
+            {
+                var runResult = await Task.Run(() =>
+                {
+                    ProjectBootstrap.Initialize(resolvedFolder);
+                    var scanResult = WorkspaceScanner.Scan(new WorkspaceScanRequest(resolvedFolder));
+                    var runtime = new WorkspaceImportMaterialInterpreterRuntime();
+                    return runtime.Interpret(scanResult);
+                });
+
+                Debug.WriteLine($"[ProjectsWeb import] done: {runResult.SummaryLine}");
+
+                var entry = ProjectRegistryStorage.Add(new DirectoryInfo(resolvedFolder).Name, resolvedFolder);
+                Debug.WriteLine($"[ProjectsWeb import] registry entry id={entry.Id} name={entry.Name}");
+                PushProjectsWebSnapshot();
+
+                var previewPath = Path.Combine(resolvedFolder, ".zavod", "preview.html");
+                if (File.Exists(previewPath))
+                {
+                    Debug.WriteLine($"[ProjectsWeb import] opening preview at {previewPath}");
+                    Process.Start(new ProcessStartInfo(previewPath) { UseShellExecute = true });
+                }
+                else
+                {
+                    Debug.WriteLine($"[ProjectsWeb import] preview.html not found at {previewPath} (interpreter may have degraded honestly)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb import] FAILED: {ex}");
+            }
+        }
+
+        private async Task<string?> PickFolderAsync()
+        {
+            var picker = new FolderPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.FileTypeFilter.Add("*");
+
+            var folder = await picker.PickSingleFolderAsync();
+            return folder?.Path;
+        }
+
+        private async Task SendProjectsWebMessageAsync(string text)
+        {
+            _projectsController.EnsureActiveAdapter();
+            var submission = await _projectsController.ConsumeComposerSubmissionAsync(text);
+            if (submission.IsEmpty)
+            {
+                return;
+            }
+            if (submission.HasText)
+            {
+                await _workCycleActions.SendProjectsMessageAsync(submission);
+            }
+
+            _projectsController.CommitActiveConversation();
+            PushProjectsWebSnapshot();
+        }
+
+        private async Task HandleProjectsWebAttachFilesAsync()
+        {
+            if (await StageComposerFilesAsync(projectsMode: true))
+            {
+                PushProjectsWebSnapshot();
+            }
         }
 
         private void OpenProjectDocumentButton_Click(object sender, RoutedEventArgs e)

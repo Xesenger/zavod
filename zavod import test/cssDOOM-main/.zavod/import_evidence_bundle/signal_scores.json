@@ -1,0 +1,46 @@
+﻿[
+  {
+    "Signal": "structure.multi_root",
+    "Score": 0.46
+  },
+  {
+    "Signal": "structure.nested_payloads",
+    "Score": 0.46
+  },
+  {
+    "Signal": "runtime.web",
+    "Score": 0.43
+  },
+  {
+    "Signal": "build.package_json",
+    "Score": 0.4
+  },
+  {
+    "Signal": "structure.mixed_import",
+    "Score": 0.4
+  },
+  {
+    "Signal": "behavior.content_rendering",
+    "Score": 0.3
+  },
+  {
+    "Signal": "behavior.ui_rendering",
+    "Score": 0.3
+  },
+  {
+    "Signal": "origin.native",
+    "Score": 0.3
+  },
+  {
+    "Signal": "stage.build_present",
+    "Score": 0.3
+  },
+  {
+    "Signal": "stage.current_activity",
+    "Score": 0.3
+  },
+  {
+    "Signal": "stage.docs_present",
+    "Score": 0.3
+  }
+]
