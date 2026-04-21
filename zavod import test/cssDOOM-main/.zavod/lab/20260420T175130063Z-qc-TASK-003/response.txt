@@ -1,0 +1,12 @@
+```json
+{
+  "decision": "REVISE",
+  "rationale": "The Worker correctly identified that the task lacks sufficient implementation anchors (game loop timing mechanism, HUD rendering pattern) to proceed. However, this is a recoverable gap: the task itself is in-scope and reasonable for a game project. A revised brief should include code pointers to the game loop and HUD system, or request the Worker to survey the codebase for these patterns first. The refusal is justified but not terminal—clarified anchors would enable execution.",
+  "issues": [
+    "Task brief does not specify where/how to hook FPS measurement into the game loop",
+    "Task brief does not identify existing HUD or UI rendering system to extend",
+    "Worker was not given code anchors or exploration scope to locate these patterns"
+  ],
+  "next_action": "Revise the task brief to include specific file paths or function names for the game loop and HUD system, or explicitly authorize the Worker to survey the codebase and report back before implementation."
+}
+```

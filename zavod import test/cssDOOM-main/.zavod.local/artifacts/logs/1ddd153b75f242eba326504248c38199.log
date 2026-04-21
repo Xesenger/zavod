@@ -1,0 +1,12 @@
+﻿runtime.session=SESSION-TASK-012
+runtime.state=Completed
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-012
+task.description=Добавь в HUD отображение строки "ZAVOD OK" через существующий механизм HUD (как health/armor). Layout не менять, новые контейнеры не добавлять
+result.id=RESULT-TASK-012-001
+result.summary=Planned addition of 'ZAVOD OK' text to HUD using existing HUD mechanism. Requires verification of hud.js implementation details.
+qc.status=Accepted
+document.stage=PreviewDocs
+advisory: Abandoned earlier: Добавь в HUD отображение строки "ZAVOD OK" через существующий механизм HUD (как health/armor). Layout не менять, новые контейнеры не доба...
+advisory: Abandoned earlier: Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туд...

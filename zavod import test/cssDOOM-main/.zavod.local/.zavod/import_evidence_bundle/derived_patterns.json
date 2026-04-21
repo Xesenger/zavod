@@ -1,9 +1,0 @@
-﻿[
-  {
-    "Code": "workspace_scan_completed",
-    "Reason": "Scanner completed bounded workspace scan.",
-    "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod.local"
-    ]
-  }
-]

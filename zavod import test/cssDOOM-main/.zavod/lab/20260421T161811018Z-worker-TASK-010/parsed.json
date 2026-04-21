@@ -1,0 +1,47 @@
+{
+  "Status": "partial",
+  "Summary": "Planned FPS counter implementation with CSS and JS integration points identified",
+  "Plan": [
+    "Add FPS counter CSS to hud.css for top-right positioning",
+    "Extend hud.js to track and update FPS value",
+    "Integrate FPS counter into the main game loop"
+  ],
+  "Actions": [
+    "Identified hud.css as styling target",
+    "Identified hud.js as update logic target",
+    "Identified game loop integration point"
+  ],
+  "Modifications": [
+    {
+      "Path": "src/ui/hud.css",
+      "Kind": "edit",
+      "Summary": "Add FPS counter styling"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Kind": "edit",
+      "Summary": "Add FPS tracking and update logic"
+    }
+  ],
+  "Blockers": [
+    "Need confirmation of game loop integration point (whether to add to existing updateHud call or create new system)"
+  ],
+  "Risks": [
+    "FPS calculation may need smoothing/averaging over multiple frames"
+  ],
+  "Warnings": [],
+  "Edits": [
+    {
+      "Path": "src/ui/hud.css",
+      "Operation": "insert_after",
+      "Content": "\n/* FPS Counter */\n#fps-counter {\n  position: absolute;\n  top: 10px;\n  right: 10px;\n  color: white;\n  font-family: monospace;\n  font-size: 16px;\n  text-shadow: 1px 1px 1px black;\n  z-index: 1001;\n}",
+      "Anchor": "#hud {\n--scale: 3;\nposition: fixed;\ninset: 0;\nz-index: 1000;\npointer-events: none;\n}"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Operation": "insert_after",
+      "Content": "\n  // FPS counter update\n  const now = performance.now();\n  if (!window._fpsLastTime) window._fpsLastTime = now;\n  const fps = Math.round(1000 / (now - window._fpsLastTime));\n  window._fpsLastTime = now;\n  \n  const fpsElement = document.getElementById('fps-counter') || (() => {\n    const el = document.createElement('div');\n    el.id = 'fps-counter';\n    document.getElementById('hud').appendChild(el);\n    return el;\n  })();\n  fpsElement.textContent = `${fps} FPS`;",
+      "Anchor": "export function updateHud() {"
+    }
+  ]
+}

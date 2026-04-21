@@ -1,0 +1,10 @@
+﻿runtime.session=SESSION-TASK-010
+runtime.state=InProgress
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-010
+task.description=Add an FPS counter to the top-right corner of the cssDOOM browser game HUD with full integration in the main render loop and CSS display.
+result.id=none
+result.summary=Execution returned for revision. Produce a new result before QC can continue.
+qc.status=NotStarted
+document.stage=PreviewDocs

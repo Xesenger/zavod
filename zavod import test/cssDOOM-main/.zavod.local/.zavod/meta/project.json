@@ -1,9 +1,0 @@
-﻿{
-  "version": "1.0",
-  "projectId": "zavod-local",
-  "projectName": ".zavod.local",
-  "layoutVersion": "v1",
-  "entryMode": "cold_start",
-  "activeShiftId": null,
-  "activeTaskId": null
-}

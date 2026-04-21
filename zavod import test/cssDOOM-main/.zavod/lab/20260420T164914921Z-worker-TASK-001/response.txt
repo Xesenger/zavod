@@ -1,0 +1,19 @@
+```json
+{
+  "status": "refused",
+  "summary": "Insufficient execution basis - missing required code anchors and project structure details",
+  "plan": [],
+  "actions": [],
+  "modifications": [],
+  "blockers": [
+    "Missing code anchors showing where HUD rendering occurs",
+    "No access to main game loop for FPS measurement",
+    "No confirmed project structure showing where UI elements are defined"
+  ],
+  "risks": [],
+  "warnings": [
+    "Cannot safely implement FPS counter without seeing HUD implementation code",
+    "Preview document does not contain sufficient implementation details"
+  ]
+}
+```

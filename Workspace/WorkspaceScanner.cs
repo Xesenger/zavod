@@ -63,9 +63,19 @@ public static class WorkspaceScanner
         ".svelte",
         ".swift",
         ".ts",
-        ".tsx"
-        ,
-        ".vue"
+        ".tsx",
+        ".vue",
+        // Markup + styles count as source for anchor-pack purposes. Projects
+        // like cssDOOM are css-heavy — missing these meant Worker got a
+        // js-only file tree and then honestly declared "need CSS changes" as
+        // a blocker because the relevant .css files were outside the
+        // grounded anchor pack it was handed.
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".sass",
+        ".less"
     };
 
     private static readonly HashSet<string> DocumentExtensions = new(StringComparer.OrdinalIgnoreCase)

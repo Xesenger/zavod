@@ -85,8 +85,17 @@ namespace zavod
             _workCycleActions = new WorkCycleActionController(
                 _projectRoot,
                 () => _projectsController.EnsureActiveAdapter(),
-                RefreshRecoveryShellAsync,
+                async () =>
+                {
+                    await RefreshRecoveryShellAsync();
+                    PushProjectsWebSnapshot();
+                },
                 UpdateProjectsDiscussionPreview);
+            _workCycleActions.SetProgressCallback(() =>
+            {
+                PushProjectsWebSnapshot();
+                return Task.CompletedTask;
+            });
             _verificationCaptureMode = Environment.GetEnvironmentVariable("ZAVOD_UI_CAPTURE_MODE")?.Trim();
             _verificationCapturePath = Environment.GetEnvironmentVariable("ZAVOD_UI_CAPTURE_PATH")?.Trim();
             _verificationProofTextPath = Environment.GetEnvironmentVariable("ZAVOD_UI_PROOF_TEXT_PATH")?.Trim();
@@ -698,7 +707,7 @@ namespace zavod
 
         private async Task EnsureProjectsConversationAsync(string normalizedRoot, ProjectsShellProjection projection)
         {
-            await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
+            if (!_projectsController.IsInitialized) await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -1365,7 +1374,7 @@ namespace zavod
         private async Task EnsureProjectsWebReadyAndPushAsync()
         {
             var projection = ProjectsShellProjection.Build(_projectRoot);
-            await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
+            if (!_projectsController.IsInitialized) await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
             PushProjectsWebSnapshot();
         }
 
@@ -1415,6 +1424,8 @@ namespace zavod
                             {
                                 ProjectsWebRendererView.SetSelectedProjectFolder(entry.RootPath);
                                 ProjectRegistryStorage.Touch(projectId);
+                                _ = HandleProjectsWebSelectProjectAsync(entry, projectId);
+                                break;
                             }
                             if (_projectsWebSnapshotBuilder.SelectProject(projectId))
                             {
@@ -1422,6 +1433,34 @@ namespace zavod
                             }
                         }
                     }
+                    break;
+
+                case "enter_work":
+                    _ = HandleProjectsWebWorkCycleActionAsync("enter_work", payload);
+                    break;
+
+                case "confirm_preflight":
+                    _ = HandleProjectsWebWorkCycleActionAsync("confirm_preflight", payload);
+                    break;
+
+                case "accept_result":
+                    _ = HandleProjectsWebWorkCycleActionAsync("accept_result", payload);
+                    break;
+
+                case "reject_result":
+                    _ = HandleProjectsWebWorkCycleActionAsync("reject_result", payload);
+                    break;
+
+                case "request_revision":
+                    _ = HandleProjectsWebWorkCycleActionAsync("request_revision", payload);
+                    break;
+
+                case "apply_clarification":
+                    _ = HandleProjectsWebWorkCycleActionAsync("apply_clarification", payload);
+                    break;
+
+                case "return_to_chat":
+                    _ = HandleProjectsWebWorkCycleActionAsync("return_to_chat", payload);
                     break;
 
                 case "send_message":
@@ -1662,20 +1701,96 @@ namespace zavod
             return folder?.Path;
         }
 
-        private async Task SendProjectsWebMessageAsync(string text)
+        private async Task HandleProjectsWebWorkCycleActionAsync(string action, JsonElement payload)
         {
-            _projectsController.EnsureActiveAdapter();
-            var submission = await _projectsController.ConsumeComposerSubmissionAsync(text);
-            if (submission.IsEmpty)
+            try
             {
-                return;
+                switch (action)
+                {
+                    case "enter_work":
+                        await _workCycleActions.EnterWorkAsync();
+                        break;
+                    case "confirm_preflight":
+                        await _workCycleActions.ConfirmPreflightAsync();
+                        break;
+                    case "accept_result":
+                        await _workCycleActions.AcceptResultAsync();
+                        break;
+                    case "reject_result":
+                        await _workCycleActions.RejectResultAsync();
+                        break;
+                    case "request_revision":
+                        await _workCycleActions.RequestRevisionAsync();
+                        break;
+                    case "apply_clarification":
+                        {
+                            var text = payload.ValueKind == JsonValueKind.Object
+                                && payload.TryGetProperty("text", out var textProp)
+                                && textProp.ValueKind == JsonValueKind.String
+                                ? textProp.GetString() ?? string.Empty
+                                : string.Empty;
+                            await _workCycleActions.ApplyClarificationAsync(text);
+                        }
+                        break;
+                    case "return_to_chat":
+                        await _workCycleActions.ReturnToChatAsync();
+                        break;
+                }
             }
-            if (submission.HasText)
+            catch (Exception ex)
             {
-                await _workCycleActions.SendProjectsMessageAsync(submission);
+                Debug.WriteLine($"[ProjectsWeb] work-cycle action '{action}' failed: {ex.Message}");
             }
 
-            _projectsController.CommitActiveConversation();
+            PushProjectsWebSnapshot();
+        }
+
+        private async Task SendProjectsWebMessageAsync(string text)
+        {
+            try
+            {
+                _projectsController.EnsureActiveAdapter();
+                var submission = await _projectsController.ConsumeComposerSubmissionAsync(text);
+                if (submission.IsEmpty)
+                {
+                    return;
+                }
+                if (submission.HasText)
+                {
+                    var handled = await _workCycleActions.SendProjectsMessageAsync(submission);
+                    if (!handled)
+                    {
+                        await _projectsController.ActiveAdapter.AddMessageAsync(
+                            ConversationItemKind.Status,
+                            AppText.Current.Get("role.shift_lead"),
+                            "Сообщение не обработано: текущая фаза не принимает ввод. Используйте кнопки действий в правой панели.");
+                    }
+                }
+
+                _projectsController.CommitActiveConversation();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb] send_message failed: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            PushProjectsWebSnapshot();
+        }
+
+
+        private async Task HandleProjectsWebSelectProjectAsync(ProjectRegistryEntry entry, string projectId)
+        {
+            _workCycleActions.SetProjectRoot(entry.RootPath);
+            try
+            {
+                await _projectsController.ReanchorToAsync(entry.RootPath, projectId, entry.Name);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb] reanchor failed: {ex.Message}");
+            }
+
+            _projectsWebSnapshotBuilder.SelectProject(projectId);
             PushProjectsWebSnapshot();
         }
 

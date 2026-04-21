@@ -10,6 +10,10 @@ using zavod.Prompting;
 
 namespace zavod.Lead;
 
+public sealed record LeadAgentTurn(
+    string Role,
+    string Text);
+
 public sealed record LeadAgentInput(
     string ProjectName,
     string ProjectRoot,
@@ -17,12 +21,16 @@ public sealed record LeadAgentInput(
     string UserMessage,
     string PreClassifierIntentState,
     string CurrentIntentSummary,
-    IReadOnlyList<string> AdvisoryNotes);
+    IReadOnlyList<string> AdvisoryNotes,
+    IReadOnlyList<LeadAgentTurn> RecentTurns,
+    bool IsOrientationRequest,
+    IReadOnlyList<string> ProjectStackSummary);
 
 public sealed record LeadAgentParsedReply(
     string IntentState,
     string Reply,
     string ScopeNotes,
+    string TaskBrief,
     IReadOnlyList<string> Warnings);
 
 public sealed record LeadAgentResult(
@@ -67,7 +75,8 @@ public sealed class LeadAgentRuntime
             UserPrompt: userPrompt,
             ModelId: _profile.Model,
             Temperature: _profile.Temperature,
-            Attachments: null);
+            Attachments: null,
+            MaxTokens: _profile.MaxTokens);
 
         var stopwatch = Stopwatch.StartNew();
         var response = client.Execute(request);
@@ -158,6 +167,23 @@ public sealed class LeadAgentRuntime
         builder.AppendLine($"- kind: {Safe(input.ProjectKind)}");
         builder.AppendLine($"- root: {Safe(input.ProjectRoot)}");
         builder.AppendLine();
+
+        if (input.ProjectStackSummary is { Count: > 0 })
+        {
+            builder.AppendLine("PROJECT STACK (observed by scanner — trust over guesses)");
+            foreach (var line in input.ProjectStackSummary)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                builder.AppendLine($"- {line.Trim()}");
+            }
+
+            builder.AppendLine();
+        }
+
         builder.AppendLine("PRE-CLASSIFIER HINT");
         builder.AppendLine($"- intent_state: {Safe(input.PreClassifierIntentState)}");
         builder.AppendLine($"- current_summary: {Safe(input.CurrentIntentSummary)}");
@@ -179,6 +205,39 @@ public sealed class LeadAgentRuntime
             builder.AppendLine();
         }
 
+        if (input.RecentTurns is { Count: > 0 })
+        {
+            builder.AppendLine("RECENT CONVERSATION (oldest first, so you can see the framing dialogue)");
+            foreach (var turn in input.RecentTurns)
+            {
+                if (turn is null || string.IsNullOrWhiteSpace(turn.Text))
+                {
+                    continue;
+                }
+
+                var role = string.IsNullOrWhiteSpace(turn.Role) ? "unknown" : turn.Role.Trim().ToLowerInvariant();
+                var collapsed = turn.Text.Replace("\r", " ").Replace("\n", " ").Trim();
+                if (collapsed.Length > 400)
+                {
+                    collapsed = collapsed[..397] + "...";
+                }
+
+                builder.AppendLine($"- [{role}] {collapsed}");
+            }
+
+            builder.AppendLine();
+        }
+
+        if (input.IsOrientationRequest)
+        {
+            builder.AppendLine("ORIENTATION MODE — user is asking a meta or identity question.");
+            builder.AppendLine("- Anchor your reply in the ZAVOD system: explain that this is ZAVOD, a project-aware execution environment, and your role is Shift Lead.");
+            builder.AppendLine("- Name the current project from PROJECT CONTEXT.");
+            builder.AppendLine("- If asked \"what model\" or \"who are you\" — say you are Shift Lead running on the configured model for this role; do not speculate about specific model names unless they were provided in context.");
+            builder.AppendLine("- Keep it short, warm, and project-aware. Intent state for orientation questions is \"orientation\".");
+            builder.AppendLine();
+        }
+
         builder.AppendLine("USER MESSAGE");
         builder.AppendLine(input.UserMessage?.Trim() ?? string.Empty);
         builder.AppendLine();
@@ -187,10 +246,12 @@ public sealed class LeadAgentRuntime
         builder.AppendLine("  \"intent_state\": \"candidate\" | \"refining\" | \"ready_for_validation\" | \"orientation\" | \"rejected\",");
         builder.AppendLine("  \"reply\": \"<conversational reply to the user, in their language, focused on framing>\",");
         builder.AppendLine("  \"scope_notes\": \"<one short line about scope or framing or empty string>\",");
+        builder.AppendLine("  \"task_brief\": \"<ACTIONABLE ONE-LINE TASK DESCRIPTION for a Worker, written in English or the user's language; REQUIRED when intent_state is ready_for_validation, may be empty otherwise>\",");
         builder.AppendLine("  \"warnings\": [\"<optional canon/scope warnings, empty array if none>\"]");
         builder.AppendLine("}");
         builder.AppendLine();
         builder.AppendLine("Use \"rejected\" only when the request directly contradicts project canon or is out-of-scope for the project kind.");
+        builder.AppendLine("When intent_state is ready_for_validation, task_brief must be a concrete imperative task summary (e.g. \"Add an FPS counter to the top-right corner of the cssDOOM browser game HUD\"), NOT the raw user reply.");
         builder.AppendLine("Stay concise. Do not promise execution. Do not invent files or APIs.");
         return builder.ToString();
     }
@@ -209,6 +270,7 @@ public sealed class LeadAgentRuntime
         var intentState = ReadString(root, "intent_state") ?? string.Empty;
         var reply = ReadString(root, "reply") ?? string.Empty;
         var scopeNotes = ReadString(root, "scope_notes") ?? string.Empty;
+        var taskBrief = ReadString(root, "task_brief") ?? string.Empty;
         var warnings = ReadStringArray(root, "warnings");
 
         if (string.IsNullOrWhiteSpace(reply))
@@ -216,7 +278,7 @@ public sealed class LeadAgentRuntime
             throw new InvalidOperationException("Lead reply JSON must include non-empty 'reply'.");
         }
 
-        return new LeadAgentParsedReply(intentState, reply.Trim(), scopeNotes.Trim(), warnings);
+        return new LeadAgentParsedReply(intentState, reply.Trim(), scopeNotes.Trim(), taskBrief.Trim(), warnings);
     }
 
     private static string StripCodeFence(string value)

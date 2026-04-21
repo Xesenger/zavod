@@ -1,8 +1,0 @@
-name = "doomcss"
-compatibility_date = "2025-11-01"
-
-[assets]
-directory = "./dist"
-
-[build]
-command = "npm run build"

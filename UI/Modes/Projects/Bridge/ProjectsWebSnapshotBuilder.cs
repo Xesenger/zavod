@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using zavod.Flow;
 using zavod.Persistence;
+using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Text;
 
 namespace zavod.UI.Modes.Projects.Bridge;
@@ -27,6 +29,16 @@ internal sealed class ProjectsWebSnapshotBuilder
     public ProjectsWebSnapshotBuilder(ProjectsRuntimeController controller)
     {
         _controller = controller ?? throw new ArgumentNullException(nameof(controller));
+        _selectedProjectId = ProjectRegistryStorage.Load().LastOpenedProjectId;
+        if (!string.IsNullOrWhiteSpace(_selectedProjectId))
+        {
+            var entry = ProjectRegistryStorage.Load().Projects
+                .FirstOrDefault(p => string.Equals(p.Id, _selectedProjectId, StringComparison.Ordinal));
+            if (entry is not null && Directory.Exists(entry.RootPath))
+            {
+                ProjectWorkCycleQueryStateBuilder.RecoverCrashOrphan(entry.RootPath);
+            }
+        }
     }
 
     /// <summary>
@@ -149,6 +161,12 @@ internal sealed class ProjectsWebSnapshotBuilder
         if (idChanged)
         {
             _selectedProjectId = projectId;
+            var entry = ProjectRegistryStorage.Load().Projects
+                .FirstOrDefault(p => string.Equals(p.Id, projectId, StringComparison.Ordinal));
+            if (entry is not null && Directory.Exists(entry.RootPath))
+            {
+                ProjectWorkCycleQueryStateBuilder.RecoverCrashOrphan(entry.RootPath);
+            }
         }
         var screenChanged = NavigateTo("home");
         return idChanged || screenChanged;
@@ -175,7 +193,7 @@ internal sealed class ProjectsWebSnapshotBuilder
             List: list,
             SelectedProject: selected,
             Home: null,
-            WorkCycle: null,
+            WorkCycle: BuildWorkCyclePayload(),
             Text: BuildProjectsLocalizedDictionary());
     }
 
@@ -519,5 +537,56 @@ internal sealed class ProjectsWebSnapshotBuilder
         }
 
         return dictionary;
+    }
+
+    private ProjectsWebWorkCycle? BuildWorkCyclePayload()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedProjectId))
+        {
+            return null;
+        }
+
+        var entry = ProjectRegistryStorage.Load().Projects.FirstOrDefault(p => string.Equals(p.Id, _selectedProjectId, StringComparison.Ordinal));
+        if (entry is null || !Directory.Exists(entry.RootPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var queryState = ProjectWorkCycleQueryStateBuilder.Build(entry.RootPath);
+            var shellProjection = ProjectsShellProjection.Build(queryState);
+            var workCycle = ProjectWorkCycleProjection.Build(queryState, shellProjection);
+            var phase = workCycle.PhaseState;
+            var visualPhase = phase.Phase switch
+            {
+                SurfacePhase.Discussion => "phase-1",
+                SurfacePhase.Execution => phase.ExecutionSubphase == ExecutionSubphase.Preflight ? "phase-2" : "phase-3",
+                SurfacePhase.Result => "phase-3",
+                SurfacePhase.Completed => "phase-3",
+                _ => "phase-1"
+            };
+            var resultVisible = phase.Phase == SurfacePhase.Result || phase.Phase == SurfacePhase.Completed;
+            return new ProjectsWebWorkCycle(
+                VisualPhase: visualPhase,
+                ResultVisible: resultVisible,
+                SurfacePhase: phase.Phase.ToString(),
+                ExecutionSubphase: phase.ExecutionSubphase.ToString(),
+                ResultSubphase: phase.ResultSubphase.ToString(),
+                ShowChat: phase.Phase == SurfacePhase.Discussion,
+                ShowExecution: phase.Phase == SurfacePhase.Execution,
+                ShowResult: resultVisible,
+                CanEnterWork: workCycle.Projection.CanStartIntentValidation,
+                CanConfirmPreflight: phase.Phase == SurfacePhase.Execution && phase.ExecutionSubphase == ExecutionSubphase.Preflight,
+                CanSendMessage: phase.Phase == SurfacePhase.Discussion || (phase.Phase == SurfacePhase.Execution && phase.ExecutionSubphase == ExecutionSubphase.Revision),
+                ComposerEnabled: true,
+                ExecutionItems: Array.Empty<ProjectsWebExecutionItem>(),
+                PreflightTasks: Array.Empty<ProjectsWebPreflightTask>(),
+                ValidationSummary: string.IsNullOrWhiteSpace(workCycle.IntentSummary) ? null : workCycle.IntentSummary);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

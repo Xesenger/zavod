@@ -61,6 +61,47 @@ public static class ProjectWorkCycleQueryStateBuilder
             ResolvePreferredProjectHtmlPath(normalizedRoot));
     }
 
+    /// <summary>
+    /// One-shot crash-orphan cleanup. Call at session/project-selection boundaries,
+    /// NOT from Build() — Build runs many times per user action and would wipe the
+    /// transient mid-ConfirmPreflight state right after MaterializeValidatedIntent
+    /// populates activeTaskId.
+    ///
+    /// Signature of a crash orphan: resume-stage.json pinned on an Execution phase
+    /// with RuntimeState=null (runtime never saved) while project.json still carries
+    /// activeShiftId/activeTaskId materialized before the crash. Clearing them lets
+    /// the next normalize pass treat the project as a fresh Discussion.
+    /// </summary>
+    public static void RecoverCrashOrphan(string projectRoot)
+    {
+        if (string.IsNullOrWhiteSpace(projectRoot))
+        {
+            return;
+        }
+        var normalizedRoot = Path.GetFullPath(projectRoot);
+        ProjectState state;
+        try
+        {
+            state = ProjectStateStorage.Load(normalizedRoot);
+        }
+        catch (ZavodPersistenceException)
+        {
+            return;
+        }
+        if (state.ActiveTaskId is null && state.ActiveShiftId is null)
+        {
+            return;
+        }
+        var rawResume = ResumeStageStorage.Load(normalizedRoot);
+        if (rawResume is null
+            || rawResume.PhaseState.Phase != Flow.SurfacePhase.Execution
+            || rawResume.RuntimeState is not null)
+        {
+            return;
+        }
+        ProjectStateStorage.Save(state with { ActiveShiftId = null, ActiveTaskId = null });
+    }
+
     private static ProjectState LoadOrInitializeProjectState(string normalizedRoot)
     {
         try

@@ -1,27 +1,15 @@
 ﻿[
   {
     "TargetKind": "signal",
+    "TargetId": "structure.nested_payloads",
+    "Confidence": 1,
+    "Reason": "Derived from cold signal score 0.49."
+  },
+  {
+    "TargetKind": "signal",
     "TargetId": "structure.multi_root",
     "Confidence": 1,
     "Reason": "Derived from cold signal score 0.46."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "structure.nested_payloads",
-    "Confidence": 1,
-    "Reason": "Derived from cold signal score 0.46."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "runtime.web",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.43."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "build.package_json",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.40."
   },
   {
     "TargetKind": "signal",
@@ -31,37 +19,19 @@
   },
   {
     "TargetKind": "signal",
-    "TargetId": "behavior.content_rendering",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.30."
-  },
-  {
-    "TargetKind": "signal",
     "TargetId": "behavior.ui_rendering",
     "Confidence": 0,
     "Reason": "Derived from cold signal score 0.30."
   },
   {
     "TargetKind": "signal",
+    "TargetId": "noise.bulk_assets",
+    "Confidence": 0,
+    "Reason": "Derived from cold signal score 0.30."
+  },
+  {
+    "TargetKind": "signal",
     "TargetId": "origin.native",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.30."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "stage.build_present",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.30."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "stage.current_activity",
-    "Confidence": 0,
-    "Reason": "Derived from cold signal score 0.30."
-  },
-  {
-    "TargetKind": "signal",
-    "TargetId": "stage.docs_present",
     "Confidence": 0,
     "Reason": "Derived from cold signal score 0.30."
   },
@@ -91,19 +61,13 @@
   },
   {
     "TargetKind": "module",
-    "TargetId": "LICENSE.txt",
-    "Confidence": 1,
-    "Reason": "Derived from structural module bucket plus edge overlap."
-  },
-  {
-    "TargetKind": "module",
-    "TargetId": "Package.json",
-    "Confidence": 1,
-    "Reason": "Derived from structural module bucket plus edge overlap."
-  },
-  {
-    "TargetKind": "module",
     "TargetId": "Renderer",
+    "Confidence": 1,
+    "Reason": "Derived from structural module bucket plus edge overlap."
+  },
+  {
+    "TargetKind": "module",
+    "TargetId": "Shared",
     "Confidence": 1,
     "Reason": "Derived from structural module bucket plus edge overlap."
   },
@@ -114,86 +78,74 @@
     "Reason": "Derived from structural module bucket plus edge overlap."
   },
   {
-    "TargetKind": "dependency",
-    "TargetId": "package.json:gamecontroller.js",
-    "Confidence": 2,
-    "Reason": "Derived from manifest/build dependency surface extraction."
-  },
-  {
-    "TargetKind": "dependency",
-    "TargetId": "package.json:vite",
-    "Confidence": 1,
-    "Reason": "Derived from manifest/build dependency surface extraction."
-  },
-  {
     "TargetKind": "material",
-    "TargetId": "README.md",
-    "Confidence": 1,
-    "Reason": "Derived from bounded preview density and overlap policy."
-  },
-  {
-    "TargetKind": "material",
-    "TargetId": "public\\icon.png",
+    "TargetId": "public\\assets\\menu\\M_THERMM.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\preview.jpg",
+    "TargetId": "public\\assets\\menu\\M_THERMO.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\DIGITS_SHEET.png",
+    "TargetId": "public\\assets\\menu\\M_THERMR.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\FACE_SHEET.png",
+    "TargetId": "public\\assets\\menu\\M_ULTRA.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
+    "TargetId": "public\\assets\\menu\\TITLEPIC.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STARMS.png",
+    "TargetId": "public\\assets\\weapons\\CHAINGUN.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STBAR.png",
+    "TargetId": "public\\assets\\weapons\\CHAINSAW.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STFB0.png",
+    "TargetId": "public\\assets\\weapons\\FIST.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STFB1.png",
+    "TargetId": "public\\assets\\weapons\\PISTOL.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STFB2.png",
+    "TargetId": "public\\assets\\weapons\\ROCKET.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   },
   {
     "TargetKind": "material",
-    "TargetId": "public\\assets\\hud\\STFB3.png",
+    "TargetId": "public\\assets\\weapons\\SHOTGUN.png",
+    "Confidence": 0,
+    "Reason": "Derived from bounded preview density and overlap policy."
+  },
+  {
+    "TargetKind": "material",
+    "TargetId": "public\\assets\\sprites\\AMMOA0.png",
     "Confidence": 0,
     "Reason": "Derived from bounded preview density and overlap policy."
   }

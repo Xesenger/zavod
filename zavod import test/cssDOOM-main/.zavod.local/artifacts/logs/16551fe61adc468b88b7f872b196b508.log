@@ -1,0 +1,12 @@
+﻿runtime.session=SESSION-TASK-009
+runtime.state=InProgress
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-009
+task.description=Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туда обновление FPS для HUD. Нужен полный end-to-end поток: render loop -> FPS calculation -> HUD update -> отображение в правом верхнем углу. Layout не менять, новые контейнеры не добавлять
+result.id=none
+result.summary=Execution returned for revision. Produce a new result before QC can continue.
+qc.status=NotStarted
+document.stage=PreviewDocs
+advisory: Earlier conversation: Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туд...
+advisory: Accepted before: COMMIT-APPLY-ACCEPTED-RESULT-TASK-002-001|task:TASK-002|Insufficient basis for implementation. Missing code anchors and specific file ref...

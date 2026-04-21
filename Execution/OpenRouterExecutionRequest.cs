@@ -8,4 +8,5 @@ public sealed record OpenRouterExecutionRequest(
     string UserPrompt,
     string? ModelId = null,
     double Temperature = 0,
-    IReadOnlyList<OpenRouterAttachment>? Attachments = null);
+    IReadOnlyList<OpenRouterAttachment>? Attachments = null,
+    int? MaxTokens = null);

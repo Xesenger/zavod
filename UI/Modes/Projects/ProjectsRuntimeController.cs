@@ -53,10 +53,10 @@ internal sealed class ProjectsRuntimeController
         public bool HasLoaded { get; set; }
     }
 
-    private readonly string _projectRoot;
-    private readonly ConversationLogStorage _legacyProjectStorage;
-    private readonly ConversationArtifactStorage _artifactStorage;
-    private readonly ConversationComposerDraftStore _composerDraftStore;
+    private string _projectRoot;
+    private ConversationLogStorage _legacyProjectStorage;
+    private ConversationArtifactStorage _artifactStorage;
+    private ConversationComposerDraftStore _composerDraftStore;
     private readonly List<ProjectConversationSessionState> _projectConversations = new();
     private ProjectsAdapter _activeAdapter;
     private ProjectConversationSessionState? _activeConversation;
@@ -75,6 +75,8 @@ internal sealed class ProjectsRuntimeController
     }
 
     public ProjectsAdapter ActiveAdapter => EnsureActiveAdapter();
+
+    public bool IsInitialized => _initialized;
 
     public async Task EnsureInitializedAsync(string projectId, string projectName)
     {
@@ -145,6 +147,29 @@ internal sealed class ProjectsRuntimeController
         _projectConversations.Add(session);
         ActivateConversation(session);
         _initialized = true;
+    }
+
+    public async Task ReanchorToAsync(string projectRoot, string projectId, string projectName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectName);
+
+        var normalizedRoot = Path.GetFullPath(projectRoot);
+        if (string.Equals(_projectRoot, normalizedRoot, StringComparison.OrdinalIgnoreCase)
+            && _initialized
+            && string.Equals(_projectId, projectId.Trim(), StringComparison.Ordinal))
+        {
+            _projectName = projectName.Trim();
+            return;
+        }
+
+        _projectRoot = normalizedRoot;
+        _legacyProjectStorage = ConversationLogStorage.ForProjects(_projectRoot);
+        _artifactStorage = new ConversationArtifactStorage(_projectRoot);
+        _composerDraftStore = new ConversationComposerDraftStore(_artifactStorage);
+        _initialized = false;
+        await EnsureInitializedAsync(projectId, projectName);
     }
 
     public ChatsWebStateSnapshot BuildSnapshot()

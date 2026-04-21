@@ -7,11 +7,10 @@ This document is not canonical truth yet.
 
 - `cssDOOM-main`
 - Interpretation Mode: `SingleProject`
-- Primary Entry Candidate: `index.js` [Unknown]
 
 ## Current understanding
 
-- Import material interpretation prepared: import=MixedImport, sourceRoots=2, materials=12, observations=98, patterns=9, signals=11, languages: JavaScript, build: package_json, entry candidates: 1, modules=3, entries=1, entry candidates: 1, module candidates: 3, truth=context_only.
+- The project appears to be a JavaScript-based game or interactive application with assets, sound, and rendering components, possibly related to a Doom-like game or mod. truth=context_only.
 - Confidence Slice: Confirmed=0, Likely=1, Unknown=2
 
 ## Key constraints
@@ -21,11 +20,11 @@ This document is not canonical truth yet.
 
 ## Top risks / unknowns
 
-- The exact game state management and AI logic are not explicitly detailed in the evidence.
-- The project is a CSS and JavaScript implementation of DOOM for web browsers (requires explicit file/symbol evidence).
+- No explicit build system, frameworks, or runtime platform details are present in the evidence.
+- The project is a JavaScript game or interactive application with modular subsystems and asset management (requires explicit file/symbol/dependency evidence).
 
 ## Next confirmable step
 
 - Confirm `preview_project.md` into `project.md` if this understanding is acceptable.
 - Keep `capsule.md` derived from the confirmed project base only.
-- Preview project digest length: 2344
+- Preview project digest length: 2934

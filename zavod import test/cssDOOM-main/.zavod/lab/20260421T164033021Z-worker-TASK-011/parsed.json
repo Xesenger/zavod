@@ -1,0 +1,41 @@
+{
+  "Status": "complete",
+  "Summary": "Added 'ZAVOD OK' display to HUD using existing mechanism without layout changes",
+  "Plan": [
+    "Add new CSS class for ZAVOD OK text in hud.css",
+    "Update hud.js to set custom property for ZAVOD OK text"
+  ],
+  "Actions": [
+    "Added .hud-zavod class to hud.css",
+    "Modified updateHud() in hud.js to set --zavod-text property"
+  ],
+  "Modifications": [
+    {
+      "Path": "src/ui/hud.css",
+      "Kind": "edit",
+      "Summary": "Added CSS for ZAVOD OK text display"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Kind": "edit",
+      "Summary": "Added ZAVOD OK text property update"
+    }
+  ],
+  "Blockers": [],
+  "Risks": [],
+  "Warnings": [],
+  "Edits": [
+    {
+      "Path": "src/ui/hud.css",
+      "Operation": "insert_after",
+      "Content": "/* ZAVOD OK text */\n.hud-zavod {\n  position: absolute;\n  bottom: calc(32px * var(--scale));\n  left: 50%;\n  transform: translateX(-50%);\n  font-family: 'PressStart2P', monospace;\n  font-size: calc(8px * var(--scale));\n  color: #fff;\n  text-shadow: 0 0 4px #000;\n  white-space: nowrap;\n}",
+      "Anchor": "/* ========================================================================\nLarge Digits (ammo, health, armor)\n======================================================================== */"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Operation": "insert_after",
+      "Content": "// Add ZAVOD OK text to HUD\nstyle.setProperty('--zavod-text', '\"ZAVOD OK\"');",
+      "Anchor": "// Weapon ownership\nfor (let weaponSlot = 2; weaponSlot <= 7; weaponSlot++) {"
+    }
+  ]
+}

@@ -59,7 +59,16 @@
 #hud-face       { width: calc(36px  * var(--scale)); background-position-x: calc(-143px * var(--scale)); }
 #hud-armor      { width: calc(57px  * var(--scale)); background-position-x: calc(-179px * var(--scale)); }
 #hud-keys       { width: calc(13px  * var(--scale)); background-position-x: calc(-236px * var(--scale)); }
-#hud-ammo-types { width: calc(71px  * var(--scale)); background-position-x: calc(-249px * var(--scale)); }
+#hud-ammo-types { width: calc(71px  * var(--scale)); background-position-x: calc(-249px * var(--scale)); }#hud-zavod {
+  position: absolute;
+  bottom: calc(32px * var(--scale));
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-family: 'PressStart2P', monospace;
+  font-size: calc(8px * var(--scale));
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
 
 
 /* ========================================================================

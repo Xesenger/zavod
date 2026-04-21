@@ -1,0 +1,33 @@
+{
+  "status": "partial",
+  "summary": "Added FPS display styling to HUD CSS without modifying layout or adding new containers",
+  "plan": [
+    "Add FPS display CSS rules to hud.css",
+    "Position FPS counter in top-right corner of HUD"
+  ],
+  "actions": [
+    "Extended hud.css with FPS display styling"
+  ],
+  "modifications": [
+    {
+      "path": "src/ui/hud.css",
+      "kind": "edit",
+      "summary": "Added FPS display styling"
+    }
+  ],
+  "edits": [
+    {
+      "path": "src/ui/hud.css",
+      "operation": "insert_after",
+      "content": "\n/* FPS Counter — top right corner */\n#hud::after {\n  content: attr(data-fps);\n  position: absolute;\n  top: calc(12px + env(safe-area-inset-top, 0px));\n  right: calc(12px + env(safe-area-inset-right, 0px));\n  font-family: 'PressStart2P', monospace;\n  font-size: 12px;\n  color: white;\n  text-shadow: 1px 1px 2px black;\n  z-index: 1001;\n  pointer-events: none;\n}",
+      "anchor": "pointer-events: none;"
+    }
+  ],
+  "blockers": [
+    "Need JavaScript implementation to calculate and update FPS value"
+  ],
+  "risks": [
+    "FPS counter position may conflict with existing UI elements in top-right corner"
+  ],
+  "warnings": []
+}

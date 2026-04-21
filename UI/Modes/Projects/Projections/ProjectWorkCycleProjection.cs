@@ -78,7 +78,11 @@ public sealed record ProjectWorkCycleProjection(
 
         if (hasActiveTask)
         {
-            return StepPhaseMachine.ResumeInterrupted();
+            // Orphaned active task (no resume snapshot, no live runtime) would otherwise
+            // softlock the UI in Interrupted phase and block all composer input.
+            return hasActiveShift
+                ? StepPhaseMachine.ResumeActiveShiftDiscussion()
+                : StepPhaseMachine.ResumeDiscussion();
         }
 
         if (hasActiveShift)

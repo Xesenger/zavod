@@ -1,0 +1,11 @@
+﻿runtime.session=SESSION-TASK-006
+runtime.state=Completed
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-006
+task.description=Добавь отображение текущего FPS в интерфейс cssdoom.  Используй существующие элементы UI, не создавай новый layout. Обновление должно происходить в реальном времени.
+result.id=RESULT-TASK-006-002
+result.summary=Исполнение по задаче подготовлено: Добавь отображение текущего FPS в интерфейс cssdoom.  Используй существующие элементы UI, не создавай новый layout. Обновление должно происходить в реальном времени.
+qc.status=Accepted
+document.stage=PreviewDocs
+advisory: Earlier conversation: Добавь отображение текущего FPS в интерфейс cssdoom.  Используй существующие элементы UI, не создавай новый layout. Обновление должно про...

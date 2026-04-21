@@ -1,66 +1,97 @@
-[2026-04-20T14:09:39.2737191+02:00] +     0ms | app_ctor
-[2026-04-20T14:09:39.2866325+02:00] +     8ms | on_launched_start
-[2026-04-20T14:09:39.2968287+02:00] +    18ms | root_trace_initialized | C:\Users\Boris\Development\zavod
-[2026-04-20T14:09:39.3456967+02:00] +    67ms | bootstrap_complete
-[2026-04-20T14:09:39.4199459+02:00] +   142ms | loading_overlay_initially_visible
-[2026-04-20T14:09:39.4359351+02:00] +   158ms | loading_overlay_initially_visible
-[2026-04-20T14:09:39.4485379+02:00] +   170ms | projects_webview_construct
-[2026-04-20T14:09:39.5257107+02:00] +   247ms | main_window_created
-[2026-04-20T14:09:39.5536449+02:00] +   275ms | storage_latest_window_loaded | conversation=b6bcd04add2349d58e5353bbadc8cd01, start=1, end=2, total=2, loaded=2
-[2026-04-20T14:09:39.5772033+02:00] +   299ms | window_activated
-[2026-04-20T14:09:39.5821572+02:00] +   304ms | webview_prewarm_start
-[2026-04-20T14:09:39.5834779+02:00] +   305ms | webview_ensure_start
-[2026-04-20T14:09:39.6075736+02:00] +   329ms | webview_loaded
-[2026-04-20T14:09:39.6077965+02:00] +   329ms | webview_ensure_join_existing
-[2026-04-20T14:09:39.6082903+02:00] +   330ms | webview_loaded
-[2026-04-20T14:09:39.6085007+02:00] +   330ms | webview_ensure_start
-[2026-04-20T14:09:39.6102140+02:00] +   332ms | projects_webview_loaded
-[2026-04-20T14:09:39.6111985+02:00] +   333ms | projects_webview_ensure_start
-[2026-04-20T14:09:39.8138436+02:00] +   536ms | webview_ensure_end
-[2026-04-20T14:09:39.8218492+02:00] +   544ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
-[2026-04-20T14:09:39.8385466+02:00] +   560ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
-[2026-04-20T14:09:39.8388338+02:00] +   560ms | webview_ensure_skipped_initialized
-[2026-04-20T14:09:39.8572645+02:00] +   579ms | webview_ensure_end
-[2026-04-20T14:09:39.8577415+02:00] +   579ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
-[2026-04-20T14:09:39.8641553+02:00] +   586ms | projects_webview_ensure_end
-[2026-04-20T14:09:39.8646452+02:00] +   586ms | projects_webview_source_set | https://appassets.zavod/UI/Web/Projects/projects.surface.html
-[2026-04-20T14:09:39.8714643+02:00] +   593ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
-[2026-04-20T14:09:39.8718813+02:00] +   594ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
-[2026-04-20T14:09:39.8723209+02:00] +   594ms | projects_webview_navigation_starting | https://appassets.zavod/UI/Web/Projects/projects.surface.html
-[2026-04-20T14:09:41.8818722+02:00] +  2604ms | web_message_received | dom_ready
-[2026-04-20T14:09:41.8843845+02:00] +  2606ms | web_message_received | renderer_ready
-[2026-04-20T14:09:41.8860029+02:00] +  2608ms | web_message_received | dom_ready
-[2026-04-20T14:09:41.8872419+02:00] +  2609ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
-[2026-04-20T14:09:41.8874959+02:00] +  2609ms | webview_ensure_skipped_initialized
-[2026-04-20T14:09:41.8878498+02:00] +  2610ms | web_message_received | renderer_ready
-[2026-04-20T14:09:41.8882402+02:00] +  2610ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
-[2026-04-20T14:09:41.8885312+02:00] +  2610ms | webview_ensure_skipped_initialized
-[2026-04-20T14:09:41.8964623+02:00] +  2618ms | webview_navigation_completed | True
-[2026-04-20T14:09:41.8969996+02:00] +  2619ms | webview_navigation_completed | True
-[2026-04-20T14:09:41.8975219+02:00] +  2619ms | state_snapshot_posted
-[2026-04-20T14:09:41.9040103+02:00] +  2626ms | conversation_patch_stats | {"pass":1,"mode":"reset","conversationKey":"chats:b6bcd04add2349d58e5353bbadc8cd01","fullReset":true,"createdCount":2,"updatedCount":0,"removedCount":0,"ignoredCount":0,"movedCount":0,"nodeCount":2,"createdIds":["8a5f3de9e359496b9e6d1230082b22c2","fe65ce0823e9451e81ebf9ee0225df6c"],"createdKinds":["message","message"],"updatedIds":[],"ignoredIds":[]}
-[2026-04-20T14:09:41.9042908+02:00] +  2626ms | web_message_received | conversation_patch_stats
-[2026-04-20T14:09:41.9053674+02:00] +  2627ms | windowing_stats | {"action":"reset","fullReset":true,"windowStartSeq":1,"windowEndSeq":2,"hasOlder":false,"loadedCount":2}
-[2026-04-20T14:09:41.9056635+02:00] +  2627ms | web_message_received | windowing_stats
-[2026-04-20T14:09:41.9060218+02:00] +  2628ms | render_complete_received
-[2026-04-20T14:09:41.9062457+02:00] +  2628ms | loading_overlay_hidden
-[2026-04-20T14:09:41.9248324+02:00] +  2646ms | projects_web_message_received | dom_ready
-[2026-04-20T14:09:41.9270003+02:00] +  2649ms | projects_web_message_received | renderer_ready
-[2026-04-20T14:09:41.9334112+02:00] +  2655ms | projects_webview_navigation_completed | True
-[2026-04-20T14:09:43.5658445+02:00] +  4288ms | projects_storage_latest_window_loaded | conversation=0e96cdd9dcdb4dd3a90db9ea08f4de83, start=1, end=11, total=11, loaded=11
-[2026-04-20T14:09:43.9222157+02:00] +  4644ms | projects_state_snapshot_window | screen=list, hasOlder=False, count=11
-[2026-04-20T14:09:43.9229573+02:00] +  4645ms | projects_state_snapshot_posted
-[2026-04-20T14:09:43.9329221+02:00] +  4655ms | projects_render_complete_received
-[2026-04-20T14:09:44.9001630+02:00] +  5622ms | projects_web_message_received | select_project
-[2026-04-20T14:09:44.9020606+02:00] +  5624ms | projects_selected_folder_mapped | C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main\.zavod.local
-[2026-04-20T14:09:44.9186662+02:00] +  5640ms | projects_state_snapshot_window | screen=home, hasOlder=False, count=11
-[2026-04-20T14:09:44.9191590+02:00] +  5641ms | projects_state_snapshot_posted
-[2026-04-20T14:09:44.9209398+02:00] +  5643ms | projects_render_complete_received
-[2026-04-20T14:09:45.9869682+02:00] +  6709ms | projects_web_message_received | navigate_screen
-[2026-04-20T14:09:45.9892478+02:00] +  6711ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=False, count=11
-[2026-04-20T14:09:45.9897757+02:00] +  6711ms | projects_state_snapshot_posted
-[2026-04-20T14:09:45.9919311+02:00] +  6714ms | projects_render_complete_received
-[2026-04-20T14:09:49.8637772+02:00] + 10585ms | projects_web_message_received | send_message
-[2026-04-20T14:09:49.8859296+02:00] + 10608ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=False, count=12
-[2026-04-20T14:09:49.8864339+02:00] + 10608ms | projects_state_snapshot_posted
-[2026-04-20T14:09:49.8915118+02:00] + 10613ms | projects_render_complete_received
+[2026-04-21T18:47:46.4447200+02:00] +     0ms | app_ctor
+[2026-04-21T18:47:46.4563072+02:00] +     7ms | on_launched_start
+[2026-04-21T18:47:46.4610579+02:00] +    12ms | root_trace_initialized | C:\Users\Boris\Development\zavod
+[2026-04-21T18:47:46.4880725+02:00] +    39ms | bootstrap_complete
+[2026-04-21T18:47:46.5570939+02:00] +   108ms | loading_overlay_initially_visible
+[2026-04-21T18:47:46.5736954+02:00] +   125ms | loading_overlay_initially_visible
+[2026-04-21T18:47:46.5861024+02:00] +   137ms | projects_webview_construct
+[2026-04-21T18:47:46.7791289+02:00] +   330ms | main_window_created
+[2026-04-21T18:47:46.7956702+02:00] +   347ms | storage_latest_window_loaded | conversation=b6bcd04add2349d58e5353bbadc8cd01, start=1, end=2, total=2, loaded=2
+[2026-04-21T18:47:46.8094026+02:00] +   360ms | window_activated
+[2026-04-21T18:47:46.8138253+02:00] +   365ms | webview_prewarm_start
+[2026-04-21T18:47:46.8151135+02:00] +   366ms | webview_ensure_start
+[2026-04-21T18:47:46.8416765+02:00] +   393ms | webview_loaded
+[2026-04-21T18:47:46.8419067+02:00] +   393ms | webview_ensure_join_existing
+[2026-04-21T18:47:46.8422070+02:00] +   393ms | webview_loaded
+[2026-04-21T18:47:46.8424000+02:00] +   393ms | webview_ensure_start
+[2026-04-21T18:47:46.8439323+02:00] +   395ms | projects_webview_loaded
+[2026-04-21T18:47:46.8450456+02:00] +   396ms | projects_webview_ensure_start
+[2026-04-21T18:47:47.0517374+02:00] +   603ms | webview_ensure_end
+[2026-04-21T18:47:47.0610089+02:00] +   612ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-21T18:47:47.0742176+02:00] +   625ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-21T18:47:47.0744598+02:00] +   626ms | webview_ensure_skipped_initialized
+[2026-04-21T18:47:47.0908752+02:00] +   642ms | webview_ensure_end
+[2026-04-21T18:47:47.0915121+02:00] +   643ms | webview_source_set | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-21T18:47:47.1028092+02:00] +   654ms | projects_webview_ensure_end
+[2026-04-21T18:47:47.1032357+02:00] +   654ms | projects_webview_source_set | https://appassets.zavod/UI/Web/Projects/projects.surface.html
+[2026-04-21T18:47:47.1083391+02:00] +   659ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-21T18:47:47.1095284+02:00] +   661ms | webview_navigation_starting | https://appassets.zavod/UI/Web/Chats/chats.surface.html?v=top-layer-v2
+[2026-04-21T18:47:47.1104583+02:00] +   662ms | projects_webview_navigation_starting | https://appassets.zavod/UI/Web/Projects/projects.surface.html
+[2026-04-21T18:47:49.1231657+02:00] +  2674ms | web_message_received | dom_ready
+[2026-04-21T18:47:49.1252725+02:00] +  2676ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-21T18:47:49.1255358+02:00] +  2677ms | webview_ensure_skipped_initialized
+[2026-04-21T18:47:49.1258276+02:00] +  2677ms | web_message_received | dom_ready
+[2026-04-21T18:47:49.1273358+02:00] +  2678ms | web_message_received | renderer_ready
+[2026-04-21T18:47:49.1276737+02:00] +  2679ms | state_snapshot_window | start=1, end=2, hasOlder=False, count=2
+[2026-04-21T18:47:49.1279237+02:00] +  2679ms | webview_ensure_skipped_initialized
+[2026-04-21T18:47:49.1281604+02:00] +  2679ms | web_message_received | renderer_ready
+[2026-04-21T18:47:49.1311400+02:00] +  2682ms | webview_navigation_completed | True
+[2026-04-21T18:47:49.1315418+02:00] +  2683ms | state_snapshot_posted
+[2026-04-21T18:47:49.1363690+02:00] +  2687ms | webview_navigation_completed | True
+[2026-04-21T18:47:49.1384406+02:00] +  2689ms | conversation_patch_stats | {"pass":1,"mode":"reset","conversationKey":"chats:b6bcd04add2349d58e5353bbadc8cd01","fullReset":true,"createdCount":2,"updatedCount":0,"removedCount":0,"ignoredCount":0,"movedCount":0,"nodeCount":2,"createdIds":["8a5f3de9e359496b9e6d1230082b22c2","fe65ce0823e9451e81ebf9ee0225df6c"],"createdKinds":["message","message"],"updatedIds":[],"ignoredIds":[]}
+[2026-04-21T18:47:49.1386923+02:00] +  2690ms | web_message_received | conversation_patch_stats
+[2026-04-21T18:47:49.1398418+02:00] +  2691ms | windowing_stats | {"action":"reset","fullReset":true,"windowStartSeq":1,"windowEndSeq":2,"hasOlder":false,"loadedCount":2}
+[2026-04-21T18:47:49.1400393+02:00] +  2691ms | web_message_received | windowing_stats
+[2026-04-21T18:47:49.1403065+02:00] +  2691ms | render_complete_received
+[2026-04-21T18:47:49.1404872+02:00] +  2692ms | loading_overlay_hidden
+[2026-04-21T18:47:49.1584913+02:00] +  2710ms | projects_web_message_received | dom_ready
+[2026-04-21T18:47:49.1593689+02:00] +  2710ms | projects_web_message_received | renderer_ready
+[2026-04-21T18:47:49.1677472+02:00] +  2719ms | projects_webview_navigation_completed | True
+[2026-04-21T18:47:51.9405090+02:00] +  5492ms | projects_storage_latest_window_loaded | conversation=0e96cdd9dcdb4dd3a90db9ea08f4de83, start=17, end=28, total=28, loaded=12
+[2026-04-21T18:47:52.1667907+02:00] +  5718ms | projects_state_snapshot_window | screen=list, hasOlder=True, count=12
+[2026-04-21T18:47:52.1673533+02:00] +  5718ms | projects_state_snapshot_posted
+[2026-04-21T18:47:52.1811774+02:00] +  5732ms | projects_render_complete_received
+[2026-04-21T18:47:57.2225899+02:00] + 10774ms | projects_web_message_received | select_project
+[2026-04-21T18:47:57.2232701+02:00] + 10774ms | projects_selected_folder_mapped | C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+[2026-04-21T18:47:57.2296175+02:00] + 10781ms | projects_storage_latest_window_loaded | conversation=15319d6e8b4f493bacbceb63fb6d5f17, start=243, end=254, total=254, loaded=12
+[2026-04-21T18:47:57.2522701+02:00] + 10803ms | projects_state_snapshot_window | screen=home, hasOlder=True, count=12
+[2026-04-21T18:47:57.2527627+02:00] + 10804ms | projects_state_snapshot_posted
+[2026-04-21T18:47:57.2542830+02:00] + 10805ms | projects_render_complete_received
+[2026-04-21T18:47:58.1783347+02:00] + 11729ms | projects_web_message_received | navigate_screen
+[2026-04-21T18:47:58.1964637+02:00] + 11748ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=12
+[2026-04-21T18:47:58.1969744+02:00] + 11748ms | projects_state_snapshot_posted
+[2026-04-21T18:47:58.1999203+02:00] + 11751ms | projects_render_complete_received
+[2026-04-21T18:48:01.2232484+02:00] + 14774ms | projects_web_message_received | send_message
+[2026-04-21T18:48:01.2687337+02:00] + 14820ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=13
+[2026-04-21T18:48:01.2692424+02:00] + 14820ms | projects_state_snapshot_posted
+[2026-04-21T18:48:01.2968615+02:00] + 14848ms | projects_render_complete_received
+[2026-04-21T18:48:05.2016149+02:00] + 18753ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=14
+[2026-04-21T18:48:05.2021294+02:00] + 18753ms | projects_state_snapshot_posted
+[2026-04-21T18:48:05.2243316+02:00] + 18775ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=14
+[2026-04-21T18:48:05.2249341+02:00] + 18776ms | projects_state_snapshot_posted
+[2026-04-21T18:48:05.2252361+02:00] + 18776ms | projects_render_complete_received
+[2026-04-21T18:48:05.2290672+02:00] + 18780ms | projects_render_complete_received
+[2026-04-21T18:48:06.8932994+02:00] + 20444ms | projects_web_message_received | enter_work
+[2026-04-21T18:48:07.0841360+02:00] + 20635ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=15
+[2026-04-21T18:48:07.0846468+02:00] + 20636ms | projects_state_snapshot_posted
+[2026-04-21T18:48:07.0983498+02:00] + 20649ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=15
+[2026-04-21T18:48:07.0988287+02:00] + 20650ms | projects_state_snapshot_posted
+[2026-04-21T18:48:07.0990838+02:00] + 20650ms | projects_render_complete_received
+[2026-04-21T18:48:07.1025134+02:00] + 20654ms | projects_render_complete_received
+[2026-04-21T18:48:08.0533889+02:00] + 21604ms | projects_web_message_received | confirm_preflight
+[2026-04-21T18:48:08.1546601+02:00] + 21706ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=18
+[2026-04-21T18:48:08.1552239+02:00] + 21706ms | projects_state_snapshot_posted
+[2026-04-21T18:48:08.1732554+02:00] + 21724ms | projects_render_complete_received
+[2026-04-21T18:48:37.2841416+02:00] + 50835ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=24
+[2026-04-21T18:48:37.2847605+02:00] + 50836ms | projects_state_snapshot_posted
+[2026-04-21T18:48:37.3008338+02:00] + 50852ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=24
+[2026-04-21T18:48:37.3014196+02:00] + 50852ms | projects_state_snapshot_posted
+[2026-04-21T18:48:37.3017192+02:00] + 50853ms | projects_render_complete_received
+[2026-04-21T18:48:37.3051754+02:00] + 50856ms | projects_render_complete_received
+[2026-04-21T18:48:41.6455528+02:00] + 55197ms | projects_web_message_received | accept_result
+[2026-04-21T18:48:41.8712531+02:00] + 55422ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=26
+[2026-04-21T18:48:41.8720255+02:00] + 55423ms | projects_state_snapshot_posted
+[2026-04-21T18:48:41.8863475+02:00] + 55437ms | projects_state_snapshot_window | screen=work-cycle, hasOlder=True, count=26
+[2026-04-21T18:48:41.8869881+02:00] + 55438ms | projects_state_snapshot_posted
+[2026-04-21T18:48:41.8873301+02:00] + 55438ms | projects_render_complete_received
+[2026-04-21T18:48:41.8891970+02:00] + 55440ms | projects_render_complete_received

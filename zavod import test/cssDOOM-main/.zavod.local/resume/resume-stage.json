@@ -1,0 +1,24 @@
+﻿{
+  "Version": "1.0",
+  "PhaseState": {
+    "Phase": "Discussion",
+    "DiscussionSubphase": "Idle",
+    "ExecutionSubphase": "None",
+    "ResultSubphase": "None",
+    "IntentState": "None",
+    "HasActiveShift": true,
+    "HasActiveTask": false,
+    "HasClarification": false,
+    "HasReopenedContext": false
+  },
+  "IntentState": "None",
+  "IntentSummary": "",
+  "IsExecutionPreflightActive": false,
+  "IsPreflightClarificationActive": false,
+  "IsResultAccepted": true,
+  "ExecutionRefinement": "- Agreement has not been formed yet.",
+  "PreflightClarificationText": "",
+  "RevisionIntakeText": "",
+  "RuntimeState": null,
+  "DemoState": null
+}

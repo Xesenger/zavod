@@ -429,7 +429,7 @@
             <div class="card-inner">
               <div class="section-title">Overview</div>
               <div class="project-name">cssDOOM-main</div>
-              <div class="path">C:\Users\Boris\Development\zavod import test\cssDOOM-main</div>
+              <div class="path">C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main</div>
 
               <div class="quick-stat">
                 <div class="quick-label">Stage</div>
@@ -469,7 +469,7 @@
 
               <div class="quick-stat">
                 <div class="quick-label">Primary Entry</div>
-                <div class="quick-value">index.js [Unknown]</div>
+                <div class="quick-value">Unknown</div>
                 <div class="quick-sub">Best current bounded entry selection.</div>
               </div>
 
@@ -508,34 +508,39 @@
 </ul>
 <h2>What this looks like</h2>
 <ul>
-<li>Import material interpretation prepared: import=MixedImport, sourceRoots=2, materials=12, observations=98, patterns=9, signals=11, languages: JavaScript, build: package_json, entry candidates: 1, modules=3, entries=1, entry candidates: 1, module candidates: 3, truth=context_only.</li>
-<li>It uses CSS transforms and custom properties to position walls, floors, and sprites in 3D space based on DOOM&#39;s level geometry from WAD files, with a JavaScript game loop managing state, input, and AI.</li>
-<li>Assets include numerous PNG images for HUD elements, textures, and map data JSON files, with large map files indicating asset-heavy levels.</li>
+<li>The project appears to be a JavaScript-based game or interactive application with assets, sound, and rendering components, possibly related to a Doom-like game or mod. truth=context_only.</li>
+<li>Asset files include images and sounds, with large JSON map files indicating level or map data, consistent with a game or level editor.</li>
+<li>Dependency edges show imports mainly within the src directory, especially in game and input modules, with assets referenced directly in code.</li>
+<li>The project contains a set of configuration JSON files named E1M1.json through E1M9.json, hinting at multiple levels or maps.</li>
+<li>The assets include sprites, weapons, and menu images, with specific assets like M_THERMM.png, CHAINGUN.png, and various sound files.</li>
 </ul>
 <h2>Observed structure</h2>
 <ul>
 <li>Source Roots: <code>.</code>, <code>src</code></li>
-<li>Main Entry: <code>index.js</code> [Unknown]</li>
-<li>Key Modules: <code>Audio</code> [Likely], <code>Game</code> [Likely], <code>Index.js</code> [Likely]</li>
+<li>Main Entry: Unknown</li>
+<li>Key Modules: <code>Audio</code> [Likely], <code>Game</code> [Likely], <code>Index.js</code> [Likely], <code>Input</code> [Likely], <code>Renderer</code> [Likely]</li>
 </ul>
 <h2>Runtime / stack signals</h2>
 <ul>
 <li><strong>Languages</strong>: JavaScript</li>
-<li><strong>Build Systems</strong>: package_json</li>
 </ul>
 <h2>What is confirmed / likely / unknown</h2>
 <ul>
-<li><strong>Likely</strong>: It is a full game engine with a custom CSS-based renderer, input handling, and map loading, based on the evidence of module candidates, code edges, and assets.</li>
-<li><strong>Unknown</strong>: The exact game state management and AI logic are not explicitly detailed in the evidence., The project is a CSS and JavaScript implementation of DOOM for web browsers (requires explicit file/symbol evidence).</li>
+<li><strong>Likely</strong>: The project is related to a Doom-like game or mod, based on asset naming and map file conventions (based on indirect signals).</li>
+<li><strong>Unknown</strong>: No explicit build system, frameworks, or runtime platform details are present in the evidence., The project is a JavaScript game or interactive application with modular subsystems and asset management (requires explicit file/symbol/dependency evidence).</li>
 </ul>
 <h2>Materials worth reading</h2>
 <ul>
-<li><code>README.md</code> [Likely] usefulness=Medium: Describes the CSS rendering approach, level geometry construction, and input handling, providing a detailed project overview.</li>
+<li><code>public\assets\menu\M_THERMM.png</code> [Confirmed] usefulness=High: Bounded image metadata prepared, used as a menu asset.</li>
+<li><code>public\assets\menu\M_THERMO.png</code> [Confirmed] usefulness=High: Bounded image metadata prepared, used as a menu asset.</li>
+<li><code>public\assets\menu\M_THERMR.png</code> [Confirmed] usefulness=High: Bounded image metadata prepared, used as a menu asset.</li>
+<li><code>public\assets\menu\M_ULTRA.png</code> [Confirmed] usefulness=High: Bounded image metadata prepared, used as a menu asset.</li>
+<li><code>public\assets\menu\TITLEPIC.png</code> [Confirmed] usefulness=High: Bounded image metadata prepared, used as a menu asset.</li>
 </ul>
 <h2>Open uncertainty</h2>
 <ul>
-<li>The exact game state management and AI logic are not explicitly detailed in the evidence.</li>
-<li>The project is a CSS and JavaScript implementation of DOOM for web browsers (requires explicit file/symbol evidence).</li>
+<li>No explicit build system, frameworks, or runtime platform details are present in the evidence.</li>
+<li>The project is a JavaScript game or interactive application with modular subsystems and asset management (requires explicit file/symbol/dependency evidence).</li>
 </ul>
 <h2>Canonical readiness</h2>
 <ul>
@@ -589,11 +594,10 @@
 <ul>
 <li><code>cssDOOM-main</code></li>
 <li>Interpretation Mode: <code>SingleProject</code></li>
-<li>Primary Entry Candidate: <code>index.js</code> [Unknown]</li>
 </ul>
 <h2>Current understanding</h2>
 <ul>
-<li>Import material interpretation prepared: import=MixedImport, sourceRoots=2, materials=12, observations=98, patterns=9, signals=11, languages: JavaScript, build: package_json, entry candidates: 1, modules=3, entries=1, entry candidates: 1, module candidates: 3, truth=context_only.</li>
+<li>The project appears to be a JavaScript-based game or interactive application with assets, sound, and rendering components, possibly related to a Doom-like game or mod. truth=context_only.</li>
 <li>Confidence Slice: Confirmed=0, Likely=1, Unknown=2</li>
 </ul>
 <h2>Key constraints</h2>
@@ -603,14 +607,14 @@
 </ul>
 <h2>Top risks / unknowns</h2>
 <ul>
-<li>The exact game state management and AI logic are not explicitly detailed in the evidence.</li>
-<li>The project is a CSS and JavaScript implementation of DOOM for web browsers (requires explicit file/symbol evidence).</li>
+<li>No explicit build system, frameworks, or runtime platform details are present in the evidence.</li>
+<li>The project is a JavaScript game or interactive application with modular subsystems and asset management (requires explicit file/symbol/dependency evidence).</li>
 </ul>
 <h2>Next confirmable step</h2>
 <ul>
 <li>Confirm <code>preview_project.md</code> into <code>project.md</code> if this understanding is acceptable.</li>
 <li>Keep <code>capsule.md</code> derived from the confirmed project base only.</li>
-<li>Preview project digest length: 2344</li>
+<li>Preview project digest length: 2934</li>
 </ul>
 </div>
   </div>
@@ -623,15 +627,15 @@
     <div class="mini-card"><h3>Architecture Map</h3><p>Source: diagram artifact</p><img class="diagram-preview" src="import_evidence_bundle/architecture_map.png" alt="Architecture map" /></div>
     <div class="mini-card">
       <h3>Entry Points</h3>
-      <ul><li><code>index.js</code> [Unknown] Entry script for game initialization and loop start.</li></ul>
+      <p>No explicit entry points are projected for this stage.</p>
     </div>
     <div class="mini-card">
       <h3>Materials</h3>
-      <ul><li><code>README.md</code> Describes the CSS rendering approach, level geometry construction, and input handling, providing a detailed project overview.</li></ul>
+      <ul><li><code>public\assets\menu\M_THERMM.png</code> Bounded image metadata prepared, used as a menu asset.</li><li><code>public\assets\menu\M_THERMO.png</code> Bounded image metadata prepared, used as a menu asset.</li><li><code>public\assets\menu\M_THERMR.png</code> Bounded image metadata prepared, used as a menu asset.</li><li><code>public\assets\menu\M_ULTRA.png</code> Bounded image metadata prepared, used as a menu asset.</li><li><code>public\assets\menu\TITLEPIC.png</code> Bounded image metadata prepared, used as a menu asset.</li></ul>
     </div>
     <div class="mini-card">
       <h3>Diagram Notes</h3>
-      <p>Diagram notes are coarse or suppressed.</p>
+      <ul><li>The project appears to be a JavaScript-based game or interactive application with assets, sound, and rendering components, possibly related to a Doom-like game or mod.</li></ul>
     </div>
   </div>
 </section>

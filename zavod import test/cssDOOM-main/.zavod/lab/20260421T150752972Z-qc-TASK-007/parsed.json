@@ -1,0 +1,11 @@
+{
+  "Decision": "REVISE",
+  "Rationale": "The Worker returned status 'partial' with a blocker indicating CSS styling approach for FPS counter positioning was not confirmed, meaning core implementation work is incomplete. The modifications listed (edits to hud.js and index.js) are planned but the blocker signals the Worker did not resolve the positioning requirement stated in the acceptance criteria ('top-right corner'). The result is recoverable with a clarified brief anchoring the exact CSS positioning method and confirmation that the HUD layout remains unchanged.",
+  "Issues": [
+    "Status is 'partial', not 'complete' — core work unfinished",
+    "Blocker present: CSS styling approach for FPS counter positioning not confirmed",
+    "No evidence that top-right corner positioning was validated or implemented",
+    "No confirmation that existing HUD layout was preserved"
+  ],
+  "NextAction": "Revise the brief to specify the exact CSS positioning method (e.g., absolute positioning, flexbox, or grid) and require the Worker to confirm positioning does not alter existing HUD layout before resubmitting."
+}

@@ -48,6 +48,23 @@ Additional constraints:
 
 ---
 
+Reasoning tier protocol:
+- Default = medium on Opus 4.7. Low only when full blast radius fits in one line (one file, no branching, no I/O, no state).
+- Auto-escalate to high/max when any trigger fires:
+  * touching state transitions, persistence format, or protocol contracts
+  * fixing a bug whose mechanism is not yet understood
+  * multi-file change without a clear call graph in mind
+  * wording a plan as "думаю, должно сработать" (guess smell — name it, go up)
+- Before starting, state chosen tier + one-line reason ("medium — изолировано в bridge.js, state machine не трогаю"). User may override before work begins.
+- Mid-task tripwire: if the task turns out wider than the chosen tier assumed — stop, report, re-ask for tier. Do not carry low reasoning into a grown task.
+
+Compact reminder protocol:
+- Remind about /compact at slice boundaries (cycle closed, build green, git status clean), not by context %.
+- If context >40% AND a logical slice just finished — surface one short reminder. Otherwise stay silent.
+- Never suggest /compact mid-slice; summary would lose the middle of the reasoning and the next session starts with a blind spot.
+
+---
+
 Project orientation:
 - Layout & concept: README.md
 - Status snapshot: ROADMAP.md

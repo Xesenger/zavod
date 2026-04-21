@@ -3,7 +3,7 @@
     "Code": "workspace_scan_completed",
     "Reason": "Scanner completed bounded workspace scan.",
     "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
     ]
   },
   {
@@ -18,83 +18,47 @@
     "Code": "mixed_binary_source_layout",
     "Reason": "Source/build structure coexists with non-source materials.",
     "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
     ]
   },
   {
     "Code": "nested_payload_layout",
     "Reason": "Nested non-source payloads are visible beside the host project.",
     "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
-    ]
-  },
-  {
-    "Code": "build_manifest_present",
-    "Reason": "Build-system markers are visible in the workspace.",
-    "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\package.json"
-    ]
-  },
-  {
-    "Code": "browser_surface_pattern",
-    "Reason": "Browser-surface markers are visible in bounded structural evidence.",
-    "EvidencePaths": [
-      "package.json",
-      "README.md"
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
     ]
   },
   {
     "Code": "asset_cluster_detected",
     "Reason": "Asset-heavy directories are visible in the workspace.",
     "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\favicon.svg",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\icon.png",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\preview.jpg",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\sprite-info.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\texture-sizes.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\weapon-info.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M1.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M2.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M3.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M4.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M5.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M6.json"
-    ]
-  },
-  {
-    "Code": "documentation_cluster_present",
-    "Reason": "Documentation files are visible in the scanned workspace.",
-    "EvidencePaths": [
-      "README.md",
-      "public\\icon.png",
-      "public\\preview.jpg",
-      "public\\assets\\hud\\DIGITS_SHEET.png",
-      "public\\assets\\hud\\FACE_SHEET.png",
-      "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
-      "public\\assets\\hud\\STARMS.png",
-      "public\\assets\\hud\\STBAR.png",
-      "public\\assets\\hud\\STFB0.png",
-      "public\\assets\\hud\\STFB1.png",
-      "public\\assets\\hud\\STFB2.png",
-      "public\\assets\\hud\\STFB3.png"
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M1.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M2.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M3.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M4.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M5.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M6.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M7.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M8.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M9.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\assets\\menu\\M_THERMM.png",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\assets\\menu\\M_THERMO.png",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\assets\\menu\\M_THERMR.png"
     ]
   },
   {
     "Code": "config_cluster_present",
     "Reason": "Configuration files are visible in the scanned workspace.",
     "EvidencePaths": [
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\package.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\wrangler.toml",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\sprite-info.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\texture-sizes.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\assets\\weapon-info.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M1.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M2.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M3.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M4.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M5.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M6.json",
-      "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main\\public\\maps\\E1M7.json"
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M1.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M2.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M3.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M4.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M5.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M6.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M7.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M8.json",
+      "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\public\\maps\\E1M9.json"
     ]
   }
 ]

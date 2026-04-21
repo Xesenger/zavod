@@ -1,196 +1,214 @@
-# Pass 1 Handoff — UI готов, дальше core actions wiring
+# Pass 2 Handoff — Lead + Worker live, лаборатория на cssDOOM работает
 
-Дата: 2026-04-19
-Статус: Pass 1 (UI shell) завершён. Pass 2 (core-driving actions) — следующий этап.
-
----
-
-## Что сделано в Pass 1
-
-**Полный переход Projects mode на WebView2 с настоящими данными:**
-
-- `UI/Web/Projects/projects.surface.html|css|bridge.js` — web shell поверх прототипа `project_concept_full.html`
-- `UI/Modes/Projects/ProjectsWebRendererView.xaml(.cs)` — WebView2 host, паттерн зеркалит `ChatsWebRendererView`
-- `UI/Modes/Projects/Bridge/ProjectsWebBridgeModels.cs` — typed records snapshot envelope
-- `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs` — stateful builder, читает реестр + per-project артефакты с диска
-- `Persistence/ProjectRegistryStorage.cs` — реестр в `~/Documents/ZAVOD/projects.json`
-- `Bootstrap/ProjectBootstrap.cs` — добавлен overload `Initialize(rootPath, projectName)` для нового потока с явным именем
-- `MainWindow.xaml.cs` — feature flag `UseProjectsWebRenderer = true`, parallel хост рядом с XAML, intent dispatch
-
-### Реально работает end-to-end
-
-- **Mode switch** Chats ↔ Projects (top WinUI, не трогать)
-- **Project List** — рендерится из registry. Stack tags + file count + anchor count читаются из per-project `.zavod/import_evidence_bundle/*.json`
-- **New project modal** — name + kind dropdown + live path preview. Создаёт уникальную папку в `~/Documents/ZAVOD/<slug>/`, Bootstrap с явным именем, kind в `.zavod/meta/project_kind.txt`
-- **Import project** — FolderPicker → Bootstrap + WorkspaceScanner.Scan + WorkspaceImportMaterialInterpreterRuntime.Interpret (gpt-4.1-nano) → preview.html + 20 JSON артефактов → registry → snapshot push → preview.html открывается в браузере
-- **Project Home** — реальное имя/путь/stats/preview iframe (через второй virtual host `projectfiles.zavod`). Scanner analysis секция (top 12 non-doc snippets) + User documents секция (doc-categorized snippets)
-- **Composer** — paperclip → C# FilePicker → staged file chip. Long paste (>4000 chars / >40 lines) → text artifact chip. × на chip → unstage. Send → atomic submission в conversation log (без LLM)
-- **Локализация** RU/EN — `ZAVOD_UI_LANG` env. Все ключи из `AppText.cs` идут в snapshot.text dict, JS применяет по `data-l10n` атрибутам
-
-### Ключевые решения
-
-- **Folder vs Name decoupled**: folder — физический адрес, фиксируется при create. Name — метаданные в `.zavod/meta/project.json`, редактируется свободно. Convention из VSCode workspace / JetBrains
-- **Single source of truth**: snapshot envelope содержит всё что JS видит. JS не хранит локального state кроме UI-only toggle'ов (modal open/close, clarify expand)
-- **Shared engine**: conversation portion snapshot'а строится через `_projectsController.BuildSnapshot()` который возвращает `ChatsWebStateSnapshot` — тот же тип что у Chats. Composer/attachments/long-text идут через `ConsumeComposerSubmissionAsync`, `StageFiles`, `StageLongTextArtifact` — общие методы Chats и Projects контроллеров
-- **L10n keys = AppText keys** (dotted format) вместо camelCase record fields — для масштаба 70+ строк проще Dictionary<string,string> чем строго типизированный record
+Дата обновления: 2026-04-20
+Статус: Pass 1 (UI shell) + Pass 2 срезы A/B/C-1 завершены. Срез C-2 (QC LLM) — следующий.
 
 ---
 
-## Bridge contract (актуальное состояние)
+## Текущее состояние: что работает end-to-end
 
-### C# → JS
+**User → Lead (LLM) → Preflight → Worker (LLM) → QC auto-accept → Result** — проходится в web UI на cssDOOM:
 
-`state_snapshot` envelope с payload:
-```json
-{
-  "conversation": ChatsWebStateSnapshot,    // messages, composer, pendingAttachments, text-en
-  "currentScreen": "list" | "home" | "work-cycle",
-  "list": { "projects": [...], "canImport": true, "canCreateNew": true },
-  "selectedProject": {
-    "id", "name", "description", "previewUrl",
-    "files", "anchors", "tasks", "docs",
-    "anchorRows": [{ "tag", "value" }],
-    "documentRows": [{ "name", "meta" }]
-  },
-  "home": null,         // зарезервировано для richer Home payload
-  "workCycle": null,    // зарезервировано для phase/preflight/execution payload
-  "text": { "projects.list.title": "...", ... }
-}
-```
-
-### JS → C# intents
-
-| Intent | Wired? | C# handler |
-|---|---|---|
-| `dom_ready` / `renderer_ready` | trace only | — |
-| `render_complete` | hide overlay | `FirstFrameReady` event |
-| `navigate_screen { screen }` | ✅ | `_projectsWebSnapshotBuilder.NavigateTo` + push |
-| `select_project { projectId }` | ✅ | `SetSelectedProjectFolder` + `Touch` + `SelectProject` + push |
-| `create_project { name, kind }` | ✅ | `HandleProjectsWebCreateAsync` |
-| `import_project` | ✅ | `HandleProjectsWebImportAsync` (FolderPicker + Scan + Interpret + registry + push) |
-| `send_message { text }` | partial | `ConsumeComposerSubmissionAsync` + `AddMessageAsync(User)` + commit + push (НО не дёргает Lead) |
-| `request_attach_files { sourceType }` | ✅ | `StageComposerFilesAsync(projectsMode: true)` + push |
-| `remove_attachment { draftId }` | ✅ | `RemovePendingComposerInput` + push |
-| `stage_text_artifact { text }` | ✅ | `StageLongTextArtifact` + push |
-| **`enter_work`** | ❌ trace only | должен → `_workCycleActions.EnterWorkAsync()` |
-| **`confirm_preflight`** | ❌ trace only | должен → `_workCycleActions.ConfirmPreflightAsync()` |
-| **`return_to_chat`** | ❌ trace only | должен → `_workCycleActions.ReturnToChatAsync()` |
-| **`apply_clarification` { text }** | ❌ trace only | должен → `_workCycleActions.ApplyClarificationAsync(text)` |
-| **`accept_result`** | ❌ trace only | должен → `_workCycleActions.AcceptResultAsync()` |
-| **`reject_result`** | ❌ trace only | должен → `_workCycleActions.RejectResultAsync()` |
-| **`request_revision` { text }** | ❌ trace only | должен → `_workCycleActions.RequestRevisionAsync(text)` |
-
-**7 жирных красных** — это task для Pass 2.
+1. User шлёт сообщение в Discussion
+2. `LeadAgentRuntime` (gpt-4.1-mini) читает:
+   - `RECENT CONVERSATION` — последние до 7 реплик user/lead/worker/qc
+   - `PROJECT CONTEXT` (name/kind/root)
+   - `PROJECT STACK` из `import_evidence_bundle/technical_passport.json` + `project_profile.json` (languages, source_roots, file counts, config_markers)
+   - `ADVISORY NOTES` от `ProjectSageService`
+   - `ORIENTATION MODE` инструкции если `OrientationIntentDetector.IsOrientationRequest` сработал
+3. Lead возвращает strict JSON `{intent_state, reply, scope_notes, task_brief, warnings}`
+4. `TryMapLeadIntentState` переводит Lead's intent_state в `ContextIntentState` — **Lead авторитет**, переопределяет `ProductIntentClassifier` (regex fast pre-pass)
+5. На `ready_for_validation`: `task_brief` становится `TaskState.Description` (НЕ сырой user text — эта поправка убрала Worker-refused-by-garbage-input)
+6. `tab to work` кнопка загорается (`workCycle.canEnterWork`), user жмёт → `EnterWorkAsync` → Preflight phase
+7. Preflight card выскакивает (`pfCard.open`), user жмёт Confirm → `ConfirmPreflightAsync` → `WorkerAgentRuntime` (deepseek-chat-v3) → структурированный результат
+8. QC auto-accept → Result phase → phase-3 UI с Accept/Reject/Revise кнопками (все 3 wired)
 
 ---
 
-## Pass 2 — что нужно сделать
+## Инфраструктура (что реально зафиксировано в коде)
 
-Цель: сделать возможным live-тестирование Lead/Worker/QC ролей на импортированном репозитории.
+### Runtime
 
-### 1. Расширить `ProjectsWebStateSnapshot.WorkCycle` payload
+- `Execution/RolesConfiguration.cs` — record `RoleProfile(Model, Temperature, TimeoutSeconds, MaxTokens)`, loader из `app/config/roles.json` с defaults fallback
+- `Execution/LabTelemetryWriter.cs` — пишет `<projectRoot>/.zavod/lab/<UTC>-<role>-<callId>/{request,response,parsed,meta}.json` по каждому LLM-вызову
+- `Lead/LeadAgentRuntime.cs` — direct OpenRouter, JSON parse + code-fence strip, structured `LeadAgentResult`
+- `Worker/WorkerAgentRuntime.cs` — то же для Worker, возвращает `WorkerAgentParsedResult` с plan/actions/modifications/blockers/risks/warnings
 
-Сейчас `WorkCycle: null`. Должно содержать (из доки 06):
+### Controller wiring
 
-```csharp
-record ProjectsWebWorkCycle(
-    string VisualPhase,            // "phase-1" | "phase-2" | "phase-3"
-    bool ResultVisible,
-    string SurfacePhase,           // "Discussion" | "Execution" | "Result" | "Completed"
-    string ExecutionSubphase,      // "Preflight" | "Running" | "Qc" | "Revision" | "Interrupted" | ""
-    string ResultSubphase,         // "Ready" | "RevisionRequested" | ""
-    bool ShowChat,
-    bool ShowExecution,
-    bool ShowResult,
-    bool CanEnterWork,
-    bool CanConfirmPreflight,
-    bool CanSendMessage,
-    bool ComposerEnabled,
-    IReadOnlyList<ProjectsWebExecutionItem> ExecutionItems,
-    IReadOnlyList<ProjectsWebPreflightTask> PreflightTasks,
-    string? ValidationSummary);
-```
+- `WorkCycleActionController`:
+  - `SetProjectRoot(string)` — mutable projectRoot для re-anchoring per-project
+  - `SetProgressCallback(Func<Task>)` — intermediate UI pushes между шагами (User bubble сразу, Lead/Worker по мере готовности)
+  - `BuildLeadRecentTurns` — собирает контекст из `ProjectsAdapter.Items`
+  - `BuildProjectStackSummary` — читает evidence bundle
+  - `ReadProjectKind` — из `.zavod/meta/project_kind.txt` (fallback `unknown`)
+  - `TryMapLeadIntentState` — Lead's JSON → ContextIntentState override
+  - `MapWorkerStatus` — Worker's status string → WorkerExecutionStatus enum
+  - `ConfirmPreflightAsync` — заменил dummy `ProduceResult` на реальный Worker LLM через `Task.Run`, с graceful fallback на dummy при сбое LLM
 
-Builder читает `_workCycleActions` / `StepPhaseProjection` для активного проекта.
+### MainWindow wiring (web intents)
 
-### 2. VisualPhase mapping (computed в C#)
+Все 7 "красных" intents из старого handoff теперь подключены через диспетчер `HandleProjectsWebWorkCycleActionAsync`:
+- `enter_work` → `EnterWorkAsync`
+- `confirm_preflight` → `ConfirmPreflightAsync` (**→ Worker LLM**)
+- `accept_result` → `AcceptResultAsync`
+- `reject_result` → `RejectResultAsync`
+- `request_revision` → `RequestRevisionAsync`
+- `apply_clarification` → `ApplyClarificationAsync(text)`
+- `return_to_chat` → `ReturnToChatAsync`
 
-```
-Discussion + любая subphase     → "phase-1"
-Execution + Preflight           → "phase-2"
-Execution + Running/Qc/Revision → "phase-3"
-Result + любая subphase         → "phase-3" + ResultVisible: true
-Completed + —                   → "phase-3" + completed flag
-```
+Каждый action после выполнения пушит snapshot.
 
-JS просто читает `body.dataset.phase = state.workCycle.visualPhase`. Никакого second phase enum в JS.
+### Re-anchor per project
 
-### 3. Wire 7 core-driving intent handlers
+- `MainWindow` конструктор: `_workCycleActions.SetProgressCallback(PushProjectsWebSnapshot)`
+- `select_project` intent handler: `_workCycleActions.SetProjectRoot(entry.RootPath)` + `HandleProjectsWebSelectProjectAsync` (ReanchorToAsync) — controller переключает `_projectsController` под выбранный проект
+- `ProjectsRuntimeController.IsInitialized` public getter + guard в `EnsureProjectsWebReadyAndPushAsync`: "не перезатирать уже reanchor'нутое состояние"
+- `ProjectsWebSnapshotBuilder` constructor: авто-подхватывает `registry.LastOpenedProjectId` — при рестарте app контекст продолжается, а не сбрасывается
 
-Все идут через существующий `WorkCycleActionController` (он уже есть в MainWindow и работает в XAML). Просто перенаправить из IntentReceived switch.
+### Snapshot payload
 
-**Важно**: до этого нужно убедиться что `_workCycleActions` инициализирован для **выбранного проекта** (сейчас он привязан к ZAVOD repo через `_projectRoot`). Это значит при `select_project` нужно либо:
-- A) Re-anchor `_projectsController` + `_workCycleActions` к новому projectRoot (большой рефакторинг — controllers пишут в свой projectRoot)
-- B) Создавать новые instances controllers для выбранного project — проще и чище
+- `ProjectsWebSnapshotBuilder.BuildWorkCyclePayload` — раньше `null`, теперь строит `ProjectsWebWorkCycle` из активного проекта:
+  - `VisualPhase` (phase-1/2/3), `SurfacePhase`, `ExecutionSubphase`, `ResultSubphase`
+  - `CanEnterWork` (из `projection.CanStartIntentValidation`)
+  - `CanConfirmPreflight`, `CanSendMessage`, `ComposerEnabled`
+  - `ResultVisible` (для phase-3 рендера)
+  - `ValidationSummary` (текущий intentSummary = task_brief от Lead)
+  - `ExecutionItems` / `PreflightTasks` — пока `Array.Empty<>` (срез C-3)
 
-### 4. JS render для preflight rows + execution items + task strip
+### JS rendering (UI/Web/Projects/projects.bridge.js)
 
-Сейчас контейнеры пустые (`#pf-rows`, `#feed`, `#agent-feed`, `#task-strip`, `#artifact-body`):
+- `renderMessages(state.conversation.messages)` — полный rerender feed'а:
+  - `role=user` → bubble-wrap (справа)
+  - `role=assistant/lead/worker/qc` → doc-block (слева)
+  - status → doc-block тоже
+- `intentBtn.className = 'intent-btn lvl3'` когда `canEnterWork === true` — кнопка горит ярко
+- `pfCard.classList.toggle('open', inPreflight)` — preflight card показывается в Execution/Preflight
+- `phase3.classList.toggle('active', resultVisible)` + `phase1.display = 'none'` — Result UI с Accept/Reject/Revise
+- `phase1Overlay.classList.toggle('active', inPreflight)` — dim feed в preflight
 
-- `state.workCycle.preflightTasks[]` → render `.pf-row` элементов в `#pf-rows`
-- `state.conversation.messages[]` → render `.bubble-wrap`/`.doc-block` в `#feed` (Discussion view)
-- `state.workCycle.executionItems[]` → render agent action blocks + diff cards в `#agent-feed` + `#artifact-body`
-- Task strip: derived from preflight tasks статус (running/done/pending)
-- Action bar stats: `#ab-stat-tasks`, `#ab-stat-files`, `#ab-stat-errors` обновляются из state
+### Prompts
 
-### 5. Re-anchorable controllers
+- `app/prompts/lead.system.md` — расширен с правилами против over-refining:
+  - Trust go-signals (погнали/поехали/go/ship it)
+  - No repeat: не задавать тот же вопрос дважды
+  - One-shot clarification для small bounded tasks
+  - Trust PROJECT STACK (не спрашивать про язык если уже виден)
+  - Output contract с task_brief (обязательно при ready_for_validation)
+- `app/prompts/worker.system.md` — без изменений в этой сессии, минимально содержательный (TODO: довести до уровня import.system.md)
 
-Сейчас `_chatsController` / `_projectsController` / `_workCycleActions` создаются в конструкторе `MainWindow` для `_projectRoot` (resolved by ProjectRootResolver = ZAVOD repo). Для multi-project работы:
+### Config
 
-Вариант B (см. п.3): когда `select_project` приходит — пересоздавать controllers под новый projectRoot. Старые dispose'ятся (или просто GC'ятся). Snapshot пересобирается.
-
-Это критично потому что `WorkCycleActionController` пишет в `<projectRoot>/.zavod/shifts/`. Если мы оставим его привязанным к ZAVOD repo, любая попытка enter_work на cssDOOM-main создаст shift в ZAVOD's `.zavod/shifts/`, не в cssDOOM. То самое "core должен крутить ZAVOD на ZAVOD" — анти-паттерн.
+- `app/config/roles.json` (gitignored):
+  - Lead: `openai/gpt-4.1-mini` (0.3, 60s, 800t)
+  - Worker: `deepseek/deepseek-chat-v3` (0.2, 120s, 2000t)
+  - QC: `anthropic/claude-haiku-4.5` (0.0, 45s, 800t) — пока не используется
+- `app/config/openrouter.local.json` — API key + default model
 
 ---
 
-## Carry-over hints для нового чата
+## Лаб-валидация
 
-**Не трогать:**
-- Top-level switch Chats|Projects — это WinUI в `MainWindow.xaml` (`<shell:ModeSwitchView>`)
-- XAML `<projects:ProjectsHostView>` — fallback за feature flag, оставить пока Pass 2 не доказан полностью
-- `_chatsController` flow и Chats web — отдельная вселенная
+На cssDOOM прогнаны сценарии 1-3 (orientation, vague intent, confirmation dialogue):
 
-**Файлы которые ты будешь чаще всего трогать в Pass 2:**
-- `MainWindow.xaml.cs` — IntentReceived switch (line ~1380 area), контроллеры
-- `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs` — расширение Build() для WorkCycle payload
-- `UI/Modes/Projects/Bridge/ProjectsWebBridgeModels.cs` — добавление полей в WorkCycle
-- `UI/Web/Projects/projects.bridge.js` — render для preflight/execution из state
-- `UI/Modes/Projects/WorkCycle/Actions/WorkCycleActionController.cs` — уже работает, не переписывать
+- OK Orientation: "кто я? где я?" → Lead корректно идентифицирует ZAVOD + cssDOOM-main + роль Shift Lead
+- OK Диалог с уточнениями работает, Lead помнит предыдущие реплики через RECENT CONVERSATION
+- OK Go-signal detection: "погнали уже в работу" → ready_for_validation (после того как добавили trust-go rule)
+- OK Lead intent override на classifier работает — кнопка tab to work разблокируется
+- OK Phase transitions через state machine корректны
+- OK Worker первый реальный вызов прошёл (deepseek-v3, 5s, 200 OK) — выявил баг с raw-text TaskDescription → пофикшено через task_brief
+- TODO Сценарий 4 (Worker happy-path на нормальной задаче) — не проверен после фикса task_brief
+
+Lab telemetry накапливается в `<projectRoot>/.zavod/lab/<UTC>-<role>-<callId>/` — полные входные пакеты, raw response, parsed JSON, meta с latency/model/diagnostics.
+
+---
+
+## Что НЕ сделано (приоритизация)
+
+### Срез C-2 — QC LLM runtime
+
+- `QcAgentRuntime.cs` — direct OpenRouter с parsed `{status: ACCEPT|REVISE|REJECT, verified, issues, reason, next_action}`
+- Заменить `ExecutionRuntimeController.AcceptQcReview` (auto-accept) на wire через QC runtime
+- Map ACCEPT → ProduceProvidedResult + AcceptQcReview, REVISE → RestartCompletedResultForRevision, REJECT → abandon
+- QC bubble `ConversationItemKind.Qc` с metadata `lab.qc.status/latency/model`
+- Upgrade `app/prompts/qc.system.md` до уровня `import.system.md` с JSON schema
+
+### Срез C-3 — phase-3 detail rendering
+
+- JS: рендер `state.workCycle.executionItems` в `#agent-feed` (Worker actions / logs)
+- JS: рендер `state.workCycle.preflightTasks` в `#pf-rows` (preflight details)
+- JS: артефакт-карточка в `#artifact-body` из Worker's modifications (diff preview)
+- C#: заполнение этих полей из Worker's `ExecutionRuntimeState.Result`
+
+### Срез 2.1 — minimal DSL + линтеры
+
+- Records: `ExecutionPlan`, `ExecutionStep`, `ExecutionResult`
+- 3 typed `TypedToolContract`: `code.lint`, `project.build`, `project.test`
+- Worker's `modifications` + `plan` становятся executable steps
+- Mechanical QC layer наполняется из tool evidence (сейчас заглушка/auto)
+
+### Срез 2.3 — streaming
+
+- Async variant `OpenRouterExecutionClient` с SSE
+- Интеграция с `ProjectsAdapter.AppendStreamingAsync` / `CompleteStreamingAsync`
+- Live прогресс Worker вместо 5-30s паузы до ответа
+
+### Partial re-anchor fix
+
+- `ProjectsRuntimeController._projectRoot` всё ещё `readonly` — conversation logs + artifacts пишутся в ZAVOD's `.zavod.local/`, не в per-project. Работает (бабллы в UI ok, сообщения персистятся), но **НЕ в правильном месте на диске**.
+- Фикс: сделать `_projectRoot` mutable + добавить в `ResetState` обновление; вызывать при reanchor.
+
+### Senior Specialist
+
+Отложен до после C-3 и DSL. Infra (`SeniorSpecialistRuntime`) не создана.
+
+### Worker prompt upgrade
+
+`worker.system.md` нужно довести до уровня `import.system.md` (full structured с JSON schema inline + few-shot примеры refusal / partial / success).
+
+### Phase-3 detail gap в UI
+
+Сейчас в Result user видит карточку с Accept/Reject/Revise, но:
+- `#agent-feed` (left col) пустой
+- `#artifact-body` (right col) пустой
+- `#task-strip` пустой
+
+Кнопки работают, но UX слеповат — user видит status bubble в feed (phase-1 скрыт) и голый grid.
+
+---
+
+## Критичные архитектурные заметки
+
+1. **Lead bypass pipeline**: `PromptRequestPipeline.Execute` требует `IntentState == Validated`, что несовместимо с Lead (работает в Candidate/Refining). Lead использует direct OpenRouter call с raw `lead.system.md` как system prompt. Pipeline-fix для Lead — отдельная задача, не блокер.
+
+2. **Worker bypass pipeline too**: WorkerAgentRuntime тоже не использует PromptRequestPipeline (direct call). Значит 4-part packet (ROLE CORE + SHIFT CONTEXT + TASK BLOCK + ANCHORS) в Worker не используется. Это снижает anti-hallucination гарантии канона. Когда Worker будет делать реальные мутации (после DSL) — нужно будет подключить pipeline.
+
+3. **Classifier stays as fast pre-pass**: `ProductIntentClassifier` (regex) держим до Lead call для дешёвой pre-classification. Lead override имеет приоритет.
+
+4. **State persistence**: `.zavod/` в проекте — shared/commit-friendly (meta, shifts, snapshots, lab). `.zavod.local/` — app-local runtime state (resume-stage, conversations, artifacts, cache). Эти два разделены умышленно.
+
+5. **Lab telemetry путь зависит от выбранного projectRoot**: Lead пишет в `<project>/.zavod/lab/<UTC>-lead-send-message/`, Worker — `<project>/.zavod/lab/<UTC>-worker-<TASK-ID>/`. Для фазы QC — зарезервировано `-qc-<RESULT-ID>`.
+
+---
+
+## Hints для нового чата / новой сессии
+
+**Файлы которые будут чаще всего трогаться:**
+- `Worker/WorkerAgentRuntime.cs` — полировать prompt, structured output parsing
+- `Qc/QcAgentRuntime.cs` (создать) — по шаблону Lead/Worker
+- `UI/Modes/Projects/WorkCycle/Actions/WorkCycleActionController.cs` — wire QC, extend phase-3 payloads
+- `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs` — расширить WorkCycle payload под phase-3 detail
+- `UI/Web/Projects/projects.bridge.js` — рендер agent-feed / task-strip / artifact-body
 
 **Полезные ссылки:**
-- `docs/projects-web/06-projects-web-connection-plan.md` — оригинальный план Pass 1+2 c bridge contract
-- `docs/projects-web/02-project-work-cycle-core-binding-ru.md` — какие state transitions есть в core (EnterPreflight, ConfirmPreflight, MoveToQc, AcceptQc, ReturnForRevision, ReturnToLead, CancelExecution, ResumeExecution, OpenInterruptedDiscussion, StartRevisionCycle)
-- `docs/projects-web/памятка.txt` — главное правило: shared engine, не плодить параллельные сущности
+- `agent/ZAVOD — Execution Engine & Prompt Assembly (current).md` — main текущая архитектура
+- `docs/zavod/roles/{shift_lead,worker,qc}.md` — канон ролей
+- Lab examples: `zavod import test/cssDOOM-main/.zavod/lab/` — примеры Lead/Worker пакетов + ответов для reference
+- `app/prompts/import.system.md` — эталон structured prompt
 
-**OpenRouter / LLM:**
-- `app/config/openrouter.local.json` содержит API key + `modelId: "openai/gpt-4.1-nano"` — это активный default для Importer role
-- Lead и Worker могут использовать другую модель — смотри как они инициализируются в коде
-- `OpenRouterExecutionClient.Execute` синхронный, всегда оборачивай в `Task.Run` чтобы не лочить UI
-
-**Тестовый сценарий который ты будешь гонять:**
-1. Запустить app
-2. Click "новый проект" → ввести имя → создать (или import готовый репо)
-3. Click на карточку → Home
-4. Click "ENTER WORK CYCLE" → Discussion
-5. Написать запрос в composer → Send
-6. **Сейчас ничего не отвечает.** В Pass 2: должен ответить Lead с предложением intent
-7. Кнопка "В работу" / Tab → preflight card с задачами от Lead
-8. Click "Запустить" → Worker стартует execution
-9. Diff cards + agent actions появляются в правой колонке
-10. Action bar visible с Accept/Revise/Reject
-
-Главные вопросы для тестирования:
-- Адекватно ли Lead формирует intent на разных типах проектов (cssDOOM = JS game vs Rust CLI vs C# library)?
-- Откажется ли Worker делать противоречивую задачу?
-- Корректно ли QC принимает/отклоняет результат?
-- Не сваливается ли flow в loop при revision?
+**Тестовый сценарий на следующей сессии:**
+1. cssDOOM: запрос "добавь FPS counter в правый верхний угол"
+2. Lead (обновлённый с task_brief) → ready_for_validation с чистой формулировкой
+3. tab to work → Confirm preflight
+4. Worker → должен выдать non-refused результат (success/partial с планом) теперь когда TaskDescription корректный
+5. Result UI (C-3 gap: agent-feed пустой) → Accept/Reject/Revise — проверить что accept_result действительно промотит cycle

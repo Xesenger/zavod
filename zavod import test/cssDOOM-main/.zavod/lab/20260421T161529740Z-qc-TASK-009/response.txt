@@ -1,0 +1,12 @@
+```json
+{
+  "decision": "REVISE",
+  "rationale": "The Worker claims partial completion with a blocker: CSS styling confirmation for FPS display is still pending. The acceptance criteria require a full end-to-end flow (render loop → FPS calculation → HUD update → display in top-right corner), and the task explicitly states 'Layout не менять, новые контейнеры не добавлять' (do not change layout, do not add new containers). The staged artefact shows index.js was modified (442B), confirming render loop integration occurred, but the blocker indicates the HUD display styling is incomplete. A result with an unresolved blocker cannot be accepted as satisfying the full end-to-end requirement; the task is not terminal.",
+  "issues": [
+    "CSS styling confirmation for FPS display is listed as a blocker, indicating the visual output step is incomplete",
+    "Status is 'partial', not 'complete', signaling the task is not finished",
+    "No evidence provided that FPS is actually rendering in the top-right corner as required"
+  ],
+  "next_action": "Revise the brief to clarify whether CSS styling should be applied by the Worker or is out of scope; if in scope, request the Worker complete the styling confirmation and verify end-to-end display before resubmission."
+}
+```

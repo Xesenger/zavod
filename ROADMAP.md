@@ -99,6 +99,12 @@ In practical terms:
 
 This allows ZAVOD to treat agents as execution resources inside the system, not as the source of process truth.
 
+### Canonical vocabulary
+
+Role prompts, typed output schemas, and runtime routing must share a single canonical vocabulary. Synonyms (e.g. `complete` vs `success`, `Partial` vs `partial`) must be normalized at the classification layer so that model output cannot silently drift from system classification. A confident Worker response must never fall to the refused path because the prompt accepted a synonym the parser did not recognize.
+
+This invariant belongs to the agent-contract boundary: when a role is swapped for a different model, the system vocabulary stays constant and the new model is normalized onto it — not the other way around.
+
 ## Environment Preparation
 
 Make environment setup part of the system instead of a manual prerequisite.
@@ -318,10 +324,10 @@ It is a factual snapshot, not a claim of completeness.
 | Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving |
 | Preview → Canonical pipeline | Functional | Stage-based truth pipeline active, still evolving |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
-| Role System (Lead / Worker / QC) | Functional | Roles and boundaries exist, further refinement expected |
-| Acceptance / Apply Boundary | Functional | Controlled result boundary separated from execution |
+| Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
+| Acceptance / Apply Boundary | Functional | SHA256 hash-guarded atomic apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
 | Dispatching / Router | Functional | ExecutionDispatcher + Bootstrap/ActiveShift/Idle subsystems + ProjectRouter |
-| Advisory layer (Sage) | Functional | ProjectSageService — context hints for Lead/Worker from project history |
+| Advisory layer (Sage) | Partial (S0) | Current ProjectSageService is keyword-scored advisory only; typed Sage S1+ (SageObservation records with type/severity/stage/channel, middle-truth layer, pattern memory) is the next planned slice |
 
 ---
 
@@ -329,11 +335,17 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Execution lifecycle | Partial | Core flow exists, not yet formalized as a full DSL |
-| LLM orchestration (OpenRouter) | Partial | Client implemented, full end-to-end loop not yet complete |
-| Worker execution pipeline | Partial | Fragments connected, not fully stabilized |
-| Execution verification pipeline | Planned | Architecture defined in canon, not yet implemented |
+| Execution lifecycle | Functional | End-to-end cycle closes: intent → Lead validation → Preflight → Confirm → Worker (with real edits) → sandbox staging → QC decision → apply/abandon → commit. Not yet formalized as a declarative DSL |
+| LLM orchestration (OpenRouter) | Functional | Lead / Worker / QC runtimes with typed contracts; per-call lab telemetry (`.zavod/lab/<UTC>-<role>-<taskId>/{request,response,parsed,meta}.json`); `max_tokens` plumbed through to upstream |
+| Worker execution pipeline | Functional | Worker emits typed `edits` (write_full / insert_after with unique anchors); anchor discipline + revision feedback contract in prompt; output schema enforces real deliverable over plan-only responses |
+| Staging sandbox & apply pipeline | Functional | `.zavod.local/staging/<taskId>/attempt-<N>/` isolated sandbox for Worker edits with `manifest.json`; SHA256 hash-guarded atomic apply on user Accept; quarantine (not delete) on abandon preserves staged artefacts under `_abandoned/<taskId>-<utc>/` |
+| Execution verification pipeline | Partial | SHA256 origin-hash guard and staging manifest provide drift detection; mechanical verification layer (build / lint / test via TypedToolContracts) is planned (Slice 2.1b / 2.2) |
 | Autonomous runtime planning | Not yet | No model-driven planning layer yet |
+
+**Operational invariants (learned rules, enforced in pipeline):**
+
+- **Infrastructure failure isolation.** Provider timeouts, LLM parse errors, and any upstream unavailability must be treated separately from Worker/QC task judgment. They must not synthesize fake results, trigger QC on empty input, or destructively abandon revision progress. Staged artefacts from prior attempts must survive transient infrastructure failures.
+- **Revision cycles carry forward structured feedback.** A revision attempt must receive typed notes from its predecessors within the same task: user revision intake, prior QC rationale, and any staging skip reasons. Worker must see its own history within the task; blind retries are a regression.
 
 ---
 
@@ -354,24 +366,27 @@ It is a factual snapshot, not a claim of completeness.
 | Area | Status | Notes |
 |------|--------|------|
 | Chats mode (web renderer) | Functional | WebView2 bridge with HTML/JS surface, streaming, markdown rendering |
-| Projects mode (XAML shell) | Partial | Screens and projections exist; web migration in progress |
+| Projects mode (web renderer) | Functional | WebView2 bridge with phase-aware surfaces (Discussion / Preflight / Execution / Result); three-phase visualization with composer, action bar, and pf-card; full intent → validation → execution → apply cycle live in the web surface |
 | Markdown rendering | Functional | Parser + WinUI 3 renderer, two typography modes (Chats/Projects) |
 | Guided user flow | Early | Intent system exists, user journey not fully shaped |
 | Internal editor | Not yet | No built-in editing surface |
 | External change tracking | Not yet | No realtime file monitoring yet |
-| Approval UX | Partial | Policy exists, product-level UX not finalized |
+| Approval UX | Partial | User-authoritative Accept / Reject / Request revision buttons on Result phase; inspection of staged diffs before apply is still manual (filesystem). Planned: built-in staged diff inspection surface so user review does not depend on external file browsing |
 
 ---
 
 ### Summary
 
 - Core architectural layers are in place and interacting
-- Chats mode has a working web renderer; Projects mode is in active web migration
-- Dispatching, Router, and Sage are functional additions since initial snapshot
-- Execution verification pipeline is planned but not yet implemented
+- Chats mode and Projects mode both run on the web renderer
+- Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → hash-guarded apply on user Accept → commit recorded
+- Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, atomic copy to project on Accept, quarantine on abandon
+- Advisory layer currently operates at S0 (keyword-scored); typed Sage S1+ (SageObservation with pipeline hooks, middle-truth layer, pattern memory with invariant-binding) is the next planned slice
+- Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
 - External changes detected via scan/baseline/acceptance; realtime file watching not implemented
 
 ZAVOD at this stage can be described as:
 
-→ a structured and working system foundation  
-→ not yet a complete end-user product
+→ a structured and working system foundation with a closed execution loop
+→ end-to-end code delivery works against real project files
+→ not yet a complete end-user product; next direction is typed semantic observation (Sage) and mechanical verification layers

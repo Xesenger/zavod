@@ -1,0 +1,10 @@
+{
+  "Decision": "REVISE",
+  "Rationale": "The Worker refused due to missing HUD rendering implementation details and code anchors, which is a recoverable gap rather than a fundamental scope violation. The task itself (add FPS counter to top-center) is well-defined and in-scope for a game project. The Worker's blocker indicates that clarification of the existing HUD architecture and file structure would enable execution. A revised brief with concrete file references, rendering patterns, and HUD integration points should allow the Worker to proceed.",
+  "Issues": [
+    "Worker lacks knowledge of HUD rendering implementation in cssDOOM-main",
+    "No code anchors or file references provided in original task brief",
+    "Missing context on how existing UI/HUD elements are structured and rendered"
+  ],
+  "NextAction": "Revise the task brief to include specific file paths, HUD rendering patterns, and integration points within cssDOOM-main, then resubmit to Worker."
+}

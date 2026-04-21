@@ -40,16 +40,29 @@ public sealed class OpenRouterExecutionClient : IOpenRouterExecutionClient
 
         var modelId = string.IsNullOrWhiteSpace(request.ModelId) ? _configuration.ModelId : request.ModelId.Trim();
         var userPrompt = ConversationAttachmentPromptBuilder.BuildUserPrompt(request.UserPrompt, request.Attachments);
-        var payload = JsonSerializer.Serialize(new
-        {
-            model = modelId,
-            temperature = request.Temperature,
-            messages = new object[]
+        object payloadObject = request.MaxTokens is int maxTokensValue && maxTokensValue > 0
+            ? new
             {
-                new { role = "system", content = request.SystemPrompt },
-                new { role = "user", content = userPrompt }
+                model = modelId,
+                temperature = request.Temperature,
+                max_tokens = maxTokensValue,
+                messages = new object[]
+                {
+                    new { role = "system", content = request.SystemPrompt },
+                    new { role = "user", content = userPrompt }
+                }
             }
-        }, PayloadJsonOptions);
+            : new
+            {
+                model = modelId,
+                temperature = request.Temperature,
+                messages = new object[]
+                {
+                    new { role = "system", content = request.SystemPrompt },
+                    new { role = "user", content = userPrompt }
+                }
+            };
+        var payload = JsonSerializer.Serialize(payloadObject, PayloadJsonOptions);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, $"{_configuration.BaseUrl.TrimEnd('/')}/chat/completions");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _configuration.ApiKey);

@@ -59,6 +59,23 @@ public static class ResumeStageNormalizer
         {
             if (hasActiveShift)
             {
+                // Preserve legitimate Preflight-before-MaterializeIntent: post-Accept
+                // EnterActiveShiftPreflight saves Preflight + hasActiveShift=true +
+                // hasActiveTask=false (task materializes only inside ConfirmPreflight).
+                // Without this branch the normalizer wipes the Preflight back to
+                // Discussion on the next BuildContext, so the pf-card never renders.
+                if (phaseState.Phase == SurfacePhase.Execution && phaseState.ExecutionSubphase == ExecutionSubphase.Preflight)
+                {
+                    return phaseState with
+                    {
+                        DiscussionSubphase = DiscussionSubphase.None,
+                        ResultSubphase = ResultSubphase.None,
+                        HasActiveShift = true,
+                        HasActiveTask = false,
+                        HasReopenedContext = false
+                    };
+                }
+
                 return BuildSafeActiveShiftDiscussionState(phaseState.IntentState, phaseState.HasClarification);
             }
 
@@ -190,6 +207,25 @@ public static class ResumeStageNormalizer
             };
         }
 
+        // Running/Qc/Revision require a live runtime; if it's gone, the session was
+        // abandoned mid-flow (crash/force-close). Recover to reopened Discussion so
+        // the composer is usable.
+        // Preflight is ambiguous: legitimate Preflight before ConfirmPreflight has no
+        // runtime AND no materialized active work; pathological Preflight (after
+        // Confirm materialized the task but the runtime save never landed) has
+        // runtime=null AND hasActiveWork=true. Only the latter gets recovered.
+        var shouldRecover =
+            phaseState.Phase == SurfacePhase.Execution
+            && runtimeState is null
+            && (phaseState.ExecutionSubphase is ExecutionSubphase.Running
+                    or ExecutionSubphase.Qc
+                    or ExecutionSubphase.Revision
+                || (phaseState.ExecutionSubphase == ExecutionSubphase.Preflight && hasActiveWork));
+        if (shouldRecover)
+        {
+            return BuildSafeReopenedDiscussionState(phaseState.HasClarification);
+        }
+
         return StepPhaseMachine.ResumeInterrupted() with
         {
             HasClarification = phaseState.HasClarification
@@ -279,10 +315,18 @@ public static class ResumeStageNormalizer
 
     private static bool HasRevisionRuntime(ExecutionRuntimeState? runtimeState)
     {
+        // InProgress is valid in revision context: both A.2 QC-REVISE path
+        // (RejectQcReview → RestartRevision) and legacy RequestRevisionAsync
+        // path (RestartCompletedResultForRevision) leave the session at
+        // InProgress while phase stays on Revision/RevisionRequested, because
+        // the worker is ready to run as soon as the user submits revision
+        // intake. Rejecting this combo sends the normalizer to ResumeInterrupted
+        // and softlocks the composer.
         return runtimeState is not null
             && (runtimeState.Session.State == ExecutionSessionState.Completed
                 || runtimeState.Session.State == ExecutionSessionState.UnderReview
-                || runtimeState.Session.State == ExecutionSessionState.ReturnedForRevision);
+                || runtimeState.Session.State == ExecutionSessionState.ReturnedForRevision
+                || runtimeState.Session.State == ExecutionSessionState.InProgress);
     }
 
     private static bool HasLiveExecutionRuntime(StepPhaseState phaseState, ExecutionRuntimeState? runtimeState)

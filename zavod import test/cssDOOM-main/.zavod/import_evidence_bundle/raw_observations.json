@@ -6,398 +6,398 @@
   },
   {
     "Kind": "file_found",
-    "Value": "LICENSE.txt",
-    "EvidencePath": "LICENSE.txt"
+    "Value": "public\\assets\\menu\\M_THERMM.png",
+    "EvidencePath": "public\\assets\\menu\\M_THERMM.png"
   },
   {
     "Kind": "file_found",
-    "Value": "package.json",
-    "EvidencePath": "package.json"
+    "Value": "public\\assets\\menu\\M_THERMO.png",
+    "EvidencePath": "public\\assets\\menu\\M_THERMO.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL3_1.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL3_1.png"
+    "Value": "public\\assets\\menu\\M_THERMR.png",
+    "EvidencePath": "public\\assets\\menu\\M_THERMR.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL3_2.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL3_2.png"
+    "Value": "public\\assets\\menu\\M_ULTRA.png",
+    "EvidencePath": "public\\assets\\menu\\M_ULTRA.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL3_5.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL3_5.png"
+    "Value": "public\\assets\\menu\\TITLEPIC.png",
+    "EvidencePath": "public\\assets\\menu\\TITLEPIC.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL4_2.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL4_2.png"
+    "Value": "public\\assets\\sounds\\DSBAREXP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBAREXP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL4_3.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL4_3.png"
+    "Value": "public\\assets\\sounds\\DSBDCLS.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBDCLS.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL5_1.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL5_1.png"
+    "Value": "public\\assets\\sounds\\DSBDOPN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBDOPN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CEIL5_2.png",
-    "EvidencePath": "public\\assets\\flats\\CEIL5_2.png"
+    "Value": "public\\assets\\sounds\\DSBGACT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBGACT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CONS1_1.png",
-    "EvidencePath": "public\\assets\\flats\\CONS1_1.png"
+    "Value": "public\\assets\\sounds\\DSBGDTH1.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBGDTH1.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CONS1_5.png",
-    "EvidencePath": "public\\assets\\flats\\CONS1_5.png"
+    "Value": "public\\assets\\sounds\\DSBGDTH2.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBGDTH2.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\CONS1_7.png",
-    "EvidencePath": "public\\assets\\flats\\CONS1_7.png"
+    "Value": "public\\assets\\sounds\\DSBGSIT1.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBGSIT1.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\DEM1_1.png",
-    "EvidencePath": "public\\assets\\flats\\DEM1_1.png"
+    "Value": "public\\assets\\sounds\\DSBGSIT2.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBGSIT2.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\DEM1_2.png",
-    "EvidencePath": "public\\assets\\flats\\DEM1_2.png"
+    "Value": "public\\assets\\sounds\\DSBRSDTH.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBRSDTH.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\DEM1_3.png",
-    "EvidencePath": "public\\assets\\flats\\DEM1_3.png"
+    "Value": "public\\assets\\sounds\\DSBRSSIT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSBRSSIT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\DEM1_4.png",
-    "EvidencePath": "public\\assets\\flats\\DEM1_4.png"
+    "Value": "public\\assets\\sounds\\DSCLAW.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSCLAW.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT1.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT1.png"
+    "Value": "public\\assets\\sounds\\DSDMACT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSDMACT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT10.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT10.png"
+    "Value": "public\\assets\\sounds\\DSDMPAIN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSDMPAIN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT14.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT14.png"
+    "Value": "public\\assets\\sounds\\DSDORCLS.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSDORCLS.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT18.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT18.png"
+    "Value": "public\\assets\\sounds\\DSDOROPN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSDOROPN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT2.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT2.png"
+    "Value": "public\\assets\\sounds\\DSFIRSHT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSFIRSHT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT20.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT20.png"
+    "Value": "public\\assets\\sounds\\DSFIRXPL.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSFIRXPL.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT22.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT22.png"
+    "Value": "public\\assets\\sounds\\DSGETPOW.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSGETPOW.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT23.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT23.png"
+    "Value": "public\\assets\\sounds\\DSITEMUP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSITEMUP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT5.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT5.png"
+    "Value": "public\\assets\\sounds\\DSITMBK.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSITMBK.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT5_4.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT5_4.png"
+    "Value": "public\\assets\\sounds\\DSNOWAY.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSNOWAY.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLAT5_5.png",
-    "EvidencePath": "public\\assets\\flats\\FLAT5_5.png"
+    "Value": "public\\assets\\sounds\\DSOOF.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSOOF.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR0_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR0_1.png"
+    "Value": "public\\assets\\sounds\\DSPDIEHI.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPDIEHI.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR0_3.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR0_3.png"
+    "Value": "public\\assets\\sounds\\DSPISTOL.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPISTOL.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR0_6.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR0_6.png"
+    "Value": "public\\assets\\sounds\\DSPLDETH.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPLDETH.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR1_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR1_1.png"
+    "Value": "public\\assets\\sounds\\DSPLPAIN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPLPAIN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR1_7.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR1_7.png"
+    "Value": "public\\assets\\sounds\\DSPODTH1.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPODTH1.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR3_3.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR3_3.png"
+    "Value": "public\\assets\\sounds\\DSPODTH2.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPODTH2.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR4_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR4_1.png"
+    "Value": "public\\assets\\sounds\\DSPODTH3.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPODTH3.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR4_5.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR4_5.png"
+    "Value": "public\\assets\\sounds\\DSPOPAIN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPOPAIN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR4_6.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR4_6.png"
+    "Value": "public\\assets\\sounds\\DSPOSACT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPOSACT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR4_8.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR4_8.png"
+    "Value": "public\\assets\\sounds\\DSPOSIT1.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPOSIT1.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR5_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR5_1.png"
+    "Value": "public\\assets\\sounds\\DSPOSIT2.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPOSIT2.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR5_2.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR5_2.png"
+    "Value": "public\\assets\\sounds\\DSPOSIT3.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPOSIT3.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR5_3.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR5_3.png"
+    "Value": "public\\assets\\sounds\\DSPSTART.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPSTART.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR5_4.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR5_4.png"
+    "Value": "public\\assets\\sounds\\DSPSTOP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPSTOP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR6_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR6_1.png"
+    "Value": "public\\assets\\sounds\\DSPUNCH.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSPUNCH.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR6_2.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR6_2.png"
+    "Value": "public\\assets\\sounds\\DSRLAUNC.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSRLAUNC.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR7_1.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR7_1.png"
+    "Value": "public\\assets\\sounds\\DSRXPLOD.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSRXPLOD.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\FLOOR7_2.png",
-    "EvidencePath": "public\\assets\\flats\\FLOOR7_2.png"
+    "Value": "public\\assets\\sounds\\DSSAWFUL.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSAWFUL.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\F_SKY1.png",
-    "EvidencePath": "public\\assets\\flats\\F_SKY1.png"
+    "Value": "public\\assets\\sounds\\DSSAWHIT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSAWHIT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\MFLR8_1.png",
-    "EvidencePath": "public\\assets\\flats\\MFLR8_1.png"
+    "Value": "public\\assets\\sounds\\DSSAWIDL.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSAWIDL.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\NUKAGE1.png",
-    "EvidencePath": "public\\assets\\flats\\NUKAGE1.png"
+    "Value": "public\\assets\\sounds\\DSSAWUP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSAWUP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\NUKAGE2.png",
-    "EvidencePath": "public\\assets\\flats\\NUKAGE2.png"
+    "Value": "public\\assets\\sounds\\DSSGCOCK.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSGCOCK.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\NUKAGE3.png",
-    "EvidencePath": "public\\assets\\flats\\NUKAGE3.png"
+    "Value": "public\\assets\\sounds\\DSSGTATK.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSGTATK.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\STEP1.png",
-    "EvidencePath": "public\\assets\\flats\\STEP1.png"
+    "Value": "public\\assets\\sounds\\DSSGTDTH.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSGTDTH.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\STEP2.png",
-    "EvidencePath": "public\\assets\\flats\\STEP2.png"
+    "Value": "public\\assets\\sounds\\DSSGTSIT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSGTSIT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\TLITE6_1.png",
-    "EvidencePath": "public\\assets\\flats\\TLITE6_1.png"
+    "Value": "public\\assets\\sounds\\DSSHOTGN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSHOTGN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\TLITE6_4.png",
-    "EvidencePath": "public\\assets\\flats\\TLITE6_4.png"
+    "Value": "public\\assets\\sounds\\DSSLOP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSLOP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\TLITE6_5.png",
-    "EvidencePath": "public\\assets\\flats\\TLITE6_5.png"
+    "Value": "public\\assets\\sounds\\DSSTNMOV.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSTNMOV.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\flats\\TLITE6_6.png",
-    "EvidencePath": "public\\assets\\flats\\TLITE6_6.png"
+    "Value": "public\\assets\\sounds\\DSSWTCHN.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSWTCHN.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\fonts\\OFL.txt",
-    "EvidencePath": "public\\assets\\fonts\\OFL.txt"
+    "Value": "public\\assets\\sounds\\DSSWTCHX.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSSWTCHX.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\digit-info.json",
-    "EvidencePath": "public\\assets\\hud\\digit-info.json"
+    "Value": "public\\assets\\sounds\\DSTELEPT.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSTELEPT.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\DIGITS_SHEET.png",
-    "EvidencePath": "public\\assets\\hud\\DIGITS_SHEET.png"
+    "Value": "public\\assets\\sounds\\DSTINK.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSTINK.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\face-info.json",
-    "EvidencePath": "public\\assets\\hud\\face-info.json"
+    "Value": "public\\assets\\sounds\\DSWPNUP.wav",
+    "EvidencePath": "public\\assets\\sounds\\DSWPNUP.wav"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\FACE_SHEET.png",
-    "EvidencePath": "public\\assets\\hud\\FACE_SHEET.png"
+    "Value": "public\\assets\\sprites\\AMMOA0.png",
+    "EvidencePath": "public\\assets\\sprites\\AMMOA0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png",
-    "EvidencePath": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png"
+    "Value": "public\\assets\\sprites\\APBXA0.png",
+    "EvidencePath": "public\\assets\\sprites\\APBXA0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STARMS.png",
-    "EvidencePath": "public\\assets\\hud\\STARMS.png"
+    "Value": "public\\assets\\sprites\\APBXB0.png",
+    "EvidencePath": "public\\assets\\sprites\\APBXB0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STBAR.png",
-    "EvidencePath": "public\\assets\\hud\\STBAR.png"
+    "Value": "public\\assets\\sprites\\APBXC0.png",
+    "EvidencePath": "public\\assets\\sprites\\APBXC0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFB0.png",
-    "EvidencePath": "public\\assets\\hud\\STFB0.png"
+    "Value": "public\\assets\\sprites\\APBXD0.png",
+    "EvidencePath": "public\\assets\\sprites\\APBXD0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFB1.png",
-    "EvidencePath": "public\\assets\\hud\\STFB1.png"
+    "Value": "public\\assets\\sprites\\APBXE0.png",
+    "EvidencePath": "public\\assets\\sprites\\APBXE0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFB2.png",
-    "EvidencePath": "public\\assets\\hud\\STFB2.png"
+    "Value": "public\\assets\\sprites\\APLSA0.png",
+    "EvidencePath": "public\\assets\\sprites\\APLSA0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFB3.png",
-    "EvidencePath": "public\\assets\\hud\\STFB3.png"
+    "Value": "public\\assets\\sprites\\APLSB0.png",
+    "EvidencePath": "public\\assets\\sprites\\APLSB0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFDEAD0.png",
-    "EvidencePath": "public\\assets\\hud\\STFDEAD0.png"
+    "Value": "public\\assets\\sprites\\ARM1A0.png",
+    "EvidencePath": "public\\assets\\sprites\\ARM1A0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFEVL0.png",
-    "EvidencePath": "public\\assets\\hud\\STFEVL0.png"
+    "Value": "public\\assets\\sprites\\ARM1B0.png",
+    "EvidencePath": "public\\assets\\sprites\\ARM1B0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFEVL1.png",
-    "EvidencePath": "public\\assets\\hud\\STFEVL1.png"
+    "Value": "public\\assets\\sprites\\ARM2A0.png",
+    "EvidencePath": "public\\assets\\sprites\\ARM2A0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFEVL2.png",
-    "EvidencePath": "public\\assets\\hud\\STFEVL2.png"
+    "Value": "public\\assets\\sprites\\ARM2B0.png",
+    "EvidencePath": "public\\assets\\sprites\\ARM2B0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFEVL3.png",
-    "EvidencePath": "public\\assets\\hud\\STFEVL3.png"
+    "Value": "public\\assets\\sprites\\BAL1A0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL1A0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFEVL4.png",
-    "EvidencePath": "public\\assets\\hud\\STFEVL4.png"
+    "Value": "public\\assets\\sprites\\BAL1B0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL1B0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFGOD0.png",
-    "EvidencePath": "public\\assets\\hud\\STFGOD0.png"
+    "Value": "public\\assets\\sprites\\BAL1C0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL1C0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFKILL0.png",
-    "EvidencePath": "public\\assets\\hud\\STFKILL0.png"
+    "Value": "public\\assets\\sprites\\BAL1D0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL1D0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFKILL1.png",
-    "EvidencePath": "public\\assets\\hud\\STFKILL1.png"
+    "Value": "public\\assets\\sprites\\BAL1E0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL1E0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFKILL2.png",
-    "EvidencePath": "public\\assets\\hud\\STFKILL2.png"
+    "Value": "public\\assets\\sprites\\BAL2A0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL2A0.png"
   },
   {
     "Kind": "file_found",
-    "Value": "public\\assets\\hud\\STFKILL3.png",
-    "EvidencePath": "public\\assets\\hud\\STFKILL3.png"
+    "Value": "public\\assets\\sprites\\BAL2B0.png",
+    "EvidencePath": "public\\assets\\sprites\\BAL2B0.png"
   },
   {
     "Kind": "source_root_detected",
@@ -411,82 +411,77 @@
   },
   {
     "Kind": "structural_anomaly_detected",
+    "Value": "NO_BUILD_MARKERS",
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+  },
+  {
+    "Kind": "structural_anomaly_detected",
     "Value": "MULTIPLE_SOURCE_ROOTS",
-    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
   },
   {
     "Kind": "structural_anomaly_detected",
     "Value": "NESTED_NON_SOURCE_PAYLOADS",
-    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main"
-  },
-  {
-    "Kind": "technical_preview_detected",
-    "Value": "web-build",
-    "EvidencePath": "package.json"
-  },
-  {
-    "Kind": "material_preview_detected",
-    "Value": "TextDocument",
-    "EvidencePath": "README.md"
-  },
-  {
-    "Kind": "document_kind_detected",
-    "Value": "procedural_doc",
-    "EvidencePath": "README.md"
+    "EvidencePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\icon.png"
+    "EvidencePath": "public\\assets\\menu\\M_THERMM.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\preview.jpg"
+    "EvidencePath": "public\\assets\\menu\\M_THERMO.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\DIGITS_SHEET.png"
+    "EvidencePath": "public\\assets\\menu\\M_THERMR.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\FACE_SHEET.png"
+    "EvidencePath": "public\\assets\\menu\\M_ULTRA.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\SMALL_DIGITS_SHEET.png"
+    "EvidencePath": "public\\assets\\menu\\TITLEPIC.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STARMS.png"
+    "EvidencePath": "public\\assets\\weapons\\CHAINGUN.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STBAR.png"
+    "EvidencePath": "public\\assets\\weapons\\CHAINSAW.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STFB0.png"
+    "EvidencePath": "public\\assets\\weapons\\FIST.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STFB1.png"
+    "EvidencePath": "public\\assets\\weapons\\PISTOL.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STFB2.png"
+    "EvidencePath": "public\\assets\\weapons\\ROCKET.png"
   },
   {
     "Kind": "material_preview_detected",
     "Value": "ImageAsset",
-    "EvidencePath": "public\\assets\\hud\\STFB3.png"
+    "EvidencePath": "public\\assets\\weapons\\SHOTGUN.png"
+  },
+  {
+    "Kind": "material_preview_detected",
+    "Value": "ImageAsset",
+    "EvidencePath": "public\\assets\\sprites\\AMMOA0.png"
   }
 ]

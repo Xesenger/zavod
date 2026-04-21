@@ -1,0 +1,7 @@
+{
+  "IntentState": "ready_for_validation",
+  "Reply": "Подтверждаю задачу: добавить счетчик FPS в левый верхний угол интерфейса игры cssDOOM-main. Готов передать на реализацию.",
+  "ScopeNotes": "Добавление визуального элемента FPS в UI игры.",
+  "TaskBrief": "Add an FPS counter to the top-left corner of the cssDOOM game interface.",
+  "Warnings": []
+}

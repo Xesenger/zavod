@@ -1,0 +1,16 @@
+{
+  "RouteId": "qc.agent",
+  "ModelId": "anthropic/claude-haiku-4.5",
+  "Temperature": 0,
+  "ProjectName": "cssDOOM-main",
+  "ProjectKind": "unknown",
+  "TaskId": "TASK-007",
+  "TaskDescription": "Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout",
+  "acceptanceCount": 3,
+  "WorkerStatus": "partial",
+  "workerBlockerCount": 1,
+  "workerWarningCount": 0,
+  "workerModificationCount": 1,
+  "systemPromptChars": 2696,
+  "userPrompt": "PROJECT CONTEXT\r\n- name: cssDOOM-main\r\n- kind: unknown\r\n- root: C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\r\n\r\nTASK\r\n- id: TASK-007\r\n- description: Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout\r\n\r\nACCEPTANCE CRITERIA\r\n- Produce evidence-backed output for project 'cssDOOM-main'.\r\n- QC decision must happen before apply or reject.\r\n- Respect current document stage 'PreviewDocs'.\r\n\r\nWORKER RESULT TO REVIEW\r\n- status: partial\r\n- summary: Added FPS counter to HUD by modifying hud.js to track and display FPS in the top-right corner\r\n\r\nWORKER BLOCKERS\r\n- Need corresponding CSS changes to position the FPS counter in the top-right corner\r\n\r\nWORKER WARNINGS\r\n- (none)\r\n\r\nWORKER MODIFICATIONS\r\n- edit: src/renderer/hud.js — Added FPS counter functionality to HUD\r\n\r\nSTAGED EXECUTION ARTEFACTS (real content written to the staging sandbox, not the project)\r\n- write_full: src/renderer/hud.js (origin=2967B → staged=3027B, sha256=fc4cce15b4337fa947fbea30038ac0d66d1597742e7f6da923af1257b6efc3bf)\r\n\r\nAbsence of staged artefacts when the Worker claims real modifications is a REVISE signal; presence with concrete byte deltas is evidence you may cite.\r\n\r\nOUTPUT — reply with a single strict JSON object only, no code fences, no prose around it:\r\n{\r\n  \"decision\": \"ACCEPT\" | \"REVISE\" | \"REJECT\",\r\n  \"rationale\": \"<one short paragraph grounded in the Worker result>\",\r\n  \"issues\": [\"<specific issue, empty array if none>\"],\r\n  \"next_action\": \"<one short sentence describing what should happen next>\"\r\n}\r\n"
+}

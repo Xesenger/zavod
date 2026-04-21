@@ -1,0 +1,44 @@
+{
+  "Status": "partial",
+  "Summary": "Implemented FPS display styling in hud.css and added FPS tracking in hud.js. JavaScript implementation is complete but needs integration with the render loop.",
+  "Plan": [
+    "Add FPS display styling to hud.css",
+    "Implement FPS tracking in hud.js",
+    "Integrate FPS updates with the render loop (pending)"
+  ],
+  "Actions": [
+    "Added CSS for FPS display in top-right corner",
+    "Implemented FPS calculation and display update in hud.js"
+  ],
+  "Modifications": [
+    {
+      "Path": "src/ui/hud.css",
+      "Kind": "edit",
+      "Summary": "Added FPS display styling in top-right corner"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Kind": "edit",
+      "Summary": "Added FPS tracking and display update"
+    }
+  ],
+  "Blockers": [
+    "Need to integrate FPS updates with the main render loop"
+  ],
+  "Risks": [],
+  "Warnings": [],
+  "Edits": [
+    {
+      "Path": "src/ui/hud.css",
+      "Operation": "write_full",
+      "Content": "/*\n* DOOM HUD — status bar, weapon, overlays, face, keys, digits\n*/\n/* ========================================================================\nHUD Container — wraps status bar, weapon, and overlays\n======================================================================== */\n#hud {\n--scale: 3;\nposition: fixed;\ninset: 0;\nz-index: 1000;\npointer-events: none;\n}\n@media (max-width: 960px) {\n#hud { --scale: 2; }\n}\n/* ========================================================================\nStatus Bar — flex container of independent sections\n======================================================================== */\n#status {\nanchor-name: --status;\nposition: absolute;\nbottom: 0;\nleft: 0;\nright: 0;\ndisplay: flex;\njustify-content: center;\npointer-events: auto;\nimage-rendering: pixelated;\ntransition: transform 0.3s ease-in 0.8s;\n}\n/* 320*2 = 640px — allow wrapping */\n@media (max-width: 640px) {\n#status {\nflex-wrap: wrap;\nbackground: rgba(80, 80, 80, 0.60);\n}\n}\n/* Each section shows its own slice of STBAR.png */\n.hud-section {\nposition: relative;\nheight: calc(32px * var(--scale));\nbackground: url('/assets/hud/STBAR.png') no-repeat;\nbackground-size: calc(320px * var(--scale)) calc(32px * var(--scale));\noverflow: hidden;\n}\n#hud-ammo       { width: calc(48px  * var(--scale)); background-position-x: 0; }\n#hud-health     { width: calc(58px  * var(--scale)); background-position-x: calc(-48px  * var(--scale)); }\n#hud-arms       { width: calc(37px  * var(--scale)); background-position-x: calc(-106px * var(--scale)); }\n#hud-face       { width: calc(36px  * var(--scale)); background-position-x: calc(-143px * var(--scale)); }\n#hud-armor      { width: calc(57px  * var(--scale)); background-position-x: calc(-179px * var(--scale)); }\n#hud-keys       { width: calc(13px  * var(--scale)); background-position-x: calc(-236px * var(--scale)); }\n#hud-ammo-types { width: calc(71px  * var(--scale)); background-position-x: calc(-249px * var(--scale)); }\n/* ========================================================================\nLarge Digits (ammo, health, armor)\n======================================================================== */\n.hud-number {\n--glyph: calc(14px * var(--scale));\n--value: 0;\n/* Extract individual digits */\n--hundreds: round(down, var(--value) / 100, 1);\n--tens: mod(round(down, var(--value) / 10, 1), 10);\n--ones: mod(var(--value), 10);\n/* Hide leading zeros */\n--hide-leading-zero: calc(-9999px * (1 - min(1, var(--hundreds))));\n--hide-middle-zero: calc(-9999px * (1 - min(1, round(down, var(--value) / 10, 1))));\n}\n/* FPS Display */\n#fps-display {\nposition: fixed;\ntop: calc(12px + env(safe-area-inset-top, 0px));\nright: calc(12px + env(safe-area-inset-right, 0px));\nz-index: 1001;\ncolor: white;\nfont-family: 'PressStart2P', monospace;\nfont-size: 12px;\ntext-shadow: 1px 1px 2px black;\n}",
+      "Anchor": null
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Operation": "insert_after",
+      "Content": "  // FPS tracking\n  let lastTime = performance.now();\n  let frameCount = 0;\n  let fps = 0;\n  \n  function updateFPS() {\n    frameCount++;\n    const now = performance.now();\n    const delta = now - lastTime;\n    \n    if (delta >= 1000) {\n      fps = Math.round((frameCount * 1000) / delta);\n      frameCount = 0;\n      lastTime = now;\n      dom.status.style.setProperty('--fps', fps);\n    }\n  }\n  \n  updateFPS();",
+      "Anchor": "export function updateHud() {"
+    }
+  ]
+}

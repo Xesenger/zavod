@@ -1,0 +1,223 @@
+﻿{
+  "ShiftId": "SHIFT-012",
+  "Goal": "Add an FPS counter to the top-right corner of the cssDOOM browser game HUD",
+  "CurrentTaskId": null,
+  "Status": 0,
+  "Tasks": [
+    {
+      "TaskId": "TASK-001",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "Add an FPS counter to the top-right corner of the cssDOOM browser game HUD",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod\\preview_docs\\preview_project.md"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-20T18:55:05.1770431+02:00"
+    },
+    {
+      "TaskId": "TASK-002",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "Add an FPS counter to the top-left corner of the cssDOOM game interface.",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod\\preview_docs\\preview_project.md"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-20T19:39:50.5845863+02:00"
+    },
+    {
+      "TaskId": "TASK-003",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "Add an FPS counter to the top center of the game window in cssDOOM-main",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main\\.zavod\\preview_docs\\preview_project.md"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-20T19:51:40.0040785+02:00"
+    },
+    {
+      "TaskId": "TASK-004",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "Add an FPS counter to the top-center of the cssDOOM game screen.",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T14:41:27.5627603+02:00"
+    },
+    {
+      "TaskId": "TASK-005",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "Add an FPS counter to the top-right corner of the cssDOOM browser game HUD",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T15:14:30.7078139+02:00"
+    },
+    {
+      "TaskId": "TASK-006",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "\u0414\u043E\u0431\u0430\u0432\u044C \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E FPS \u0432 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441 cssdoom.  \u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B UI, \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0439 \u043D\u043E\u0432\u044B\u0439 layout. \u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 \u0434\u043E\u043B\u0436\u043D\u043E \u043F\u0440\u043E\u0438\u0441\u0445\u043E\u0434\u0438\u0442\u044C \u0432 \u0440\u0435\u0430\u043B\u044C\u043D\u043E\u043C \u0432\u0440\u0435\u043C\u0435\u043D\u0438.",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T17:05:46.0574018+02:00"
+    },
+    {
+      "TaskId": "TASK-007",
+      "IntentState": 5,
+      "Status": 1,
+      "Description": "Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T17:53:47.870861+02:00"
+    },
+    {
+      "TaskId": "TASK-008",
+      "IntentState": 5,
+      "Status": 1,
+      "Description": "Implement CSS positioning and styling to display FPS in the top-right corner of the existing HUD without changing layout or adding new containers",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T18:11:43.2007042+02:00"
+    },
+    {
+      "TaskId": "TASK-009",
+      "IntentState": 5,
+      "Status": 1,
+      "Description": "\u0414\u043E\u0434\u0435\u043B\u0430\u0439 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0448\u0430\u0433: \u0438\u043D\u0442\u0435\u0433\u0440\u0438\u0440\u0443\u0439 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 FPS \u0432 \u043E\u0441\u043D\u043E\u0432\u043D\u043E\u0439 render loop. \u041D\u0430\u0439\u0434\u0438 \u0442\u043E\u0447\u043A\u0443 \u0432\u0445\u043E\u0434\u0430, \u0433\u0434\u0435 \u043A\u0430\u0434\u0440\u044B \u0440\u0435\u0430\u043B\u044C\u043D\u043E \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F, \u0438 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438 \u0442\u0443\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 FPS \u0434\u043B\u044F HUD. \u041D\u0443\u0436\u0435\u043D \u043F\u043E\u043B\u043D\u044B\u0439 end-to-end \u043F\u043E\u0442\u043E\u043A: render loop -\u003E FPS calculation -\u003E HUD update -\u003E \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0432 \u043F\u0440\u0430\u0432\u043E\u043C \u0432\u0435\u0440\u0445\u043D\u0435\u043C \u0443\u0433\u043B\u0443. Layout \u043D\u0435 \u043C\u0435\u043D\u044F\u0442\u044C, \u043D\u043E\u0432\u044B\u0435 \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u044B \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0442\u044C",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T18:17:28.8359951+02:00"
+    },
+    {
+      "TaskId": "TASK-010",
+      "IntentState": 5,
+      "Status": 1,
+      "Description": "Add an FPS counter to the top-right corner of the cssDOOM browser game HUD with full integration in the main render loop and CSS display.",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T18:21:31.1601724+02:00"
+    },
+    {
+      "TaskId": "TASK-011",
+      "IntentState": 5,
+      "Status": 1,
+      "Description": "\u0414\u043E\u0431\u0430\u0432\u044C \u0432 HUD \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u0022ZAVOD OK\u0022 \u0447\u0435\u0440\u0435\u0437 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0439 \u043C\u0435\u0445\u0430\u043D\u0438\u0437\u043C HUD (\u043A\u0430\u043A health/armor). Layout \u043D\u0435 \u043C\u0435\u043D\u044F\u0442\u044C, \u043D\u043E\u0432\u044B\u0435 \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u044B \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0442\u044C",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T18:40:33.0332569+02:00"
+    },
+    {
+      "TaskId": "TASK-012",
+      "IntentState": 5,
+      "Status": 2,
+      "Description": "\u0414\u043E\u0431\u0430\u0432\u044C \u0432 HUD \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0441\u0442\u0440\u043E\u043A\u0438 \u0022ZAVOD OK\u0022 \u0447\u0435\u0440\u0435\u0437 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0439 \u043C\u0435\u0445\u0430\u043D\u0438\u0437\u043C HUD (\u043A\u0430\u043A health/armor). Layout \u043D\u0435 \u043C\u0435\u043D\u044F\u0442\u044C, \u043D\u043E\u0432\u044B\u0435 \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u044B \u043D\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0442\u044C",
+      "Scope": [
+        "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main"
+      ],
+      "AcceptanceCriteria": [
+        "Produce evidence-backed output for project \u0027cssDOOM-main\u0027.",
+        "QC decision must happen before apply or reject.",
+        "Respect current document stage \u0027PreviewDocs\u0027."
+      ],
+      "CreatedByRole": 1,
+      "AssignedRole": 0,
+      "LastUpdated": "2026-04-21T18:48:41.6776956+02:00"
+    }
+  ],
+  "OpenIssues": [],
+  "AcceptedResults": [
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-001-001|task:TASK-001|Insufficient execution basis - missing required code anchors and project structure details",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-002-001|task:TASK-002|Insufficient basis for implementation. Missing code anchors and specific file references to locate the game interface and rendering logic.",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-003-001|task:TASK-003|Insufficient implementation basis - missing specific HUD/UI implementation details and FPS measurement mechanism",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-004-001|task:TASK-004|Insufficient basis for implementation. Missing code anchors and specific file references for HUD rendering.",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-005-001|task:TASK-005|Planned FPS counter implementation in HUD module",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-006-002|task:TASK-006|\u0418\u0441\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u0437\u0430\u0434\u0430\u0447\u0435 \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043B\u0435\u043D\u043E: \u0414\u043E\u0431\u0430\u0432\u044C \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0442\u0435\u043A\u0443\u0449\u0435\u0433\u043E FPS \u0432 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441 cssdoom.  \u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B UI, \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0439 \u043D\u043E\u0432\u044B\u0439 layout. \u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435 \u0434\u043E\u043B\u0436\u043D\u043E \u043F\u0440\u043E\u0438\u0441\u0445\u043E\u0434\u0438\u0442\u044C \u0432 \u0440\u0435\u0430\u043B\u044C\u043D\u043E\u043C \u0432\u0440\u0435\u043C\u0435\u043D\u0438.",
+    "COMMIT-APPLY-ACCEPTED-RESULT-TASK-012-001|task:TASK-012|Planned addition of \u0027ZAVOD OK\u0027 text to HUD using existing HUD mechanism. Requires verification of hud.js implementation details."
+  ],
+  "Constraints": []
+}

@@ -35,38 +35,17 @@
     "EvidencePath": "."
   },
   {
-    "From": "LICENSE.txt",
-    "To": "root",
-    "Label": "subsystem-cluster",
-    "Reason": "Module candidate 'LICENSE.txt' is grouped under layer/root 'root'.",
-    "EvidencePath": "."
-  },
-  {
-    "From": "package.json",
-    "To": "gamecontroller.js",
-    "Label": "direct",
-    "Reason": "Dependency surface extracted from 'package.json'.",
-    "EvidencePath": "package.json"
-  },
-  {
-    "From": "Package.json",
-    "To": "root",
-    "Label": "subsystem-cluster",
-    "Reason": "Module candidate 'Package.json' is grouped under layer/root 'root'.",
-    "EvidencePath": "."
-  },
-  {
-    "From": "package.json",
-    "To": "vite",
-    "Label": "dev",
-    "Reason": "Dependency surface extracted from 'package.json'.",
-    "EvidencePath": "package.json"
-  },
-  {
     "From": "Renderer",
     "To": "root",
     "Label": "subsystem-cluster",
     "Reason": "Module candidate 'Renderer' is grouped under layer/root 'root'.",
+    "EvidencePath": "."
+  },
+  {
+    "From": "Shared",
+    "To": "root",
+    "Label": "subsystem-cluster",
+    "Reason": "Module candidate 'Shared' is grouped under layer/root 'root'.",
     "EvidencePath": "."
   },
   {
@@ -110,5 +89,26 @@
     "Label": "import",
     "Reason": "Observed import reference in 'src\\input\\keyboard.js'.",
     "EvidencePath": "src\\input\\keyboard.js"
+  },
+  {
+    "From": "src\\input\\mouse.js",
+    "To": "src\\input\\gamepad.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\input\\mouse.js'.",
+    "EvidencePath": "src\\input\\mouse.js"
+  },
+  {
+    "From": "src\\input\\touch.js",
+    "To": "src\\input\\gamepad.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\input\\touch.js'.",
+    "EvidencePath": "src\\input\\touch.js"
+  },
+  {
+    "From": "src\\renderer\\effects.js",
+    "To": "src\\renderer\\dom.js",
+    "Label": "import",
+    "Reason": "Observed import reference in 'src\\renderer\\effects.js'.",
+    "EvidencePath": "src\\renderer\\effects.js"
   }
 ]

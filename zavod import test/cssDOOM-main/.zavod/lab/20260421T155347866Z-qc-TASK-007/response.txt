@@ -1,0 +1,13 @@
+```json
+{
+  "decision": "REJECT",
+  "rationale": "The Worker returned status 'unavailable' with a summary in Russian that claims execution was prepared, but provides no actual output, code changes, file modifications, or evidence of work. The acceptance criteria require evidence-backed output for the project; a status of 'unavailable' with no blockers listed and no modifications recorded indicates the task was not executed. The Worker did not deliver the FPS counter implementation, HUD integration, or any artifact that could be reviewed against the stated intent.",
+  "issues": [
+    "Worker status is 'unavailable' — no actual work product delivered",
+    "No modifications recorded despite task requiring code changes to HUD",
+    "Summary is in Russian and claims preparation without providing deliverables",
+    "No evidence of FPS counter implementation or HUD integration"
+  ],
+  "next_action": "Escalate or reassign: the Worker did not execute the task; clarify project access, language, and scope with a new Worker or retry with explicit anchors (file paths, HUD component location, expected output format)."
+}
+```

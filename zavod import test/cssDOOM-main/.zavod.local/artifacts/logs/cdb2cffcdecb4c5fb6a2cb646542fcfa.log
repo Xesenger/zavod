@@ -1,0 +1,12 @@
+﻿runtime.session=SESSION-TASK-009
+runtime.state=ReturnedForRevision
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-009
+task.description=Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туда обновление FPS для HUD. Нужен полный end-to-end поток: render loop -> FPS calculation -> HUD update -> отображение в правом верхнем углу. Layout не менять, новые контейнеры не добавлять
+result.id=RESULT-TASK-009-003
+result.summary=Исполнение по задаче подготовлено: Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туда обновление FPS для HUD. Нужен полный end-to-end поток: render loop -> FPS calculation -> HUD update -> отображение в правом верхнем углу. Layout не менять, новые контейнеры не добавлять
+qc.status=Rejected
+document.stage=PreviewDocs
+advisory: Earlier conversation: Не ищи новый anchor в index.js вслепую. Найди основной render/update loop в index.js и внеси изменение через write_full, а не через inser...
+advisory: Earlier conversation: Доделай последний шаг: интегрируй обновление FPS в основной render loop. Найди точку входа, где кадры реально обновляются, и подключи туд...

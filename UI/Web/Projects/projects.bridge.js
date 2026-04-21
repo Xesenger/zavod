@@ -152,7 +152,51 @@ const zavodProjectsBridge = (() => {
       }
     }
 
+    if (intentBtn) {
+      if (state.workCycle?.canEnterWork === true) {
+        intentBtn.className = 'intent-btn lvl3';
+        intentBtn.dataset.ready = 'true';
+      } else {
+        intentBtn.dataset.ready = 'false';
+        syncIntent();
+      }
+    }
+
+    // Reflect Preflight sub-phase from snapshot: open the pf-card and dim the feed
+    // when controller is in Execution/Preflight so Confirm / Clarify / Back buttons
+    // become interactive. Without this the user can reach the phase but cannot see
+    // its CTAs.
+    const inPreflight = !!(state.workCycle
+      && (state.workCycle.canConfirmPreflight === true
+          || (state.workCycle.surfacePhase === 'Execution'
+              && state.workCycle.executionSubphase === 'Preflight')));
+    if (pfCard) {
+      pfCard.classList.toggle('open', inPreflight);
+    }
+    if (phase1Overlay) {
+      phase1Overlay.classList.toggle('active', inPreflight);
+    }
+    if (composerWrap) {
+      composerWrap.style.display = inPreflight ? 'none' : '';
+    }
+
+    // Phase-3 (Result) visibility toggle: Accept/Reject/Revise CTAs live here.
+    // Without this toggle the result phase is invisible and the user is stuck.
+    const inResult = state.workCycle?.resultVisible === true;
+    if (phase3) {
+      phase3.classList.toggle('active', !!inResult);
+    }
+    if (phase1) {
+      phase1.style.display = inResult ? 'none' : '';
+    }
+    // Reveal the Accept/Reject/Revise bar — it's hidden by default (opacity:0,
+    // pointer-events:none) and only becomes interactive when we're in Result.
+    if (actionBar) {
+      actionBar.classList.toggle('visible', !!inResult);
+    }
+
     renderComposerAttachments(state.conversation?.composer?.pendingAttachments);
+    renderMessages(state.conversation?.messages);
     renderProjectList(state.list);
 
     // Project home headline (if state provides selected project)
@@ -420,6 +464,48 @@ const zavodProjectsBridge = (() => {
 
       composerAttachmentsEl.appendChild(chip);
     });
+  }
+
+  // ── Conversation feed: User = bubble (right), Lead/Worker/QC = doc-block (left).
+  // Slice A (lab MVP): full rerender per snapshot. Pass 2 polish will switch to
+  // keyed DOM patch per the streaming canon.
+  function renderMessages(items) {
+    if (!feed) return;
+    while (feed.firstChild) feed.removeChild(feed.firstChild);
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    items.forEach((m) => {
+      if (!m || typeof m !== 'object') return;
+      const kind = m.kind || 'message';
+      if (kind !== 'message' && kind !== 'status') return;
+
+      const role = (m.role || 'assistant').toLowerCase();
+      const text = typeof m.text === 'string' ? m.text : '';
+
+      if (role === 'user') {
+        const wrap = document.createElement('div');
+        wrap.className = 'bubble-wrap';
+        wrap.dataset.role = role;
+        if (m.id) wrap.dataset.messageId = String(m.id);
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+        wrap.appendChild(bubble);
+        feed.appendChild(wrap);
+        feed.appendChild(mk('gap-sm'));
+      } else {
+        const doc = document.createElement('div');
+        doc.className = 'doc-block';
+        doc.dataset.role = role;
+        doc.dataset.kind = kind;
+        if (m.id) doc.dataset.messageId = String(m.id);
+        doc.textContent = text;
+        feed.appendChild(doc);
+        feed.appendChild(mk('gap'));
+      }
+    });
+
+    feed.scrollTop = feed.scrollHeight;
   }
 
   // ── Action wiring (always on; emit to C# when bridged) ────────

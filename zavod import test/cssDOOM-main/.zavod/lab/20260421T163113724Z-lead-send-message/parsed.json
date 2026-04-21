@@ -1,0 +1,7 @@
+{
+  "IntentState": "ready_for_validation",
+  "Reply": "Понял задачу: добавить в HUD отображение строки \"ZAVOD OK\" используя существующий механизм, аналогично health/armor, без изменения layout и добавления новых контейнеров.",
+  "ScopeNotes": "Добавление текста в HUD через существующий механизм без изменения структуры.",
+  "TaskBrief": "Add a \"ZAVOD OK\" text display to the HUD using the existing HUD mechanism, without changing layout or adding new containers.",
+  "Warnings": []
+}

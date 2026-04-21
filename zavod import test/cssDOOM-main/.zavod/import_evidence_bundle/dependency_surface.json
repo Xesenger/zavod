@@ -1,14 +1,1 @@
-﻿[
-  {
-    "Name": "gamecontroller.js",
-    "SourcePath": "package.json",
-    "Scope": "direct",
-    "Kind": "package"
-  },
-  {
-    "Name": "vite",
-    "SourcePath": "package.json",
-    "Scope": "dev",
-    "Kind": "package"
-  }
-]
+﻿[]

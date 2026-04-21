@@ -1,0 +1,26 @@
+{
+  "Status": "partial",
+  "Summary": "Planned FPS counter implementation in HUD module",
+  "Plan": [
+    "Add FPS tracking to game state",
+    "Extend HUD update to display FPS counter"
+  ],
+  "Actions": [
+    "Planned FPS counter implementation"
+  ],
+  "Modifications": [
+    {
+      "Path": "src/game/state.js",
+      "Kind": "edit",
+      "Summary": "Add fps tracking fields"
+    },
+    {
+      "Path": "src/renderer/hud.js",
+      "Kind": "edit",
+      "Summary": "Add FPS counter display"
+    }
+  ],
+  "Blockers": [],
+  "Risks": [],
+  "Warnings": []
+}

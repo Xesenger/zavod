@@ -1,0 +1,13 @@
+```json
+{
+  "decision": "REJECT",
+  "rationale": "The Worker returned status 'unavailable' with a summary in Russian that claims execution was prepared, but provides no actual CSS code, modifications, or evidence of work. The acceptance criteria require evidence-backed output for the project; a status of 'unavailable' with no blockers listed and no modifications shown indicates the task was not executed. The summary text does not constitute deliverable evidence.",
+  "issues": [
+    "Worker status is 'unavailable' — task not completed",
+    "No CSS code or modifications provided",
+    "Summary is in Russian and contains no technical evidence",
+    "No blockers declared despite unavailable status suggests incomplete handoff"
+  ],
+  "next_action": "Reject this result and escalate to Worker with a clarified brief anchored to the specific HUD file location, expected CSS selectors, and a requirement to return actual code or explicit blockers."
+}
+```

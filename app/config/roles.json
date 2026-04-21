@@ -1,5 +1,5 @@
 {
   "lead":   { "model": "openai/gpt-4.1-mini",          "temperature": 0.3, "timeoutSeconds": 60,  "maxTokens": 800 },
-  "worker": { "model": "deepseek/deepseek-chat-v3",    "temperature": 0.2, "timeoutSeconds": 120, "maxTokens": 2000 },
+  "worker": { "model": "deepseek/deepseek-chat-v3",    "temperature": 0.2, "timeoutSeconds": 120, "maxTokens": 4000 },
   "qc":     { "model": "anthropic/claude-haiku-4.5",   "temperature": 0.0, "timeoutSeconds": 45,  "maxTokens": 800 }
 }

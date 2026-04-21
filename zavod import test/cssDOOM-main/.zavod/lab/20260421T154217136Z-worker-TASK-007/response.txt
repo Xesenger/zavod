@@ -1,0 +1,33 @@
+```json
+{
+  "status": "partial",
+  "summary": "Added FPS counter to HUD by extending hud.js with FPS tracking logic and updating the DOM via CSS custom properties",
+  "plan": [
+    "Add FPS tracking logic to hud.js",
+    "Update updateHud() function to include FPS display",
+    "Add CSS custom property for FPS in the HUD"
+  ],
+  "actions": [
+    "Extended hud.js to track and display FPS in the top-right corner of HUD"
+  ],
+  "modifications": [
+    {
+      "path": "src/renderer/hud.js",
+      "kind": "edit",
+      "summary": "Added FPS counter logic to HUD update function"
+    }
+  ],
+  "edits": [
+    {
+      "path": "src/renderer/hud.js",
+      "operation": "write_full",
+      "content": "/**\n* Per-frame HUD updates via CSS custom properties on #status.\n*\n* All HUD values (health, armor, ammo, face row, per-type ammo counts and\n* maximums) are set as custom properties on the #status container. CSS then\n* inherits these down to the digit elements, which use calc() to derive\n* individual digit sprite offsets. This keeps all per-element rendering in\n* CSS — JavaScript only touches one DOM element per frame.\n*/\nimport { state } from '../game/state.js';\nimport { dom } from './dom.js';\nimport { WEAPONS } from '../game/constants.js';\nconst AMMO_TYPES = ['bullets', 'shells', 'rockets', 'cells'];\n// Previous values — only touch the DOM when something changes\nlet prev = {\n  ammo: -1, health: -1, armor: -1, faceRow: -1,\n  bullets: -1, shells: -1, rockets: -1, cells: -1,\n  maxBullets: -1, maxShells: -1, maxRockets: -1, maxCells: -1,\n  fps: -1\n};\n// FPS tracking\nlet lastFpsUpdate = 0;\nlet frameCount = 0;\nlet currentFps = 0;\n// Pre-built class name strings to avoid per-frame template literal allocation\nconst WEAPON_CLASSES = { 2: 'has-weapon-2', 3: 'has-weapon-3', 4: 'has-weapon-4', 5: 'has-weapon-5', 6: 'has-weapon-6', 7: 'has-weapon-7' };\n\nexport function updateHud() {\n  const style = dom.status.style;\n  const weapon = WEAPONS[state.currentWeapon];\n  const currentAmmo = weapon.ammoType ? Math.round(state.ammo[weapon.ammoType]) : 0;\n  const currentHealth = Math.round(state.health);\n  const currentArmor = Math.round(state.armor);\n\n  // Update FPS counter\n  frameCount++;\n  const now = performance.now();\n  if (now - lastFpsUpdate >= 1000) {\n    currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));\n    frameCount = 0;\n    lastFpsUpdate = now;\n  }\n  \n  if (currentFps !== prev.fps) {\n    prev.fps = currentFps;\n    style.setProperty('--fps', currentFps);\n  }\n\n  if (currentAmmo !== prev.ammo) {\n    prev.ammo = currentAmmo;\n    style.setProperty('--ammo', currentAmmo);\n  }\n  if (currentHealth !== prev.health) {\n    prev.health = currentHealth;\n    style.setProperty('--health', currentHealth);\n    const faceRow = currentHealth >= 80 ? 0 : currentHealth >= 60 ? 1 : currentHealth >= 40 ? 2 : currentHealth >= 20 ? 3 : 4;\n    if (faceRow !== prev.faceRow) {\n      prev.faceRow = faceRow;\n      style.setProperty('--face-row', faceRow);\n    }\n  }\n  if (currentArmor !== prev.armor) {\n    prev.armor = currentArmor;\n    style.setProperty('--armor', currentArmor);\n  }\n  // Per-type ammo counts and maximums\n  for (const type of AMMO_TYPES) {\n    const cur = Math.round(state.ammo[type]);\n    if (cur !== prev[type]) {\n      prev[type] = cur;\n      style.setProperty(`--ammo-${type}`, cur);\n    }\n    const max = state.maxAmmo[type];\n    const maxKey = `max${type[0].toUpperCase()}${type.slice(1)}`;\n    if (max !== prev[maxKey]) {\n      prev[maxKey] = max;\n      style.setProperty(`--max-${type}`, max);\n    }\n  }\n  // Weapon ownership\n  for (let weaponSlot = 2; weaponSlot <= 7; weaponSlot++) {\n    dom.renderer.classList.toggle(WEAPON_CLASSES[weaponSlot], state.ownedWeapons.has(weaponSlot));\n  }\n}\n\nexport function clearWeaponSlots() {\n  dom.renderer.classList.remove(\n    'has-weapon-2', 'has-weapon-3', 'has-weapon-4',\n    'has-weapon-5', 'has-weapon-6', 'has-weapon-7'\n  );\n}"
+    }
+  ],
+  "blockers": [
+    "Need corresponding CSS changes to position and style the FPS counter in the top-right corner of HUD"
+  ],
+  "risks": [],
+  "warnings": []
+}
+```

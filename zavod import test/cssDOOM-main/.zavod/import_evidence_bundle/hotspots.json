@@ -1,10 +1,5 @@
 ﻿[
   {
-    "Code": "high_fanout_candidate",
-    "RelativePath": "package.json",
-    "Reason": "Observed 3 coarse outgoing edges from 'package.json'."
-  },
-  {
     "Code": "large_file",
     "RelativePath": "public\\maps\\E1M1.json",
     "Reason": "Observed file size 405654 bytes."
@@ -51,7 +46,7 @@
   },
   {
     "Code": "nested_payload_boundary",
-    "RelativePath": "C:\\Users\\Boris\\Development\\zavod import test\\cssDOOM-main",
+    "RelativePath": "C:\\Users\\Boris\\Development\\zavod\\zavod import test\\cssDOOM-main",
     "Reason": "Detected nested non-source payload roots alongside host project structure: public."
   }
 ]

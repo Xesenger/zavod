@@ -132,6 +132,19 @@ public sealed class ProjectSageService
             var storage = ConversationLogStorage.ForProjectConversation(projectRootPath, entry.ConversationId);
             foreach (var snapshot in storage.LoadLatest().TakeLast(24))
             {
+                // Conversation-advisory must not leak downstream role chatter back
+                // into Lead/Worker prompts. A prior Worker refusal or QC REVISE
+                // rationale, scored by keyword overlap, ends up coaching the new
+                // Lead turn to parrot "where is the game loop?" at the user,
+                // forcing another clarification loop. Framing advisory should
+                // come only from User intents (and optionally Lead turns) — the
+                // rest (Worker/QC/Log/Artifact/Status) is execution telemetry,
+                // not intent framing.
+                if (!IsFramingAdvisoryRole(snapshot.Role, snapshot.Kind))
+                {
+                    continue;
+                }
+
                 var normalized = NormalizeText(snapshot.Text);
                 if (normalized.Length == 0 || string.Equals(normalized, normalizedQuery, StringComparison.Ordinal))
                 {
@@ -145,6 +158,20 @@ public sealed class ProjectSageService
                     SortKey: $"conversation:{entry.ConversationId}:{snapshot.MessageId}");
             }
         }
+    }
+
+    private static bool IsFramingAdvisoryRole(string? role, string? kind)
+    {
+        if (string.Equals(kind, "Log", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kind, "Artifact", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kind, "Status", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return string.Equals(role, "User", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "Lead", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "ShiftLead", StringComparison.OrdinalIgnoreCase);
     }
 
     private IEnumerable<SageCandidate> EnumerateShiftCandidates(string projectRootPath)

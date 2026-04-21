@@ -1,0 +1,12 @@
+﻿runtime.session=SESSION-TASK-007
+runtime.state=ReturnedForRevision
+project=cssDOOM-main
+root=C:\Users\Boris\Development\zavod\zavod import test\cssDOOM-main
+task=TASK-007
+task.description=Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout
+result.id=RESULT-TASK-007-005
+result.summary=Исполнение по задаче подготовлено: Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout
+qc.status=Rejected
+document.stage=PreviewDocs
+advisory: Earlier conversation: Подтверди в summary, как именно FPS выводится в правом верхнем углу существующего HUD, без изменения layout. Укажи, какие DOM/CSS-механиз...
+advisory: Earlier conversation: Добавь отображение FPS в правом верхнем углу существующего HUD в cssdoom. Layout не меняй.

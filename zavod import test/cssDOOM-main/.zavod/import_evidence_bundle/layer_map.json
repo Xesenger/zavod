@@ -1,8 +1,8 @@
 ﻿[
   {
-    "Name": "Root",
-    "Responsibility": "Overall project structure",
-    "EvidenceNote": "Evidence shows multiple source roots and asset directories.",
+    "Name": "root",
+    "Responsibility": "Observed project root and primary workspace boundary.",
+    "EvidenceNote": "Derived in importer adapter from source roots, not from scanner narrative.",
     "Confidence": 0
   }
 ]

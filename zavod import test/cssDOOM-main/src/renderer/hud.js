@@ -24,7 +24,11 @@ let prev = {
 // Pre-built class name strings to avoid per-frame template literal allocation
 const WEAPON_CLASSES = { 2: 'has-weapon-2', 3: 'has-weapon-3', 4: 'has-weapon-4', 5: 'has-weapon-5', 6: 'has-weapon-6', 7: 'has-weapon-7' };
 
-export function updateHud() {
+export function updateHud() {// Add ZAVOD OK text to HUD
+const zavodElement = document.createElement('div');
+zavodElement.id = 'hud-zavod';
+zavodElement.textContent = 'ZAVOD OK';
+dom.status.appendChild(zavodElement);
     const style = dom.status.style;
     const weapon = WEAPONS[state.currentWeapon];
     const currentAmmo = weapon.ammoType ? Math.round(state.ammo[weapon.ammoType]) : 0;

@@ -1,0 +1,7 @@
+{
+  "IntentState": "ready_for_validation",
+  "Reply": "Понял, FPS нужно разместить в правом верхнем углу существующего HUD без изменения layout. Готов к выполнению.",
+  "ScopeNotes": "Добавить отображение FPS в правый верхний угол HUD без изменения layout.",
+  "TaskBrief": "Add an FPS counter to the top-right corner of the existing HUD in cssDOOM without changing the layout",
+  "Warnings": []
+}

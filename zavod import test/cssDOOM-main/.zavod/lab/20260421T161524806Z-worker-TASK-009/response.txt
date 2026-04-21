@@ -1,0 +1,35 @@
+```json
+{
+  "status": "partial",
+  "summary": "Integrated FPS update into the main render loop via write_full on index.js, but CSS styling confirmation is still pending.",
+  "plan": [
+    "Locate the main render loop in index.js",
+    "Integrate FPS calculation and HUD update calls into the render loop",
+    "Confirm CSS styling for FPS display in HUD"
+  ],
+  "actions": [
+    "Modified index.js to include FPS calculation and HUD update in the render loop"
+  ],
+  "modifications": [
+    {
+      "path": "index.js",
+      "kind": "edit",
+      "summary": "Added FPS calculation and HUD update to the main render loop"
+    }
+  ],
+  "edits": [
+    {
+      "path": "index.js",
+      "operation": "write_full",
+      "content": "import { updateHud } from './src/renderer/hud.js';\n\nlet lastTime = performance.now();\nlet frameCount = 0;\n\nfunction renderLoop() {\n  const currentTime = performance.now();\n  frameCount++;\n  if (currentTime - lastTime >= 1000) {\n    const fps = frameCount;\n    frameCount = 0;\n    lastTime = currentTime;\n    updateHud();\n    document.getElementById('fps').textContent = `FPS: ${fps}`;\n  }\n  requestAnimationFrame(renderLoop);\n}\n\nrenderLoop();"
+    }
+  ],
+  "blockers": [
+    "CSS styling confirmation for FPS display in HUD is still pending"
+  ],
+  "risks": [
+    "Potential performance impact from frequent DOM updates"
+  ],
+  "warnings": []
+}
+```

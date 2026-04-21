@@ -1,0 +1,33 @@
+```json
+{
+  "status": "partial",
+  "summary": "Added FPS counter CSS styling to the HUD without modifying layout",
+  "plan": [
+    "Add CSS styling for FPS counter in the top-right corner of the HUD",
+    "Ensure the FPS counter does not interfere with existing HUD elements"
+  ],
+  "actions": [
+    "Extended src/ui/hud.css to include FPS counter styling"
+  ],
+  "modifications": [
+    {
+      "path": "src/ui/hud.css",
+      "kind": "edit",
+      "summary": "Added FPS counter CSS styling"
+    }
+  ],
+  "edits": [
+    {
+      "path": "src/ui/hud.css",
+      "operation": "insert_after",
+      "content": "\n/* FPS Counter — top right corner */\n#fps-counter {\n  position: absolute;\n  top: 12px;\n  right: 12px;\n  color: white;\n  font-family: 'PressStart2P', monospace;\n  font-size: 12px;\n  text-shadow: 2px 2px 2px black;\n  z-index: 1001;\n  pointer-events: none;\n}",
+      "anchor": "/* Each section shows its own slice of STBAR.png */"
+    }
+  ],
+  "blockers": [
+    "Need to confirm where FPS value is calculated and how it is passed to the HUD"
+  ],
+  "risks": [],
+  "warnings": []
+}
+```

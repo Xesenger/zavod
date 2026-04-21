@@ -1,0 +1,33 @@
+{
+  "Status": "partial",
+  "Summary": "Planned FPS counter implementation in HUD using existing UI elements",
+  "Plan": [
+    "Track FPS in game loop using timestamp delta",
+    "Add FPS display to HUD update logic",
+    "Update CSS custom properties for FPS display"
+  ],
+  "Actions": [
+    "Analyzed game loop timing in index.js",
+    "Identified HUD update mechanism in hud.js",
+    "Planned FPS counter integration points"
+  ],
+  "Modifications": [
+    {
+      "Path": "src/renderer/hud.js",
+      "Kind": "edit",
+      "Summary": "Add FPS tracking and display logic to HUD update"
+    },
+    {
+      "Path": "index.js",
+      "Kind": "edit",
+      "Summary": "Add FPS calculation in game loop"
+    }
+  ],
+  "Blockers": [
+    "Need confirmation on preferred FPS display location in HUD"
+  ],
+  "Risks": [
+    "Potential performance impact from additional DOM updates"
+  ],
+  "Warnings": []
+}

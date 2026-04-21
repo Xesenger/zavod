@@ -1,0 +1,49 @@
+```json
+{
+  "status": "partial",
+  "summary": "Planned FPS counter implementation with CSS and JS integration points identified",
+  "plan": [
+    "Add FPS counter CSS to hud.css for top-right positioning",
+    "Extend hud.js to track and update FPS value",
+    "Integrate FPS counter into the main game loop"
+  ],
+  "actions": [
+    "Identified hud.css as styling target",
+    "Identified hud.js as update logic target",
+    "Identified game loop integration point"
+  ],
+  "modifications": [
+    {
+      "path": "src/ui/hud.css",
+      "kind": "edit",
+      "summary": "Add FPS counter styling"
+    },
+    {
+      "path": "src/renderer/hud.js",
+      "kind": "edit",
+      "summary": "Add FPS tracking and update logic"
+    }
+  ],
+  "edits": [
+    {
+      "path": "src/ui/hud.css",
+      "operation": "insert_after",
+      "anchor": "#hud {\n--scale: 3;\nposition: fixed;\ninset: 0;\nz-index: 1000;\npointer-events: none;\n}",
+      "content": "\n/* FPS Counter */\n#fps-counter {\n  position: absolute;\n  top: 10px;\n  right: 10px;\n  color: white;\n  font-family: monospace;\n  font-size: 16px;\n  text-shadow: 1px 1px 1px black;\n  z-index: 1001;\n}"
+    },
+    {
+      "path": "src/renderer/hud.js",
+      "operation": "insert_after",
+      "anchor": "export function updateHud() {",
+      "content": "\n  // FPS counter update\n  const now = performance.now();\n  if (!window._fpsLastTime) window._fpsLastTime = now;\n  const fps = Math.round(1000 / (now - window._fpsLastTime));\n  window._fpsLastTime = now;\n  \n  const fpsElement = document.getElementById('fps-counter') || (() => {\n    const el = document.createElement('div');\n    el.id = 'fps-counter';\n    document.getElementById('hud').appendChild(el);\n    return el;\n  })();\n  fpsElement.textContent = `${fps} FPS`;"
+    }
+  ],
+  "blockers": [
+    "Need confirmation of game loop integration point (whether to add to existing updateHud call or create new system)"
+  ],
+  "risks": [
+    "FPS calculation may need smoothing/averaging over multiple frames"
+  ],
+  "warnings": []
+}
+```
