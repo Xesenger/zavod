@@ -1,7 +1,0 @@
-{
-  "intent_state": "ready_for_validation",
-  "reply": "Добавлю отображение текущего FPS в существующие элементы UI cssDOOM с обновлением в реальном времени, без создания нового layout.",
-  "scope_notes": "Использовать текущие UI элементы для отображения FPS с обновлением в реальном времени.",
-  "task_brief": "Add an FPS counter to the existing UI elements in cssDOOM with real-time updates, without creating a new layout.",
-  "warnings": []
-}

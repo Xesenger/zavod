@@ -5,7 +5,8 @@
 # This does NOT redefine the product rule that imported projects may carry
 # shared, commit-friendly `.zavod/` state inside their own repos.
 /.zavod/
-/zavod import test
+/zavod-import-test
+/artifacts
 
 # Local Codex working surface
 /agent/
@@ -42,6 +43,7 @@ test-run.log
 .dotnet/
 .dotnet-cli/
 .dotnet-home/
+.vscode
 
 # User-specific settings
 *.user

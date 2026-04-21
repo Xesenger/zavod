@@ -1,7 +1,0 @@
-{
-  "IntentState": "ready_for_validation",
-  "Reply": "Вы подтвердили, что хотите добавить счётчик FPS в центр сверху экрана. Я сформулирую задачу для реализации.",
-  "ScopeNotes": "Добавление счётчика FPS в центр сверху интерфейса игры.",
-  "TaskBrief": "Add an FPS counter to the top-center of the cssDOOM game screen.",
-  "Warnings": []
-}

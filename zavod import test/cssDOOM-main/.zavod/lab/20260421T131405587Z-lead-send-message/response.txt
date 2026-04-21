@@ -1,7 +1,0 @@
-{
-  "intent_state": "ready_for_validation",
-  "reply": "Вы хотите добавить счётчик FPS в правый верхний угол экрана. Я сформулирую задачу для реализации.",
-  "scope_notes": "Добавление счётчика FPS в правый верхний угол экрана",
-  "task_brief": "Add an FPS counter to the top-right corner of the cssDOOM browser game HUD",
-  "warnings": []
-}

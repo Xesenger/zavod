@@ -1,7 +1,0 @@
-{
-  "IntentState": "ready_for_validation",
-  "Reply": "Готов выполнить полную имплементацию CSS для отображения FPS в правом верхнем углу существующего HUD без изменения layout и добавления новых контейнеров.",
-  "ScopeNotes": "CSS-позиционирование и стилизация FPS в существующем HUD",
-  "TaskBrief": "Implement CSS positioning and styling to display FPS in the top-right corner of the existing HUD without changing layout or adding new containers",
-  "Warnings": []
-}
