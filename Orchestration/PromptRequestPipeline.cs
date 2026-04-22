@@ -59,7 +59,10 @@ public static class PromptRequestPipeline
                 input.ShiftState.ShiftId,
                 input.TaskState.TaskId,
                 anchors.Count,
-                truthMode));
+                truthMode,
+                input.CanonicalDocsStatus,
+                input.PreviewStatus,
+                input.IsFirstCycle));
     }
 
     private static void ValidateInput(PromptRequestInput input)

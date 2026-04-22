@@ -509,7 +509,12 @@ var tests = new (string Name, Action Run)[]
     ("Welcome selector R6 overlays stale review when stale present", WelcomeSelectorR6OverlaysStaleReviewWhenStalePresent),
     ("Welcome selector caps output at 4 actions", WelcomeSelectorCapsOutputAt4Actions),
     ("Welcome selector pads below-minimum with project audit", WelcomeSelectorPadsBelowMinimumWithProjectAudit),
-    ("Welcome selector is deterministic for identical input", WelcomeSelectorIsDeterministicForIdenticalInput)
+    ("Welcome selector is deterministic for identical input", WelcomeSelectorIsDeterministicForIdenticalInput),
+    ("Work Packet input defaults preserve pre-B2 call shape", WorkPacketInputDefaultsPreservePreB2CallShape),
+    ("Work Packet input carries canonical docs status when provided", WorkPacketInputCarriesCanonicalDocsStatusWhenProvided),
+    ("Work Packet input carries first-cycle flag and preview status", WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus),
+    ("Work Packet metadata defaults are null or false", WorkPacketMetadataDefaultsAreNullOrFalse),
+    ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly)
 };
 
 var failures = new List<string>();
@@ -13741,6 +13746,155 @@ static void WelcomeSelectorIsDeterministicForIdenticalInput()
         {
             throw new Exception($"Action order differs at index {i}: {a.Actions[i]} vs {b.Actions[i]}.");
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Work Packet bridge tests (project_work_packet_v1.md, B2)
+//
+// Integration tests through PromptRequestPipeline.Execute are currently
+// blocked by a pre-existing prompt file drift ('worker.system.md' does not
+// contain 'Role:'). These tests verify record-level contract only.
+// ---------------------------------------------------------------------------
+
+static void WorkPacketInputDefaultsPreservePreB2CallShape()
+{
+    var capsule = CreateCapsule();
+    var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+    var shift = CreateShiftState(task);
+
+    // Pre-B2 4-arg call shape must still compile and yield null/false Work Packet fields.
+    var input = new PromptRequestInput(PromptRole.Worker, capsule, shift, task);
+
+    if (input.CanonicalDocsStatus is not null)
+    {
+        throw new Exception("Default CanonicalDocsStatus must be null for pre-B2 call shape.");
+    }
+    if (input.PreviewStatus is not null)
+    {
+        throw new Exception("Default PreviewStatus must be null for pre-B2 call shape.");
+    }
+    if (input.MissingTruthWarnings is not null)
+    {
+        throw new Exception("Default MissingTruthWarnings must be null for pre-B2 call shape.");
+    }
+    if (input.IsFirstCycle)
+    {
+        throw new Exception("Default IsFirstCycle must be false for pre-B2 call shape.");
+    }
+}
+
+static void WorkPacketInputCarriesCanonicalDocsStatusWhenProvided()
+{
+    var capsule = CreateCapsule();
+    var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+    var shift = CreateShiftState(task);
+    var status = new CanonicalDocsStatus(
+        DocumentCanonicalState.Canonical,
+        DocumentCanonicalState.Canonical,
+        DocumentCanonicalState.Preview,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Canonical);
+    var warnings = new[] { "canon.md absent, do not invent architectural invariants" };
+
+    var input = new PromptRequestInput(
+        PromptRole.Worker,
+        capsule,
+        shift,
+        task,
+        CanonicalDocsStatus: status,
+        MissingTruthWarnings: warnings);
+
+    if (input.CanonicalDocsStatus is null)
+    {
+        throw new Exception("CanonicalDocsStatus must be carried when provided.");
+    }
+    if (input.CanonicalDocsStatus.Roadmap != DocumentCanonicalState.Preview)
+    {
+        throw new Exception($"Roadmap state not preserved: {input.CanonicalDocsStatus.Roadmap}.");
+    }
+    if (input.MissingTruthWarnings is null || input.MissingTruthWarnings.Count != 1)
+    {
+        throw new Exception("MissingTruthWarnings must carry the provided list.");
+    }
+}
+
+static void WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus()
+{
+    var capsule = CreateCapsule();
+    var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+    var shift = CreateShiftState(task);
+    var preview = new PreviewStatus(new[]
+    {
+        zavod.Persistence.ProjectDocumentKind.Project,
+        zavod.Persistence.ProjectDocumentKind.Capsule
+    });
+
+    var input = new PromptRequestInput(
+        PromptRole.Worker,
+        capsule,
+        shift,
+        task,
+        PreviewStatus: preview,
+        IsFirstCycle: true);
+
+    if (!input.IsFirstCycle)
+    {
+        throw new Exception("IsFirstCycle must be true when set.");
+    }
+    if (input.PreviewStatus is null || input.PreviewStatus.PreviewKinds.Count != 2)
+    {
+        throw new Exception("PreviewStatus must carry the provided kinds list.");
+    }
+}
+
+static void WorkPacketMetadataDefaultsAreNullOrFalse()
+{
+    // Metadata constructor defaults must preserve pre-B2 call shape.
+    var metadata = new PromptAssemblyMetadata("SHIFT-001", "TASK-001", 0, PromptTruthMode.Anchored);
+
+    if (metadata.CanonicalDocsStatus is not null)
+    {
+        throw new Exception("Default metadata CanonicalDocsStatus must be null.");
+    }
+    if (metadata.PreviewStatus is not null)
+    {
+        throw new Exception("Default metadata PreviewStatus must be null.");
+    }
+    if (metadata.IsFirstCycle)
+    {
+        throw new Exception("Default metadata IsFirstCycle must be false.");
+    }
+}
+
+static void CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly()
+{
+    var mixed = new CanonicalDocsStatus(
+        DocumentCanonicalState.Canonical,  // project
+        DocumentCanonicalState.Canonical,  // direction
+        DocumentCanonicalState.Preview,    // roadmap
+        DocumentCanonicalState.Absent,     // canon
+        DocumentCanonicalState.Stale);     // capsule
+
+    if (mixed.CanonicalCount != 2)
+    {
+        throw new Exception($"CanonicalCount must be 2, got {mixed.CanonicalCount}.");
+    }
+    // AtLeastPreview counts Preview + Canonical + Stale (Stale is canonical-but-falsified, still coverage).
+    if (mixed.AtLeastPreviewCount != 4)
+    {
+        throw new Exception($"AtLeastPreviewCount must be 4 (Canonical x2 + Preview + Stale), got {mixed.AtLeastPreviewCount}.");
+    }
+
+    var empty = new CanonicalDocsStatus(
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent);
+    if (empty.CanonicalCount != 0 || empty.AtLeastPreviewCount != 0)
+    {
+        throw new Exception("Empty status must have zero counts.");
     }
 }
 
