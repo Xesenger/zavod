@@ -37,6 +37,7 @@ These layers must not compete with each other.
 ### 1. Project Truth and Storage
 
 `project_truth_storage_layout_v1.md`
+`project_truth_documents_v1.md`
 `project_state_model_v1.md`
 `project_state_persistence_v1.md`
 `project_meta_contract_v1.md`
