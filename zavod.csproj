@@ -38,6 +38,7 @@
     <Content Include="UI\Web\Projects\projects.bridge.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\prompts\*.md" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="app\config\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="app\templates\*.html" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Include="..\app\prompts\*.md" Link="app\prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\app\templates\*.html" Link="app\templates\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\Bootstrap\*.cs" Link="Bootstrap\%(Filename)%(Extension)" />
     <Compile Include="..\Dispatching\*.cs" Link="Dispatching\%(Filename)%(Extension)" />
     <Compile Include="..\Entry\*.cs" Link="Entry\%(Filename)%(Extension)" />

@@ -68,7 +68,7 @@ current `ShiftState`. First-cycle open
 - `WorkPacketBuilder` is not called from any production site
 - `WelcomeSurfaceSelector` is not called from any production site
 - Lead role currently bypasses `PromptRequestPipeline` entirely
-  (direct OpenRouter call, per `docs/projects-web/07-pass1-handoff.md`)
+  (direct OpenRouter call, per `docs/_legacy/projects-web-migration/07-pass1-handoff.md`)
 - No call site in production assembles a real Work Packet
 
 **Required:**

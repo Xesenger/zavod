@@ -785,22 +785,22 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var current = new DirectoryInfo(baseDirectory);
         while (current is not null)
         {
-            var referenceCandidate = Path.Combine(current.FullName, "reference", "project-template", "system", "preview.html");
-            if (File.Exists(referenceCandidate))
+            var runtimeTemplateCandidate = Path.Combine(current.FullName, "app", "templates", "import-preview.html");
+            if (File.Exists(runtimeTemplateCandidate))
             {
-                return File.ReadAllText(referenceCandidate, Encoding.UTF8);
+                return File.ReadAllText(runtimeTemplateCandidate, Encoding.UTF8);
             }
 
-            var agentFallbackCandidate = Path.Combine(current.FullName, "agent", "preview.html");
-            if (File.Exists(agentFallbackCandidate))
+            var legacyReferenceCandidate = Path.Combine(current.FullName, "docs", "_legacy", "reference", "project-template", "system", "preview.html");
+            if (File.Exists(legacyReferenceCandidate))
             {
-                return File.ReadAllText(agentFallbackCandidate, Encoding.UTF8);
+                return File.ReadAllText(legacyReferenceCandidate, Encoding.UTF8);
             }
 
             current = current.Parent;
         }
 
-        throw new FileNotFoundException("preview.html template was not found under reference/project-template/system or agent.");
+        throw new FileNotFoundException("Import preview template was not found under app/templates or docs/_legacy/reference.");
     }
 
     private static string ExtractTemplateStyle(string templateHtml)

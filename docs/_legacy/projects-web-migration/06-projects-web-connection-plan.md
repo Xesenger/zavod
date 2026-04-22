@@ -226,7 +226,7 @@ JS только читает `body.dataset.phase = state.workCycle.visualPhase` 
 
 ```
 UI/Web/Projects/
-  projects.surface.html       — из docs/projects-web/project_concept_full.html
+  projects.surface.html       — из docs/_legacy/projects-web-migration/project_concept_full.html
   projects.bridge.js          — паттерны из chats.bridge.js + projects-специфичные actions
   projects.css                — извлечь inline стили из прототипа
 
@@ -315,7 +315,7 @@ Switch "чаты | проекты" по центру — **WinUI**, в `MainWind
 
 ## Готовые артефакты
 
-- `docs/projects-web/project_concept_full.html` — полный UI прототип (List + Home + WorkCycle)
+- `docs/_legacy/projects-web-migration/project_concept_full.html` — полный UI прототип (List + Home + WorkCycle)
 - `UI/Web/Chats/chats.surface.html` — bridge pattern референс (HTML)
 - `UI/Web/Chats/chats.bridge.js` — bridge pattern референс (JS) — ~800 строк, изучить patchConversation, applyLocalizedText, scroll preservation
 - `UI/Modes/Chats/ChatsWebRendererView.xaml.cs` — WebView2 setup референс
@@ -326,7 +326,7 @@ Switch "чаты | проекты" по центру — **WinUI**, в `MainWind
 - `UI/Modes/Projects/WorkCycle/Actions/WorkCycleActionController.cs` — action entry points
 - `UI/Modes/Projects/Projections/ProjectsShellProjection.cs` — Home + List state
 - `Execution/WorkspaceEvidenceArtifactRuntimeService.cs` — preview.html генерация (всех 5 docs уже)
-- `docs/projects-web/памятка.txt` — главный гайд по shared engine
+- `docs/operations/projects-workbench/shared-engine-principles.txt` — главный гайд по shared engine
 
 ---
 

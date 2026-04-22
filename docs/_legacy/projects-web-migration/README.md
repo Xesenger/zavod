@@ -1,6 +1,12 @@
-# Projects Web Migration
+# Projects Web Migration Archive
 
-Documents and prototypes for migrating the Projects mode UI to a web renderer.
+Historical documents and prototypes from the Projects mode migration to a web
+renderer. This folder is preserved for archaeology, not as the current
+operational surface.
+
+Current Projects operational notes live in:
+
+- `docs/operations/projects-workbench/`
 
 ## Documents (read in order)
 
@@ -17,4 +23,4 @@ Documents and prototypes for migrating the Projects mode UI to a web renderer.
 
 ## Status
 
-Active migration work. Documents reflect current code in `UI/Modes/Projects/`.
+Archived migration work. Some documents may mention old paths or UI folders.
