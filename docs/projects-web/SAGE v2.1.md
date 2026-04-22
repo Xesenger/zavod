@@ -300,3 +300,148 @@ Final:
 - decreasing intent mismatches
 - convergence toward consistent system state
 - role prompts stay clean under long history (anti-pollution holds)
+
+
+================================================================
+v2.1a DELTA — OPERATIONAL GUARDRAILS
+================================================================
+
+Addendum to v2.1. Five rules that must hold for every Sage stage
+from S1 onward. If an implementation violates one of these, the
+violation is a bug, not a design choice.
+
+----------------------------------------------------------------
+1. critical != blocking
+----------------------------------------------------------------
+Severity tiers:
+  hint     → sage_only channel; UI may hide
+  warning  → sage_only; UI must show in Sage panel
+  critical → sage_only; UI must show + visually mark as critical
+             NEVER blocks execution
+             NEVER injected into any role prompt
+             May influence behavior ONLY through typed S3 rules
+
+Rationale:
+Sage is advisory. Blocking is QC's job. "critical" means
+"cannot be silently swallowed", not "cannot proceed".
+
+----------------------------------------------------------------
+2. No direct role prompt influence
+----------------------------------------------------------------
+Sage observations must never appear in Lead / Worker / QC
+prompts — directly or paraphrased.
+
+Permitted influence channels:
+  a) UI surface → user reads → user decides
+  b) Typed S3 deterministic rules → task preflight constraints
+     (auditable, typed, not free text)
+  c) Severity + emission budget (important crowds out noise)
+
+Anti-rule:
+  Sage does not add fields to WorkerAgentInput, QcAgentInput,
+  or LeadAgentInput. Ever.
+
+Rationale:
+Prompt injection by Sage = pollution. The whole v2.1 isolation
+contract exists to prevent this.
+
+----------------------------------------------------------------
+3. before_execution = fast path only
+----------------------------------------------------------------
+Hard budget: ≤ 50ms (initial; tune on first real measurement).
+
+Allowed in before_execution:
+  - reads of already-computed state
+  - deterministic checks
+  - pattern memory lookup
+
+Forbidden in before_execution:
+  - I/O
+  - LLM calls
+  - heavy workspace scan
+  - anything not bounded in time
+
+Heavy analysis runs in during_execution (async). Its results
+arrive when they arrive — they surface in UI or next cycle,
+they never block the current one.
+
+Degradation:
+If fast path exceeds budget, observation is marked
+  degraded = true
+and execution continues as if the hook had not run.
+Sage must never become a single point of failure.
+
+----------------------------------------------------------------
+4. Pattern memory requires evidence AND counter-evidence
+----------------------------------------------------------------
+A pattern is not allowed to emit observations based on
+similarity alone. Minimum contract:
+
+  min_evidence_count    : int   (default 3)
+  confidence            : float (0..1)
+  warmup_period_tasks   : int   (default 10 — during warmup
+                                 patterns observe but do not emit)
+  counter_evidence_rule : when a task does what the pattern
+                          predicted as "bad" and result is
+                          ACCEPT, confidence drops; at threshold,
+                          pattern is invalidated (not just
+                          expired — actively disproven)
+
+ExpiresAt (v2.1) handles staleness by time.
+counter_evidence_rule handles staleness by facts.
+Both required.
+
+Rationale:
+Without counter-evidence, pattern memory locks in early
+mistakes and pessimizes exploration. We want a system that
+learns, not one that calcifies.
+
+----------------------------------------------------------------
+5. Core-enforced observation budgets
+----------------------------------------------------------------
+Budgets (initial):
+  per-hook  : max 3 observations
+  per-task  : max 8 observations
+
+Overflow policy:
+  1. sort by severity desc, then emission order
+  2. keep top N
+  3. dropped observations collapsed into one meta-observation:
+       type   = flood_suppressed
+       count  = K
+       dropped_types = [...]
+
+Enforcement:
+Budget is enforced by Sage core, not by hook authors.
+A hook may emit 20 observations; core trims per rules.
+
+Rationale:
+Self-limiting flood. The meta-observation tells us when
+something started shouting, before the shouting becomes
+the new normal.
+
+
+================================================================
+GROKKING — TARGET STATE
+================================================================
+
+The point of Sage is not to produce observations. The point
+is for the system to eventually need fewer of them.
+
+Signals that Sage is working (ordered by importance):
+
+  1. tasks close on first attempt more often
+  2. fewer "please clarify" rounds from Lead
+  3. QC says ACCEPT immediately more often
+  4. revision cycles per task trend down
+  5. the system stops returning to the same mistakes
+
+If Sage observation count goes up but these five signals
+do not improve — Sage is adding noise, not intelligence.
+That is a regression, regardless of how clever individual
+observations look.
+
+Every future Sage decision (new observation type, new hook,
+new pattern rule) must be evaluated against these five
+signals. "Does this help the system grok?" is the only
+question that matters.

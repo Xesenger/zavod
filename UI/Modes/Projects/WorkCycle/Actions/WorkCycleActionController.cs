@@ -12,6 +12,7 @@ using zavod.Qc;
 using zavod.Worker;
 using zavod.Tooling;
 using zavod.Persistence;
+using zavod.Sage;
 using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Rendering.Conversation;
 using zavod.UI.Text;
@@ -28,6 +29,7 @@ internal sealed class WorkCycleActionController
     private readonly Action _updateDiscussionPreview;
     private Func<Task>? _onProgressAsync;
     private readonly ProjectSageService _sage = new();
+    private readonly SageHookRunner _sageHooks = new();
     private readonly LeadAgentRuntime _leadAgentRuntime;
     private readonly WorkerAgentRuntime _workerAgentRuntime;
     private readonly QcAgentRuntime _qcAgentRuntime;
@@ -278,6 +280,16 @@ internal sealed class WorkCycleActionController
             leadMetadata["lab.lead.diagnostic"] = leadAgentResult.DiagnosticCode!;
         }
 
+        _sageHooks.OnAfterIntent(new SageAfterIntentContext(
+            ProjectId: context.QueryState.ProjectId,
+            ProjectRoot: context.QueryState.ProjectRoot,
+            ActiveTaskId: context.QueryState.ActiveTaskId,
+            UserMessage: normalizedText,
+            FinalIntentState: nextState.IntentState.ToString(),
+            LeadSuccess: leadAgentResult.Success,
+            TaskBrief: leadAgentResult.Parsed?.TaskBrief,
+            LeadReply: leadAgentResult.Success ? leadAgentResult.Reply : null));
+
         await ProjectsAdapter.AddMessageAsync(
             ConversationItemKind.Lead,
             AppText.Current.Get("role.shift_lead"),
@@ -428,6 +440,18 @@ internal sealed class WorkCycleActionController
             AdvisoryNotes: workerAdvisory.HasNotes ? workerAdvisory.Notes : Array.Empty<string>(),
             Anchors: anchorPack,
             RevisionNotes: revisionNotes);
+
+        _sageHooks.OnBeforeExecution(new SageBeforeExecutionContext(
+            ProjectId: queryState.ProjectId,
+            ProjectRoot: queryState.ProjectRoot,
+            TaskId: executionContext.TaskState.TaskId,
+            TaskDescription: executionContext.TaskState.Description,
+            Scope: executionContext.TaskState.Scope,
+            AnchorCount: anchorPack.Count,
+            AdvisoryNoteCount: workerAdvisory.HasNotes ? workerAdvisory.Notes.Count : 0,
+            IsRevision: isRevision,
+            RevisionNoteCount: revisionNotes?.Count ?? 0));
+
         var workerLlmResult = await Task.Run(() => _workerAgentRuntime.Run(workerInput));
 
         // ─── Worker response + authoritative QC routing ──────────────────────
@@ -576,6 +600,13 @@ internal sealed class WorkCycleActionController
             finalRuntimeState = null;
             qcFollowUpMessageKey = "projects.message.worker_refused_abandoned";
             qcFollowUpMessageArg = abandoned.TaskState.TaskId;
+
+            _sageHooks.OnAfterResult(new SageAfterResultContext(
+                ProjectId: queryState.ProjectId,
+                ProjectRoot: queryState.ProjectRoot,
+                TaskId: executionContext.TaskState.TaskId,
+                Outcome: SageResultOutcome.WorkerRefused,
+                Rationale: workerLlmResult.Parsed?.Summary));
         }
         else
         {
@@ -603,6 +634,16 @@ internal sealed class WorkCycleActionController
                     .Select(m => $"{m.Kind}: {m.Path} — {m.Summary}")
                     .ToArray() ?? Array.Empty<string>(),
                 StagedArtifacts: stagedArtifactDescriptors);
+
+            _sageHooks.OnBeforeResult(new SageBeforeResultContext(
+                ProjectId: queryState.ProjectId,
+                ProjectRoot: queryState.ProjectRoot,
+                TaskId: executionContext.TaskState.TaskId,
+                WorkerStatus: qcAgentInput.WorkerStatus,
+                StagedArtifactCount: stagedArtifactDescriptors.Length,
+                WorkerBlockerCount: qcAgentInput.WorkerBlockers.Count,
+                WorkerWarningCount: qcAgentInput.WorkerWarnings.Count));
+
             qcLlmResult = await Task.Run(() => _qcAgentRuntime.Run(qcAgentInput));
 
             runtime = ExecutionRuntimeController.RequestQcReview(runtime);
@@ -625,6 +666,12 @@ internal sealed class WorkCycleActionController
                         finalPhaseState = StepPhaseMachine.ReturnForRevision(chainedAccept);
                         finalRuntimeState = runtime;
                         qcFollowUpMessageKey = "projects.message.qc_revise_revision_cycle_opened";
+                        _sageHooks.OnAfterResult(new SageAfterResultContext(
+                            ProjectId: queryState.ProjectId,
+                            ProjectRoot: queryState.ProjectRoot,
+                            TaskId: executionContext.TaskState.TaskId,
+                            Outcome: SageResultOutcome.QcRevise,
+                            Rationale: rationale));
                         break;
                     }
                 case "REJECT":
@@ -641,6 +688,12 @@ internal sealed class WorkCycleActionController
                         finalRuntimeState = null;
                         qcFollowUpMessageKey = "projects.message.qc_reject_task_abandoned";
                         qcFollowUpMessageArg = abandoned.TaskState.TaskId;
+                        _sageHooks.OnAfterResult(new SageAfterResultContext(
+                            ProjectId: queryState.ProjectId,
+                            ProjectRoot: queryState.ProjectRoot,
+                            TaskId: executionContext.TaskState.TaskId,
+                            Outcome: SageResultOutcome.QcReject,
+                            Rationale: rationale));
                         break;
                     }
                 case "ACCEPT":
@@ -650,6 +703,12 @@ internal sealed class WorkCycleActionController
                         finalPhaseState = StepPhaseMachine.AcceptQc(qcPhaseState);
                         finalRuntimeState = runtime;
                         qcFollowUpMessageKey = "projects.message.qc_accepted_produced_result";
+                        _sageHooks.OnAfterResult(new SageAfterResultContext(
+                            ProjectId: queryState.ProjectId,
+                            ProjectRoot: queryState.ProjectRoot,
+                            TaskId: executionContext.TaskState.TaskId,
+                            Outcome: SageResultOutcome.QcAccepted,
+                            Rationale: qcLlmResult.Parsed?.Rationale));
                         break;
                     }
             }
@@ -1030,6 +1089,13 @@ internal sealed class WorkCycleActionController
         // Aggressive cleanup policy: staged tree is disposable once state
         // bookkeeping committed. Diagnostic trace lives in .zavod/lab/.
         StagingWriter.Cleanup(context.QueryState.ProjectRoot, executionContext.TaskState.TaskId);
+
+        _sageHooks.OnAfterResult(new SageAfterResultContext(
+            ProjectId: context.QueryState.ProjectId,
+            ProjectRoot: context.QueryState.ProjectRoot,
+            TaskId: executionContext.TaskState.TaskId,
+            Outcome: SageResultOutcome.Applied,
+            Rationale: null));
 
         await ProjectsAdapter.AddMessageAsync(
             ConversationItemKind.Status,
