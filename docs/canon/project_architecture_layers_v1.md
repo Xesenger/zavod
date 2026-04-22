@@ -76,17 +76,32 @@ must be split.
 - `roadmap.md`
 - `canon.md`
 - `meta/project.json` (technical meta; body not part of the 5/5
-  reading contract)
+  reading contract — see hybrid-writer note below)
 
 These four `.md` documents plus the meta file define what the
 project **is** right now. The documents are the 4 truth docs; the
-meta file is technical identity.
+meta file is technical identity plus runtime linkage.
 
 `capsule.md` is **not** in this layer — it is derived (Layer B).
 
-**Writer rule:** only via explicit promotion from Layer E (Evidence
-preview) or via contributor edit through the promotion surface.
-Runtime, agents, and system derivations may not write here.
+**Writer rule (for the four `.md` documents):** only via explicit
+promotion from Layer E (Evidence preview) or via contributor edit
+through the promotion surface. Runtime, agents, and system
+derivations may not write them.
+
+**Writer rule (for `meta/project.json`) — hybrid:**
+- Identity fields (`projectId`, `projectName`, `layoutVersion`,
+  `entryMode`) are human-stable; written at import or migration,
+  treated as Human-curated.
+- Linkage fields (`activeShiftId`, `activeTaskId`) are runtime
+  operational linkage, written as a byproduct of shift/task
+  lifecycle. They do **not** require promotion and are not
+  canonical truth — they are state pointers.
+
+The split is boundary-level, not soft: a writer that touches
+identity fields outside of import/migration flow is a defect, and
+a writer that requires contributor promotion for linkage fields
+is also a defect.
 
 ### Layer B — Derived Active Surface
 
@@ -143,9 +158,13 @@ references it explicitly.
 **Position:** Historical · System-recorded · Truth · Append-only, sealed at closure
 
 **Contents:**
-- `shifts/` — shift records with open/close boundaries
-- `tasks/` — task records linked to shifts
-- `journal/trace/*.jsonl` — high-level event stream
+- `shifts/SHIFT-NNN.json` — shift records with goal, status, and
+  **nested `Tasks` array** (task records are embedded in the shift
+  JSON; there is no separate `tasks/` directory in the storage
+  layout)
+- `journal/trace/YYYY-MM-DD.jsonl` — high-level event stream
+  (**target capability**; the journal writer is a future code
+  slice, see `project_journal_v1.md` for the contract)
 
 **Writer rule:** system-written during execution. Each entry is
 written once; modification after closure is forbidden.
@@ -187,10 +206,25 @@ workflow, or external tool — may consult preview as an authoritative
 source of project truth. Approved project memory lives only in
 Layer A, and only after explicit promotion.
 
-**Writer rule:** Scanner and Importer only. Preview is produced
-for **all five kinds** (matching Layer A + capsule), even when
-evidence is thin. Missing evidence must manifest as Unknown
-sections, not fabricated content.
+**Writer rule:** Scanner and Importer only.
+
+**Current behavior:** Importer produces preview only for kinds
+where evidence meaningfully supports derivation. When evidence is
+insufficient, the preview file remains **absent** rather than being
+fabricated. This is an intentional anti-hallucination policy,
+enforced by tests.
+
+**Target capability:** Importer evolves toward producing preview
+for **all five kinds** with explicit Unknown placeholder sections
+when evidence is thin. An Unknown section lists what evidence is
+missing and what input would unblock derivation — it does not
+invent content. Reaching this target is a code evolution, not a
+canon contradiction.
+
+**Invariant across current and target:** Importer must never
+fabricate content. Absent-when-insufficient (today) and
+Unknown-placeholder (target) are two ways of expressing the same
+contract; only the form evolves.
 
 **Reader rule:**
 - Preview may be **consulted for review** by the contributor
@@ -262,7 +296,8 @@ forbidden writer, `~` = conditional (see notes).
 | **QC runtime** | ✗ | ✗ | ✗ | ✓ journal only | ✗ | ✗ | ✓ lab |
 | **Apply / Accept cycle** | ✗ | ✗ | ~ only if canonical promotion | ✓ shift/task closure + journal | ✗ | ✗ | ✓ cleanup |
 | **Derived generators** | ✗ | ✓ regen | ✗ | ✗ | ✗ | ✗ | ✓ cache |
-| **Sage** | **✗ never** | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ observations.jsonl raw |
+| **Sage — S0 (legacy advisory)** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | — (stateless, nothing persisted) |
+| **Sage — S1+ (typed)** | **✗ never** | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ observations.jsonl raw |
 
 **Critical invariants enforced by this matrix:**
 
@@ -270,9 +305,11 @@ forbidden writer, `~` = conditional (see notes).
    project files (src/, etc.) which are part of the project tree,
    not `.zavod/`. Canonical documents change only via explicit
    human promotion, even when the changes are correct.
-2. **Sage never writes Truth.** Sage's memory is Local Ephemeral.
-   Promotion of learned patterns to Truth is a future slice
-   requiring explicit human act, never automatic.
+2. **Sage never writes Truth.** Neither S0 (legacy keyword
+   advisory, stateless) nor S1+ (typed, persisted to Local)
+   writes into any truth-tier layer. Promotion of S1+ learned
+   patterns to Truth is a future slice requiring explicit human
+   act, never automatic.
 3. **Apply cycle writes to C only if the act is project-shaping.**
    A routine Worker-result Accept produces a Layer D entry
    (task closure + journal), not a Layer C decision.
@@ -308,32 +345,63 @@ route has a trigger, a writer, and an explicit-act requirement.
 
 ## Sage's Architectural Position
 
-Sage is a **derivation layer over Truth and History**, not a
-writer of either.
+Sage has **two coexisting layers** with different architectural
+contracts. Conflating them is a canon violation.
 
-**What Sage reads:**
-- Layer A for semantic grounding (task contradicts a rule in
-  `canon.md`)
-- Layer D for pattern signals (this failure mode repeated N times)
-- Layer C for constraints (decision DEC-NNNN forbids this approach)
-- Layer E for evidence gaps (user references file X, evidence does
-  not cover X)
+### S0 — Legacy keyword advisory (`ProjectSageService`)
 
-**What Sage writes:**
-- Only to `.zavod.local/sage/observations.jsonl` (Local Ephemeral)
-- Never to Layer A / B / C / D / E / F
+Grandfathered pre-typed advisory layer. Produces short text notes
+from keyword scoring over conversation history, project documents,
+and shift state.
 
-**How Sage influences behavior:**
-- Through UI surface: a contributor sees an observation and decides
-- Through S3 deterministic rules (future): accumulated observations
-  of one kind may suggest a constraint; the constraint is a Layer C
-  decision written by a contributor, not by Sage
-- **Never** through role prompt injection (enforced by SAGE v2.1a #2)
+- **Writer:** none (stateless — built on demand; nothing persisted).
+- **Influence channel:** **may** enter Lead and Worker prompts as
+  `AdvisoryNotes` input fields. This is a deliberate legacy
+  integration, not a defect.
+- **Role filter:** S0 is bound by `IsFramingAdvisoryRole` so
+  downstream role chatter (Worker/QC telemetry) does not bleed
+  back into Lead's framing. The filter is part of the contract.
+- **Scope:** will likely shrink or be superseded as S1+ matures.
+  Until then, S0 remains a legitimate prompt-side input.
 
-**Consequence for architecture:** if any code path writes Sage
-output into a truth-layer file automatically, it is a critical
-architectural defect. Sage is a tenant in Local Ephemeral; it has
-no key to the Truth tier.
+### S1+ — Typed observation pipeline (`SageObservation`)
+
+The typed Sage system shipped in S1–S5a. Observes pipeline stages
+and emits structured records.
+
+- **What S1+ reads:**
+  - Layer A for semantic grounding (task contradicts a rule in
+    `canon.md`)
+  - Layer D for pattern signals (this failure mode repeated N times)
+  - Layer C for constraints (decision DEC-NNNN forbids this approach)
+  - Layer E for evidence gaps (user references file X, evidence does
+    not cover X)
+- **What S1+ writes:**
+  - Only to `.zavod.local/sage/observations.jsonl` (Local Ephemeral)
+  - Never to Layer A / B / C / D / E / F
+- **How S1+ influences behavior:**
+  - Through UI surface: a contributor sees an observation and decides
+  - Through S3 deterministic rules (future): accumulated observations
+    of one kind may suggest a constraint; the constraint is a Layer C
+    decision written by a contributor, not by Sage
+  - **Never** through role prompt injection (enforced by SAGE v2.1a #2)
+
+### Invariants that span both layers
+
+- Neither S0 nor S1+ writes into any Truth-tier layer
+  (A / B / C / D / E / F).
+- S1+ observations are never injected into role prompts; this
+  guardrail does not apply to S0, which may inject advisory text
+  by design.
+- Promotion of S1+ learned patterns from Local Ephemeral into
+  Truth (future slice) requires explicit contributor act and
+  produces a Layer C decision.
+
+**Consequence for architecture:** if S1+ code emits observations
+into any truth-layer file automatically, or if any code writes
+S1+ observation content into a role prompt builder, it is a
+critical architectural defect. S0 advisory text entering Lead
+or Worker prompt is not a defect — it is the grandfathered channel.
 
 ---
 
@@ -395,6 +463,16 @@ entry recording the apply is Layer D. Three artifacts, one act.
 - Layer F (archive) is immutable and does not contribute to 5/5.
 - Local Ephemeral carries runtime noise, debug artifacts, and Sage
   raw observations; deletable without truth loss.
-- Sage reads Truth and History; Sage writes only to Local
-  Ephemeral; Sage never influences prompts.
+- Sage has two layers: S0 (legacy keyword advisory) may enter
+  Lead/Worker prompts by design; S1+ (typed observations) never
+  does. Neither writes Truth.
+- `meta/project.json` is hybrid: identity fields are human-stable,
+  linkage fields (`activeShiftId`, `activeTaskId`) are runtime-written.
+- Tasks are nested inside shift JSON; no separate `tasks/`
+  directory exists.
+- Preview production is currently "absent when evidence is
+  insufficient"; the target is "all five with Unknown placeholders".
+  Both forms honor the anti-fabrication invariant.
+- Journal writer (`.zavod/journal/trace/`) is a target capability;
+  the code implementation is a future slice.
 - Cross-layer artifacts are architectural defects.

@@ -197,15 +197,35 @@ traceable to an explicit decision, manual or rule-based.
 
 ## Derivation Contract (Importer Obligations)
 
-The Importer must:
+### Current behavior (today's code)
 
-- produce an ImportPreview body for **every** kind, not only
-  kinds where evidence is rich
-- mark confidence per section
-- prefer Unknown over invented content
-- not copy imported foreign documents (e.g. `README.md` from
-  the source repository) into the canonical position verbatim —
-  those belong to preserved context, not to `/project/`
+The Importer produces an ImportPreview body only for kinds where
+evidence meaningfully supports derivation. When evidence is
+insufficient, the preview file remains **absent** rather than
+being fabricated. This is enforced by test assertions ("unsupported
+preview doc must remain absent instead of being guessed"). In
+practice, today's cssDOOM import reaches 2 of 5 preview kinds
+(`preview_project.md` and `preview_capsule.md`); the other three
+kinds (`direction`, `roadmap`, `canon`) remain absent by design.
+
+### Target capability (future code evolution)
+
+The Importer evolves toward producing preview for **all five kinds**,
+with explicit Unknown placeholder sections when evidence is thin.
+An Unknown section lists what evidence is missing and what input
+would unblock derivation. Reaching this target is a deliberate code
+slice, not a current promise.
+
+### Invariant (holds across current and target)
+
+Under either form, the Importer must:
+
+- prefer silence (absent file) or explicit Unknown sections over
+  invented content
+- mark confidence per section when the section exists
+- not copy imported foreign documents (e.g. `README.md` from the
+  source repository) into canonical position verbatim — those
+  belong to preserved context, not to `/project/`
 
 The Importer must not:
 
@@ -215,12 +235,13 @@ The Importer must not:
 - synthesize a direction statement from aspirational README
   language
 
-When an Importer cannot produce a meaningful body for a kind,
-it must produce a placeholder that:
+### Consequence for 5/5
 
-- lists what evidence is missing
-- describes what input would unblock derivation
-- is marked Unknown
+Today, a project may stand at 2/5 preview and therefore require
+additional evidence-gathering, manual contributor authoring, or
+importer enhancement before promotion to 5/5 canonical is possible.
+Reaching 5/5 canonical is explicitly a product capability in
+evolution, not an automatic output of import.
 
 ---
 

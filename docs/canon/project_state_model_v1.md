@@ -75,8 +75,10 @@ It reflects currently active project truth through typed fields and pointers.
 - `truth pointers` — refs to active truth documents
 - `active refs` — current active shift/task linkage or `null`
 
-In `v1`, paths to `tasks/`, `shifts/`, and `decisions/` are derived from `ZavodRoot`.
-Separate typed pointers for them are not required at this stage.
+In `v1`, paths to `shifts/` and `decisions/` are derived from `ZavodRoot`.
+Tasks are not a separate directory — they are nested inside each shift's JSON
+(see `project_truth_storage_layout_v1.md`). Separate typed pointers for these
+layouts are not required at this stage.
 
 ---
 

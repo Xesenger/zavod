@@ -46,16 +46,22 @@ and reserved for decisions that are structurally obsolete
 (e.g. referring to a layer concept that no longer exists in
 canon). Supersession alone does not warrant archival.
 
-### 3. Closed Layer D shift/task bundles (optional)
+### 3. Closed Layer D shift bundles (optional)
 
-A fully closed shift or task bundle may be archived when:
+A fully closed shift bundle (the JSON file with its nested Tasks
+array) may be archived when:
 
-- the shift/task is closed (sealed in Layer D)
+- the shift is closed (sealed in Layer D)
 - its active value to current work is exhausted
 - a contributor explicitly chooses to archive it for tidiness
 
 Routine closed shifts do not require archival — they live
 harmlessly in Layer D. Archival is opt-in.
+
+Individual tasks cannot be archived in isolation: the archival
+unit is the shift bundle (a task that needs to be preserved
+independently is a signal that the task model is wrong, not
+that archive needs a `tasks/` slot).
 
 ---
 
@@ -89,10 +95,7 @@ Archive does **not** accept:
   docs/
     <kind>/<YYYY-MM-DD>-<DEC-id>-<slug>.md
   shifts/
-    <shift-id>/
-      <bundled files>
-  tasks/
-    <task-id>.json
+    SHIFT-NNN.json        # archived shift; nested Tasks array intact
   decisions/
     <DEC-id>.md
 ```
@@ -100,8 +103,11 @@ Archive does **not** accept:
 Rules:
 
 - Top-level folders mirror the originating layer (`docs/` for
-  Layer A, `shifts/`/`tasks/` for Layer D, `decisions/` for
-  Layer C)
+  Layer A, `shifts/` for Layer D, `decisions/` for Layer C).
+- **No separate `tasks/` directory.** Tasks are nested inside
+  their shift JSON in Layer D and remain nested when the shift
+  is archived. Individual task archival is not a supported
+  operation — the archival unit is the shift bundle.
 - Archived files carry **archival metadata frontmatter** (see
   below)
 - No reorganization after archival — the path at time of

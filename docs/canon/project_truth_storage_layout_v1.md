@@ -15,16 +15,11 @@
     DEC-0001-....md
 
   shifts/
-    YYYY-MM-DD-shift-XX/
-      snapshot.md
-      handoff.md
-
-  tasks/
-    TASK-0001-....json
+    SHIFT-NNN.json
 
   journal/
     trace/
-      TRACE-....jsonl
+      YYYY-MM-DD.jsonl
 
   cache/
     capsule.cache.json
@@ -66,17 +61,12 @@ Initial truth order:
 
 ## shifts/
 
-- назначение: история смен
-- тип: history
-- изменяемость: append-only / records immutable after creation
+- назначение: история смен с вложенной историей задач (task records are embedded in the shift JSON, not stored in a separate `tasks/` directory)
+- формат: `shifts/SHIFT-NNN.json` — one JSON per shift, containing `ShiftId`, `Goal`, `Status`, `CurrentTaskId`, and `Tasks` array
+- тип: mixed (active while shift is open, historical once closed)
+- изменяемость: mutable while open; append-only semantics for closed shifts
 - владелец слоя: shift layer
-
-## tasks/
-
-- назначение: task intent records
-- тип: active
-- изменяемость: mutable
-- владелец слоя: task layer
+- boundary with historical events: detailed lifecycle events live in `journal/trace/` (see `project_journal_v1.md`); shift JSON itself is a state snapshot, not an event log
 
 ## journal/trace
 
@@ -98,6 +88,8 @@ Initial truth order:
 - тип: active
 - изменяемость: mutable
 - владелец слоя: project metadata layer
+- писатель: **гибрид**. Identity fields (`projectId`, `projectName`, `layoutVersion`, `entryMode`) are set at import or migration and treated as human-stable identity. Linkage fields (`activeShiftId`, `activeTaskId`) are runtime-written as a byproduct of shift/task lifecycle and do not require contributor promotion.
+- invariant: `meta/project.json` must never carry semantic project truth (see `project_meta_contract_v1.md`); its scope is identity + runtime operational linkage only
 
 ## Canons
 
@@ -107,7 +99,7 @@ Initial truth order:
 - `.zavod/` живёт внутри репозитория проекта
 - `project/` содержит только active truth
 - `decisions/` содержит историю решений
-- `shifts/` содержит историю смен
+- `shifts/` содержит историю смен; задачи вложены в JSON смены, отдельной `tasks/` папки нет
 - `cache/` не является truth и может быть удалён
 - `journal/trace` является observer-only слоем
-- `meta/project.json` является технической точкой входа проекта
+- `meta/project.json` является технической точкой входа проекта; identity fields контрибьютор-стабильны, linkage fields пишутся runtime'ом
