@@ -39,6 +39,7 @@ These layers must not compete with each other.
 `project_architecture_layers_v1.md` *(root architectural canon)*
 `project_truth_storage_layout_v1.md`
 `project_truth_documents_v1.md`
+`project_decisions_v1.md`
 `local_workspace_layout_v1.md`
 `project_state_model_v1.md`
 `project_state_persistence_v1.md`
