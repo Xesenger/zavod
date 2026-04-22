@@ -175,10 +175,32 @@ readable by all contributors.
 - `import_evidence_bundle/` — raw Scanner output
 - `preview_docs/` — Importer interpretation before promotion to A
 
+**Authority rule (critical):**
+
+> Preview is **not truth**. It is **candidate understanding**
+> before promotion. Preview must remain clearly below canonical
+> truth and must never be treated as approved project memory.
+
+This rule is a **reader obligation**, not only a writer obligation.
+No component — runtime, agent, derivation generator, contributor
+workflow, or external tool — may consult preview as an authoritative
+source of project truth. Approved project memory lives only in
+Layer A, and only after explicit promotion.
+
 **Writer rule:** Scanner and Importer only. Preview is produced
 for **all five kinds** (matching Layer A + capsule), even when
 evidence is thin. Missing evidence must manifest as Unknown
 sections, not fabricated content.
+
+**Reader rule:**
+- Preview may be **consulted for review** by the contributor
+  before promotion.
+- Preview may be **read by Sage** as evidence of what the Importer
+  derived, never as a rule or constraint.
+- Preview must **never** be resolved in a "truth or fallback"
+  chain where A is checked first and E is used when A is missing.
+  A missing Layer A document means the project is not at 5/5;
+  preview does not substitute for it.
 
 **Promotion to Layer A:** explicit human act (see Promotion Protocol).
 
@@ -367,6 +389,9 @@ entry recording the apply is Layer D. Three artifacts, one act.
   journal is truth and audit-grade.
 - Layer E (evidence + preview) is Importer's output; promotion to
   Layer A is always explicit.
+- Preview is candidate understanding, never approved project
+  memory; no component may read preview as a truth fallback when
+  Layer A is missing.
 - Layer F (archive) is immutable and does not contribute to 5/5.
 - Local Ephemeral carries runtime noise, debug artifacts, and Sage
   raw observations; deletable without truth loss.
