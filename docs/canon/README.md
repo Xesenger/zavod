@@ -37,6 +37,7 @@ These layers must not compete with each other.
 ### 1. Project Truth and Storage
 
 `project_architecture_layers_v1.md` *(root architectural canon)*
+`project_automation_invariant_v1.md` *(foundational invariant — automation boundaries)*
 `project_truth_storage_layout_v1.md`
 `project_truth_documents_v1.md`
 `project_decisions_v1.md`
@@ -54,6 +55,7 @@ These layers must not compete with each other.
 `interaction_validation_flow_v1.md`
 `bootstrap_flow_v1.md`
 `cold_start_behavior_v1.md`
+`project_welcome_surface_v1.md` *(project-open orientation view — fixed state→action map)*
 
 ### 3. Shift / Task / Snapshot Lifecycle
 
@@ -79,6 +81,7 @@ These layers must not compete with each other.
 
 ### 6. Prompting / Grounding Layer
 
+`project_work_packet_v1.md` *(runtime packet contract — boundary between project memory and the model)*
 `prompt_assembly_v1.md`
 `anchor_system_v1.md`
 `context_builder_v1.md`

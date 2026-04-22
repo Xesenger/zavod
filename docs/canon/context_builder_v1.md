@@ -155,6 +155,17 @@ That means:
 no automatic expansion to the whole project
 no unrelated neighboring systems by default
 no cross-layer drift without explicit basis
+Relation to Work Packet
+
+When the runtime uses a Work Packet (see `project_work_packet_v1.md`) as
+the upstream envelope, Context Builder's bounded context package
+contributes to the packet's payload fields (notably `relevant_decisions`,
+`relevant_recent_history`, and the bounded truth excerpts carried into
+the packet). Work Packet is the formal boundary between project memory
+and the model; Context Builder is a curator inside that boundary. The
+budget and scope rules in Work Packet (task-scope, recency window,
+item/token budgets) apply to Context Builder selections.
+
 Relation to Read Before Write
 
 Read Before Write Gate uses the prepared context package, but does not replace it.

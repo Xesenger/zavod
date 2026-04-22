@@ -157,6 +157,15 @@ explicit interpretation target for Lead
 
 Prompt Assembly does not decide intent validity by itself.
 
+Relation to Work Packet
+
+When the runtime uses a Work Packet (see `project_work_packet_v1.md`) as
+the upstream envelope, Prompt Assembly operates as the downstream layer
+that structures the packet's payload into the final role-specific request.
+Work Packet defines WHICH fields are authorized to flow from project
+memory to the model; Prompt Assembly defines HOW those fields are placed
+into Role Core / Context Package / Task Block.
+
 Relation to Context Builder
 
 Prompt Assembly consumes the output of Context Builder.

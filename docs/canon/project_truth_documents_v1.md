@@ -108,32 +108,111 @@ Answers:
 Does not contain: state that changes per shift, transient
 decisions, or operational details.
 
-### `capsule.md` — 2–3 minute compressed entry point
+### `capsule.md` — 2–3 minute compressed entry point (Capsule v2)
 
-Canonical compressed summary. The fastest path to understanding.
+Canonical compressed summary and stable project re-entry layer.
+The fastest path to understanding, and the source from which
+future compact/resume behavior assembles context.
 
-Answers (briefly):
+#### Nature
 
-- What this project is
-- Current direction
-- Current phase
-- Current focus
-- What must not be broken
-- Immediate next step
+Capsule is **always derived**, never manually edited. It is not
+an independent truth layer. It is a rendered view over Layer A.
 
-`capsule.md` is a derived summary, not an independent truth layer.
-It must not contradict the other four documents. When a source
-document changes, `capsule.md` must be re-derivable.
+Capsule has **no own stage**. It does not move through
+ImportPreview → PreviewDocs → CanonicalDocs on its own track.
+Instead, each capsule carries an explicit **source stage marker**
+that reflects the stage of the Layer A material it was derived
+from:
+
+- `source_stage: preview` — derived from preview docs because
+  canonical docs are not yet promoted for this project
+- `source_stage: canonical` — derived from canonical docs
+- `source_stage: mixed` — derived from a mix; mixed capsule
+  must list per-section which stage the content came from
+
+A capsule with `source_stage: preview` must remain clearly below
+canonical truth in every reader surface. It is a projection of
+preview material, not a canonical document in its own right.
+
+#### Derivation sources
+
+Capsule is derived **primarily from Layer A** (`project.md`,
+`direction.md`, `roadmap.md`, `canon.md`). When canonical docs
+are absent, capsule derives from Layer E preview docs with
+`source_stage: preview`.
+
+Active shift/task state may appear **only as a clearly marked
+overlay** (the "Current focus" section). The overlay is a
+minority section, not the spine of the document. A capsule that
+leads with runtime state instead of Layer A truth is a canon
+violation.
+
+Capsule MUST NOT contain:
+
+- raw chat history
+- raw LLM output
+- a second copy of roadmap or canon content beyond 1–2 line
+  compressed references
+- runtime telemetry or journal excerpts
+- preview content presented as canonical (source stage must be
+  honest)
+
+#### Sections
+
+A capsule has the following sections, in this order:
+
+1. **Project identity** — name, type, scope
+2. **What this project is** — 2–4 lines from `project.md`
+3. **Current direction** — 2–4 lines from `direction.md`
+4. **Current roadmap phase** — 1–2 lines from `roadmap.md`
+5. **Core canon rules** — 3–6 invariants from `canon.md`,
+   compressed to one line each
+6. **Current focus** *(overlay)* — active shift/task state if
+   any; clearly marked as runtime overlay, not Layer A truth
+7. **Open risks / unresolved items** — 2–5 bullets
+8. **Canon completeness status** — e.g. `preview 2/5`,
+   `canonical 5/5`; derived from 5/5 state, not narrated
+
+Any section may be empty with an explicit "none" marker.
+Fabrication is forbidden.
+
+#### Regeneration triggers
+
+Capsule must be re-derivable. Re-derivation is required when:
+
+- any Layer A canonical doc changes
+- 5/5 canonical status changes (promotion, staleness, archival)
+- source_stage transitions (e.g. preview → canonical after
+  promotion)
+
+Re-derivation of capsule is **not** a project-shaping act — it
+is an automation-permitted derivation per
+`project_automation_invariant_v1.md`. The user does not approve
+capsule refreshes.
+
+#### Reader obligation
+
+Any reader surface consuming capsule content MUST:
+
+- honor the `source_stage` marker
+- never treat `source_stage: preview` capsule as canonical truth
+- never hide the "Current focus" overlay marker from the reader
 
 ---
 
 ## Stage Pipeline
 
-Each of the five documents moves through three stages:
+Four of the five documents (`project.md`, `direction.md`,
+`roadmap.md`, `canon.md`) move through three stages:
 
 ```
 ImportPreview → PreviewDocs → CanonicalDocs
 ```
+
+`capsule.md` is exempt from this pipeline. It is always derived
+and carries a `source_stage` marker reflecting the stage of the
+material it was derived from (see Capsule v2 above).
 
 ### ImportPreview
 
@@ -290,8 +369,12 @@ reading contract and should be re-derived.
 - 5/5 denotes completeness of canonical coverage, not quality.
 - The Importer must produce all five at ImportPreview stage;
   Unknown is valid, fabrication is not.
-- `capsule.md` is a derived summary; it must not contradict the
-  other four.
+- `capsule.md` is always derived, has no own stage, and carries
+  an explicit `source_stage` marker (preview / canonical / mixed).
+- `capsule.md` is derived primarily from Layer A; active shift/
+  task state may appear only as a clearly marked overlay.
+- `capsule.md` must not contradict the other four and must not
+  become a second roadmap/canon copy.
 - Promotion to CanonicalDocs requires an explicit act.
 - Staleness marks sections; it does not delete or auto-invalidate
   documents.
