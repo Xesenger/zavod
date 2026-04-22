@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -51,6 +51,7 @@ using zavod.UI.Modes.Chats;
 using zavod.UI.Modes.Projects;
 using zavod.UI.Modes.Projects.WorkCycle.Actions;
 using zavod.UI.Rendering.Conversation;
+using zavod.Welcoming;
 using zavod.Workspace;
 
 var tests = new (string Name, Action Run)[]
@@ -499,7 +500,16 @@ var tests = new (string Name, Action Run)[]
     ("Demo post-accept continuation restores ready discussion CTA", DemoPostAcceptContinuationRestoresReadyDiscussionCta),
     ("Demo session advances to second step after first accept", DemoSessionAdvancesToSecondStepAfterFirstAccept),
     ("Demo session reaches completion after second accept", DemoSessionReachesCompletionAfterSecondAccept),
-    ("Demo session reset returns brand new shift to clean step 1", DemoSessionResetReturnsBrandNewShiftToCleanStepOne)
+    ("Demo session reset returns brand new shift to clean step 1", DemoSessionResetReturnsBrandNewShiftToCleanStepOne),
+    ("Welcome selector R1 offers continue when active shift", WelcomeSelectorR1OffersContinueWhenActiveShift),
+    ("Welcome selector R2 offers start cycle on canonical 5 of 5", WelcomeSelectorR2OffersStartCycleOnCanonical5Of5),
+    ("Welcome selector R3 offers promote and author on partial canonical", WelcomeSelectorR3OffersPromoteAndAuthorOnPartialCanonical),
+    ("Welcome selector R4 offers review and promote when preview only", WelcomeSelectorR4OffersReviewAndPromoteWhenPreviewOnly),
+    ("Welcome selector R5 offers retry and author on empty state", WelcomeSelectorR5OffersRetryAndAuthorOnEmptyState),
+    ("Welcome selector R6 overlays stale review when stale present", WelcomeSelectorR6OverlaysStaleReviewWhenStalePresent),
+    ("Welcome selector caps output at 4 actions", WelcomeSelectorCapsOutputAt4Actions),
+    ("Welcome selector pads below-minimum with project audit", WelcomeSelectorPadsBelowMinimumWithProjectAudit),
+    ("Welcome selector is deterministic for identical input", WelcomeSelectorIsDeterministicForIdenticalInput)
 };
 
 var failures = new List<string>();
@@ -13473,6 +13483,264 @@ static void DeleteScratchWorkspace(string rootPath)
     if (Directory.Exists(rootPath))
     {
         Directory.Delete(rootPath, recursive: true);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Welcome Surface Selector tests (project_welcome_surface_v1.md)
+// ---------------------------------------------------------------------------
+
+static zavod.Persistence.ProjectDocumentSourceDescriptor WelcomeDocDescriptor(
+    zavod.Persistence.ProjectDocumentKind kind,
+    zavod.Persistence.ProjectDocumentStage stage,
+    bool exists)
+{
+    return new zavod.Persistence.ProjectDocumentSourceDescriptor(kind, stage, $"preview/{kind}.md", exists);
+}
+
+static zavod.Persistence.ProjectDocumentSourceSelection WelcomeSelection(
+    zavod.Persistence.ProjectDocumentStage activeStage,
+    zavod.Persistence.ProjectDocumentStage? project = null,
+    zavod.Persistence.ProjectDocumentStage? direction = null,
+    zavod.Persistence.ProjectDocumentStage? roadmap = null,
+    zavod.Persistence.ProjectDocumentStage? canon = null,
+    zavod.Persistence.ProjectDocumentStage? capsule = null)
+{
+    zavod.Persistence.ProjectDocumentSourceDescriptor? Build(
+        zavod.Persistence.ProjectDocumentKind kind,
+        zavod.Persistence.ProjectDocumentStage? stage)
+    {
+        if (stage is null)
+        {
+            return null;
+        }
+        return WelcomeDocDescriptor(kind, stage.Value, true);
+    }
+
+    return new zavod.Persistence.ProjectDocumentSourceSelection(
+        activeStage,
+        Build(zavod.Persistence.ProjectDocumentKind.Project, project),
+        Build(zavod.Persistence.ProjectDocumentKind.Direction, direction),
+        Build(zavod.Persistence.ProjectDocumentKind.Roadmap, roadmap),
+        Build(zavod.Persistence.ProjectDocumentKind.Canon, canon),
+        Build(zavod.Persistence.ProjectDocumentKind.Capsule, capsule));
+}
+
+static void WelcomeSelectorR1OffersContinueWhenActiveShift()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.CanonicalDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: true, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.PrimaryRule != WelcomeSelectionRule.R1_ActiveShiftOrTask)
+    {
+        throw new Exception($"Expected R1, got {result.PrimaryRule}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.ContinueWorkCycle))
+    {
+        throw new Exception("R1 must offer ContinueWorkCycle.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.OpenRoadmap))
+    {
+        throw new Exception("R1 with roadmap present must offer OpenRoadmap.");
+    }
+}
+
+static void WelcomeSelectorR2OffersStartCycleOnCanonical5Of5()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        canon: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.CanonicalDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.PrimaryRule != WelcomeSelectionRule.R2_Canonical_5_of_5)
+    {
+        throw new Exception($"Expected R2, got {result.PrimaryRule}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R2 must offer StartWorkCycle.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.OpenRoadmap))
+    {
+        throw new Exception("R2 must offer OpenRoadmap.");
+    }
+}
+
+static void WelcomeSelectorR3OffersPromoteAndAuthorOnPartialCanonical()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.PreviewDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.PrimaryRule != WelcomeSelectionRule.R3_Canonical_Partial)
+    {
+        throw new Exception($"Expected R3, got {result.PrimaryRule}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.PromotePreviewToCanonical))
+    {
+        throw new Exception("R3 must offer PromotePreviewToCanonical.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.AuthorCanonicalDoc))
+    {
+        throw new Exception("R3 must offer AuthorCanonicalDoc.");
+    }
+}
+
+static void WelcomeSelectorR4OffersReviewAndPromoteWhenPreviewOnly()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        project: zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.PreviewDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.PrimaryRule != WelcomeSelectionRule.R4_Canonical_Zero_PreviewPresent)
+    {
+        throw new Exception($"Expected R4, got {result.PrimaryRule}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.ReviewPreviewDocs))
+    {
+        throw new Exception("R4 must offer ReviewPreviewDocs.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.PromotePreviewToCanonical))
+    {
+        throw new Exception("R4 must offer PromotePreviewToCanonical.");
+    }
+    if (result.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R4 must not offer StartWorkCycle as primary action on preview-only state.");
+    }
+}
+
+static void WelcomeSelectorR5OffersRetryAndAuthorOnEmptyState()
+{
+    var selection = WelcomeSelection(zavod.Persistence.ProjectDocumentStage.ImportPreview);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: false, HasImportFailure: true);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.PrimaryRule != WelcomeSelectionRule.R5_Canonical_Zero_PreviewZero)
+    {
+        throw new Exception($"Expected R5, got {result.PrimaryRule}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.ImportRetry))
+    {
+        throw new Exception("R5 must offer ImportRetry.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.AuthorCanonicalDoc))
+    {
+        throw new Exception("R5 must offer AuthorCanonicalDoc.");
+    }
+    if (result.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R5 must not offer StartWorkCycle on empty project state.");
+    }
+}
+
+static void WelcomeSelectorR6OverlaysStaleReviewWhenStalePresent()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        canon: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.CanonicalDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: true, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (!result.StaleOverlayApplied)
+    {
+        throw new Exception("StaleOverlayApplied must be true when HasStaleSections is true.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.ReviewStaleSections))
+    {
+        throw new Exception("R6 overlay must inject ReviewStaleSections into the action set.");
+    }
+}
+
+static void WelcomeSelectorCapsOutputAt4Actions()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        canon: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.CanonicalDocs);
+    // R2 produces 3 actions + stale overlay = 4, already at cap.
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: true, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.Actions.Count > 4)
+    {
+        throw new Exception($"Action count exceeded cap: {result.Actions.Count}.");
+    }
+}
+
+static void WelcomeSelectorPadsBelowMinimumWithProjectAudit()
+{
+    // R1 with no roadmap -> only ContinueWorkCycle -> must pad to min 2 via ReviewProjectAudit.
+    var selection = WelcomeSelection(zavod.Persistence.ProjectDocumentStage.ImportPreview);
+    var input = new WelcomeStateInput(selection, HasActiveShift: true, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var result = WelcomeSurfaceSelector.Select(input);
+
+    if (result.Actions.Count < 2)
+    {
+        throw new Exception($"Action count below minimum: {result.Actions.Count}.");
+    }
+    if (!result.Actions.Contains(WelcomeAction.ReviewProjectAudit))
+    {
+        throw new Exception("Below-minimum set must be padded with ReviewProjectAudit.");
+    }
+}
+
+static void WelcomeSelectorIsDeterministicForIdenticalInput()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        project: zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.PreviewDocs);
+    var input = new WelcomeStateInput(selection, HasActiveShift: false, HasActiveTask: false, HasStaleSections: false, HasImportFailure: false);
+
+    var a = WelcomeSurfaceSelector.Select(input);
+    var b = WelcomeSurfaceSelector.Select(input);
+
+    if (a.PrimaryRule != b.PrimaryRule)
+    {
+        throw new Exception("PrimaryRule must be deterministic.");
+    }
+    if (a.Actions.Count != b.Actions.Count)
+    {
+        throw new Exception("Action count must be deterministic.");
+    }
+    for (var i = 0; i < a.Actions.Count; i++)
+    {
+        if (a.Actions[i] != b.Actions[i])
+        {
+            throw new Exception($"Action order differs at index {i}: {a.Actions[i]} vs {b.Actions[i]}.");
+        }
     }
 }
 

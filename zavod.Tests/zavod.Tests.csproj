@@ -55,6 +55,10 @@
     <Compile Include="..\Tooling\*.cs" Link="Tooling\%(Filename)%(Extension)" />
     <Compile Include="..\Workspace\*.cs" Link="Workspace\%(Filename)%(Extension)" />
     <Compile Include="..\Acceptance\*.cs" Link="Acceptance\%(Filename)%(Extension)" />
+    <Compile Include="..\Qc\*.cs" Link="Qc\%(Filename)%(Extension)" />
+    <Compile Include="..\Worker\*.cs" Link="Worker\%(Filename)%(Extension)" />
+    <Compile Include="..\Sage\*.cs" Link="Sage\%(Filename)%(Extension)" />
+    <Compile Include="..\Welcoming\*.cs" Link="Welcoming\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
