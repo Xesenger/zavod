@@ -41,6 +41,7 @@ These layers must not compete with each other.
 `project_truth_documents_v1.md`
 `project_decisions_v1.md`
 `project_journal_v1.md`
+`project_archive_v1.md`
 `local_workspace_layout_v1.md`
 `project_state_model_v1.md`
 `project_state_persistence_v1.md`
