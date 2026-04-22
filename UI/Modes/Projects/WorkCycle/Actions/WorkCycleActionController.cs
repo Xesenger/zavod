@@ -450,7 +450,8 @@ internal sealed class WorkCycleActionController
             AnchorCount: anchorPack.Count,
             AdvisoryNoteCount: workerAdvisory.HasNotes ? workerAdvisory.Notes.Count : 0,
             IsRevision: isRevision,
-            RevisionNoteCount: revisionNotes?.Count ?? 0));
+            RevisionNoteCount: revisionNotes?.Count ?? 0,
+            Anchors: anchorPack));
 
         var workerLlmResult = await Task.Run(() => _workerAgentRuntime.Run(workerInput));
 

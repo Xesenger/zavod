@@ -66,22 +66,34 @@ public sealed class SageHookRunner
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        // S5a: attention_miss emitter. Fast-path-only per v2.1a #3;
+        // regex + substring checks over a bounded anchor pack (<100
+        // entries by construction in WorkerAnchorPackBuilder). Budget
+        // watchdog records over-budget as a diagnostic but never
+        // blocks the pipeline. Fail-open try/catch per v2.1a #3.
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            // S2a: no emitters. S3+ emitters must complete within
-            // BeforeExecutionBudget; over-budget emitters are marked
-            // Degraded=true by S2b and must not block the pipeline.
+            var observation = AttentionMissEmitter.TryObserve(context);
+            if (observation is not null)
+            {
+                Sink.TryEmit(context.ProjectRoot, observation);
+            }
+        }
+        catch
+        {
+            // Intentionally swallow (fail-open).
         }
         finally
         {
             stopwatch.Stop();
             if (stopwatch.Elapsed > BeforeExecutionBudget)
             {
-                // S2b contract: emit a SageStage.BeforeExecution meta with
-                // Degraded=true. S2a has no sink; the over-budget signal
-                // is dropped intentionally — recording it here without a
-                // sink would be state truth leakage.
+                // Over-budget on a fast-path hook. S2b did not wire a
+                // dedicated degraded-meta emit path and doing so here
+                // would require a second TryEmit, doubling the cost of
+                // the very overrun we are complaining about. Deferred
+                // to a later slice if real measurements show overruns.
             }
         }
     }

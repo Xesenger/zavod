@@ -28,7 +28,8 @@ public sealed record SageBeforeExecutionContext(
     int AnchorCount,
     int AdvisoryNoteCount,
     bool IsRevision,
-    int RevisionNoteCount);
+    int RevisionNoteCount,
+    IReadOnlyList<string> Anchors);
 
 public sealed record SageBeforeResultContext(
     string ProjectId,
