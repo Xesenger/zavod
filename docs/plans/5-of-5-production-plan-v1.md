@@ -402,11 +402,11 @@ runtime wires those files to the model.
 
 *(Updated as slices land. Do not delete completed entries.)*
 
-- [ ] S1 project.md v2 refinement
-- [ ] S2 canon.md (observed technical invariants only)
-- [ ] S3 direction.md (extractor + preview writer)
-- [ ] S4 roadmap.md (git reader + preview writer, candidate-level only)
-- [ ] S5 capsule.md v2 upgrade
+- [x] S1 project.md v2 refinement
+- [x] S2 canon.md (observed technical invariants only)
+- [x] S3 direction.md (extractor + preview writer)
+- [x] S4 roadmap.md (git reader + preview writer, candidate-level only)
+- [x] S5 capsule.md v2 upgrade
 - [ ] S6 promotion UI
 - [ ] S7 5/5 state awareness
 

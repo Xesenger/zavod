@@ -167,8 +167,16 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence artifact runtime writes preview html warning for ambiguous container honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForAmbiguousContainerHonestly),
     ("Workspace evidence artifact runtime writes preview html from canonical docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlFromCanonicalDocsHonestly),
     ("Workspace evidence artifact runtime writes preview docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly),
+    ("Project document runtime writes bounded container project preview honestly", ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly),
+    ("Project document runtime keeps project preview identity stable on reimport honestly", ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHonestly),
+    ("Project document runtime writes observed canon preview honestly", ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly),
+    ("Project document runtime writes candidate direction preview honestly", ProjectDocumentRuntimeWritesCandidateDirectionPreviewHonestly),
+    ("Project document runtime writes unknown-only direction without README honestly", ProjectDocumentRuntimeWritesUnknownOnlyDirectionWithoutReadmeHonestly),
+    ("Project document runtime writes candidate roadmap preview honestly", ProjectDocumentRuntimeWritesCandidateRoadmapPreviewHonestly),
+    ("Project document runtime writes unknown-only roadmap without git honestly", ProjectDocumentRuntimeWritesUnknownOnlyRoadmapWithoutGitHonestly),
     ("Project document source selector resolves import preview preview docs and canonical stages honestly", ProjectDocumentSourceSelectorResolvesStagesHonestly),
     ("Project document runtime confirms preview docs into canonical project and capsule honestly", ProjectDocumentRuntimeConfirmsPreviewDocsIntoCanonicalProjectAndCapsuleHonestly),
+    ("Project document runtime regenerates capsule v2 deterministically honestly", ProjectDocumentRuntimeRegeneratesCapsuleV2DeterministicallyHonestly),
     ("Workspace import material interpreter runtime preserves upstream failure honestly", WorkspaceImportMaterialInterpreterRuntimePreservesUpstreamFailureHonestly),
     ("Workspace scanner separates primary source roots from build roots honestly", WorkspaceScannerSeparatesPrimarySourceRootsFromBuildRootsHonestly),
     ("Workspace scanner classifies config only import honestly", WorkspaceScannerClassifiesConfigOnlyImportHonestly),
@@ -12292,29 +12300,461 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly()
         var bundle = service.WriteBundle(run);
         var previewProjectText = File.ReadAllText(bundle.PreviewProjectDocumentPath);
         var previewCapsuleText = File.ReadAllText(bundle.PreviewCapsuleDocumentPath);
+        var previewDirectionPath = Path.Combine(Path.GetDirectoryName(bundle.PreviewProjectDocumentPath)!, "preview_direction.md");
+        var previewDirectionText = File.ReadAllText(previewDirectionPath);
+        var previewRoadmapPath = Path.Combine(Path.GetDirectoryName(bundle.PreviewProjectDocumentPath)!, "preview_roadmap.md");
+        var previewRoadmapText = File.ReadAllText(previewRoadmapPath);
+        var previewCanonPath = Path.Combine(Path.GetDirectoryName(bundle.PreviewProjectDocumentPath)!, "preview_canon.md");
+        var previewCanonText = File.ReadAllText(previewCanonPath);
 
         AssertTrue(File.Exists(bundle.PreviewProjectDocumentPath), "Preview project document should be materialized beside shared import artifacts.");
         AssertTrue(File.Exists(bundle.PreviewCapsuleDocumentPath), "Preview capsule document should be materialized beside shared import artifacts.");
+        AssertTrue(File.Exists(previewDirectionPath), "Preview direction document should be materialized once S3 direction writer exists.");
+        AssertTrue(File.Exists(previewRoadmapPath), "Preview roadmap document should be materialized once S4 roadmap writer exists.");
+        AssertTrue(File.Exists(previewCanonPath), "Preview canon document should be materialized once S2 observed canon writer exists.");
         AssertContains(previewProjectText, "# Project (Preview)", "Preview project should expose candidate-document heading.");
         AssertContains(previewProjectText, "## Identity", "Preview project should expose identity section.");
-        AssertContains(previewProjectText, "## What this looks like", "Preview project should expose bounded human description.");
+        AssertContains(previewProjectText, "Project Id: `", "Preview project should expose deterministic project id.");
+        AssertContains(previewProjectText, "Project Name: `", "Preview project should expose deterministic project name.");
+        AssertContains(previewProjectText, "## Scope and container mode", "Preview project should expose scope/container section.");
+        AssertContains(previewProjectText, "## What this project appears to be", "Preview project should expose bounded human description.");
         AssertContains(previewProjectText, "## Observed structure", "Preview project should expose observed structure section.");
         AssertContains(previewProjectText, "## Runtime / stack signals", "Preview project should expose runtime signal section.");
         AssertContains(previewProjectText, "## What is confirmed / likely / unknown", "Preview project should expose explicit confidence split.");
         AssertContains(previewProjectText, "## Materials worth reading", "Preview project should expose materials section.");
         AssertContains(previewProjectText, "## Open uncertainty", "Preview project should expose uncertainty section.");
         AssertContains(previewProjectText, "## Canonical readiness", "Preview project should expose readiness section.");
+        AssertTrue(previewProjectText.Split("- Confidence: `").Length - 1 >= 9, "Preview project should carry explicit confidence markers on every section.");
         AssertContains(previewProjectText, "Single project summary", "Preview project should preserve importer-owned summary.");
         AssertContains(previewProjectText, "not canonical truth yet", "Preview project should keep non-truth disclaimer.");
         AssertContains(previewCapsuleText, "# Capsule (Preview)", "Preview capsule should expose derived candidate heading.");
-        AssertContains(previewCapsuleText, "## Project", "Preview capsule should expose project section.");
-        AssertContains(previewCapsuleText, "## Current understanding", "Preview capsule should expose understanding section.");
-        AssertContains(previewCapsuleText, "## Key constraints", "Preview capsule should expose constraints section.");
-        AssertContains(previewCapsuleText, "## Top risks / unknowns", "Preview capsule should expose risks section.");
-        AssertContains(previewCapsuleText, "## Next confirmable step", "Preview capsule should expose next-step section.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "preview_docs", "preview_direction.md")), "Unsupported direction preview doc must remain absent instead of being guessed.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "preview_docs", "preview_roadmap.md")), "Unsupported roadmap preview doc must remain absent instead of being guessed.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "preview_docs", "preview_canon.md")), "Unsupported canon preview doc must remain absent instead of being guessed.");
+        AssertCapsuleV2Shape(previewCapsuleText, "preview");
+        AssertContains(previewCapsuleText, "Reader obligation: source_stage preview is below canonical truth.", "Preview capsule must read below canonical truth.");
+        AssertContains(previewCapsuleText, "- Source: `preview_project.md` [preview]", "Preview capsule should trace project section to preview project.");
+        AssertContains(previewCapsuleText, "- Source: `preview_direction.md` [preview]", "Preview capsule should trace direction section to preview direction.");
+        AssertContains(previewCapsuleText, "- Source: runtime overlay [runtime]", "Preview capsule should mark current focus as runtime overlay.");
+        AssertContains(previewCapsuleText, "- Status: canonical 0/5, preview 5/5, absent 0/5", "Preview capsule should expose 5/5 preview status.");
+        AssertContains(previewDirectionText, "# Direction (Preview)", "Preview direction should expose candidate-document heading.");
+        AssertContains(previewDirectionText, "## Likely / candidate direction signals", "Preview direction should expose candidate signals when README exists.");
+        AssertContains(previewDirectionText, "README", "Preview direction should trace to README evidence without copying README body.");
+        AssertContains(previewRoadmapText, "# Roadmap (Preview)", "Preview roadmap should expose candidate-document heading.");
+        AssertContains(previewRoadmapText, "## Unknown / not-yet-established", "Preview roadmap should expose Unknown section when git history is unavailable.");
+        AssertContains(previewCanonText, "# Canon (Preview)", "Preview canon should expose candidate-document heading.");
+        AssertContains(previewCanonText, "## Observed technical invariants", "Preview canon should expose observed invariants section.");
+        AssertContains(previewCanonText, "## Contributor-authored rules", "Preview canon should expose empty contributor-owned section.");
+        AssertContains(previewCanonText, "## Unknown / not-yet-established", "Preview canon should expose explicit gap section.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "alpha", ".git"));
+        Directory.CreateDirectory(Path.Combine(root, "alpha", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", ".git"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", "cmd"));
+        File.WriteAllText(Path.Combine(root, "alpha", "src", "main.ts"), "export function main() {}");
+        File.WriteAllText(Path.Combine(root, "alpha", "package.json"), "{ \"name\": \"alpha\" }");
+        File.WriteAllText(Path.Combine(root, "beta", "cmd", "main.go"), "package main\nfunc main() {}");
+        File.WriteAllText(Path.Combine(root, "beta", "go.mod"), "module beta");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 6, maxCharsPerMaterial: 96);
+        var response = new WorkspaceImportMaterialPromptResponse(
+            "A unified platform architecture spans both repos with shared runtime and service layers.",
+            new[] { "The project exposes one layered architecture across both roots." },
+            new[] { "Project is in coordinated rollout stage." },
+            new[] { "Shared platform runtime is current." },
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            new[] { new WorkspaceImportMaterialLayerInterpretation("Service", "invented service", "folder-derived") },
+            new[] { new WorkspaceImportMaterialModuleInterpretation("Platform", "module", "folder-derived") },
+            new[]
+            {
+                new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("alpha", "src", "main.ts"), "main", "Alpha entry"),
+                new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("beta", "cmd", "main.go"), "main", "Beta entry")
+            },
+            new ArchitectureDiagramSpec(
+                "Unified Project Architecture",
+                new[] { new ArchitectureDiagramNode("service", "Service", "layer") },
+                Array.Empty<ArchitectureDiagramEdge>(),
+                Array.Empty<ArchitectureDiagramGroup>(),
+                new[] { "One architecture spans both repos." },
+                new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+            Array.Empty<WorkspaceImportMaterialPromptResponseItem>());
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(packet, response);
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, "Interpretation Mode: `MultipleIndependentProjects`", "Container project preview should expose interpretation mode.");
+        AssertContains(previewProjectText, "Unified architecture across the whole folder is not confirmed.", "Container project preview must avoid unified architecture claims.");
+        AssertContains(previewProjectText, "Unified module map is suppressed for this container.", "Container project preview should suppress unified module projection.");
+        AssertContains(previewProjectText, "Container/mixed evidence remains too coarse for a strong unified truth claim.", "Container project preview should keep readiness unknown/coarse.");
+        AssertFalse(previewProjectText.Contains("A unified platform architecture spans both repos", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated summary wording.");
+        AssertFalse(previewProjectText.Contains("shared runtime and service layers", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated shared-runtime wording.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.go"), "main", "Observed entry") },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var firstRun = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var firstArtifacts = documentRuntime.WritePreviewDocs(firstRun, root);
+        var firstIdentity = ExtractMarkdownSection(File.ReadAllText(firstArtifacts.PreviewProjectPath), "## Identity");
+
+        Directory.CreateDirectory(Path.Combine(root, "tools"));
+        File.WriteAllText(Path.Combine(root, "tools", "tool.go"), "package main\nfunc main() {}");
+        var secondPacket = packet with { SourceRoots = packet.SourceRoots.Concat(new[] { "tools" }).ToArray() };
+        var secondInterpretation = interpretation with { SourceRoots = interpretation.SourceRoots.Concat(new[] { "tools" }).ToArray() };
+        var secondRun = firstRun with
+        {
+            PreviewPacket = secondPacket,
+            PromptRequest = WorkspaceImportMaterialPromptRequestBuilder.Build(secondPacket),
+            Interpretation = secondInterpretation
+        };
+
+        var secondArtifacts = documentRuntime.WritePreviewDocs(secondRun, root);
+        var secondIdentity = ExtractMarkdownSection(File.ReadAllText(secondArtifacts.PreviewProjectPath), "## Identity");
+
+        AssertEqual(firstIdentity, secondIdentity, "Preview project identity block must stay stable when source roots change under the same workspace root.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.cs"), "using System;\nConsole.WriteLine(\"hi\");");
+        File.WriteAllText(Path.Combine(root, "zavod.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                new[] { new WorkspaceImportMaterialLayerInterpretation("Runtime", "Observed runtime files.", "Observed from source/build files.", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new[] { new WorkspaceImportMaterialModuleInterpretation("Runtime", "entry/runtime", "Observed from source/build files.", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.cs"), "main", "Observed entry", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewCanonText = File.ReadAllText(artifacts.PreviewCanonPath);
+
+        AssertContains(previewCanonText, "# Canon (Preview)", "Preview canon should expose candidate-document heading.");
+        AssertContains(previewCanonText, "This document is not canonical truth yet.", "Preview canon should keep non-truth disclaimer.");
+        AssertContains(previewCanonText, "## Observed technical invariants", "Preview canon must have observed invariants section.");
+        AssertContains(previewCanonText, "Evidence Boundary: Derived from TechnicalPassport", "Preview canon should name its bounded data source.");
+        AssertContains(previewCanonText, "Observed Entry Points", "Preview canon should preserve observed entry-point evidence.");
+        AssertContains(previewCanonText, "## Contributor-authored rules", "Preview canon must keep contributor-authored section separate.");
+        AssertContains(previewCanonText, "No authored rules yet. Contributor must add review rules / execution rules / intent rules here.", "Preview canon must not fabricate authored rules.");
+        AssertContains(previewCanonText, "## Unknown / not-yet-established", "Preview canon must have unknown gap section.");
+        AssertContains(previewCanonText, "What is not yet canonical: review workflow.", "Preview canon should expose missing review workflow as a gap.");
+        AssertContains(previewCanonText, "What is not yet canonical: execution boundaries.", "Preview canon should expose missing execution boundaries as a gap.");
+        AssertFalse(previewCanonText.Contains("Rule:", StringComparison.OrdinalIgnoreCase), "Preview canon must not synthesize rule lines from observed evidence.");
+        AssertFalse(previewCanonText.Contains("must never be broken", StringComparison.OrdinalIgnoreCase), "Preview canon must not invent architectural law from observed evidence.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "canon.md")), "Preview canon writer must not silently promote canonical canon.md.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesCandidateDirectionPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    const string readmeBody = "The project will conquer enterprise dashboards with launch-wave automation.";
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+        File.WriteAllText(Path.Combine(root, "README.md"), readmeBody);
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 256);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                new[] { new WorkspaceImportMaterialModuleInterpretation("Runtime", "entry/runtime", "Observed module.", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.go"), "main", "Observed entry", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewDirectionText = File.ReadAllText(artifacts.PreviewDirectionPath);
+
+        AssertContains(previewDirectionText, "# Direction (Preview)", "Preview direction should expose candidate-document heading.");
+        AssertContains(previewDirectionText, "## Confirmed direction", "Preview direction should expose confirmed split.");
+        AssertContains(previewDirectionText, "No confirmed direction statement is derived automatically.", "Preview direction should not claim confirmed intent.");
+        AssertContains(previewDirectionText, "## Likely / candidate direction signals", "Preview direction should expose candidate split.");
+        AssertContains(previewDirectionText, "material `README.md`", "Preview direction should trace candidate signals to README path.");
+        AssertContains(previewDirectionText, "entry point `src", "Preview direction should trace entry point evidence.");
+        AssertContains(previewDirectionText, "Contributor may reject, rewrite, or author direction from scratch before promotion.", "Preview direction should keep contributor control explicit.");
+        AssertFalse(previewDirectionText.Contains(readmeBody, StringComparison.Ordinal), "Preview direction must not copy README body verbatim.");
+        AssertFalse(previewDirectionText.Contains("the project will", StringComparison.OrdinalIgnoreCase), "Preview direction must not present README aspiration as system-known intent.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "direction.md")), "Preview direction writer must not silently promote canonical direction.md.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesUnknownOnlyDirectionWithoutReadmeHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.go"), "main", "Observed entry", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewDirectionText = File.ReadAllText(artifacts.PreviewDirectionPath);
+
+        AssertContains(previewDirectionText, "# Direction (Preview)", "Preview direction should still be materialized without README evidence.");
+        AssertContains(previewDirectionText, "## Unknown / not-yet-established", "No-README direction preview should contain Unknown section.");
+        AssertContains(previewDirectionText, "No README/overview material was imported for direction evidence.", "No-README direction preview should state the blocker.");
+        AssertFalse(previewDirectionText.Contains("## Confirmed direction", StringComparison.Ordinal), "No-README direction preview must not include confirmed section.");
+        AssertFalse(previewDirectionText.Contains("## Likely / candidate direction signals", StringComparison.Ordinal), "No-README direction preview must not include candidate section.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "direction.md")), "No-README direction preview must not silently promote canonical direction.md.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesCandidateRoadmapPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.go"), "main", "Observed entry", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var gitReader = new GitRoadmapHistoryReader(new FakeExternalProcessRunner(request => request.Purpose switch
+        {
+            "roadmap_git_log" => new ExternalProcessResult(
+                0,
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u001ffeat: import preview docs\nbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\u001fphase-2 harden docs pipeline",
+                string.Empty,
+                false),
+            "roadmap_git_tags" => new ExternalProcessResult(0, "v1.0.0", string.Empty, false),
+            "roadmap_git_branches" => new ExternalProcessResult(0, "phase-3-candidate", string.Empty, false),
+            _ => new ExternalProcessResult(1, string.Empty, $"Unexpected purpose: {request.Purpose}", false)
+        }));
+        var documentRuntime = new ProjectDocumentRuntimeService(gitReader);
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewRoadmapText = File.ReadAllText(artifacts.PreviewRoadmapPath);
+
+        AssertContains(previewRoadmapText, "# Roadmap (Preview)", "Preview roadmap should expose candidate-document heading.");
+        AssertContains(previewRoadmapText, "## Candidate phases", "Preview roadmap should expose candidate phase section when git history exists.");
+        AssertContains(previewRoadmapText, "Candidate phase from commit aaaaaaaaaaaa. Contributor must confirm or replace.", "Preview roadmap should trace candidate commit evidence.");
+        AssertContains(previewRoadmapText, "Candidate phase from tag v1.0.0. Contributor must confirm or replace.", "Preview roadmap should trace tag evidence.");
+        AssertContains(previewRoadmapText, "Candidate phase from branch phase-3-candidate. Contributor must confirm or replace.", "Preview roadmap should trace branch evidence.");
+        AssertContains(previewRoadmapText, "Done criteria are not derivable from git history.", "Preview roadmap should keep done criteria unknown.");
+        AssertFalse(previewRoadmapText.Contains("[Confirmed]", StringComparison.OrdinalIgnoreCase), "Preview roadmap must not mark phases confirmed.");
+        AssertFalse(previewRoadmapText.Contains("[Likely]", StringComparison.OrdinalIgnoreCase), "Preview roadmap must not mark phases likely.");
+        AssertFalse(previewRoadmapText.Contains("the project will", StringComparison.OrdinalIgnoreCase), "Preview roadmap must not claim project intent.");
+        AssertFalse(previewRoadmapText.Contains("next we plan to", StringComparison.OrdinalIgnoreCase), "Preview roadmap must not claim plan intent.");
+        AssertFalse(previewRoadmapText.Contains("Priority", StringComparison.OrdinalIgnoreCase), "Preview roadmap must not rank candidate phases by priority.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "roadmap.md")), "Preview roadmap writer must not silently promote canonical roadmap.md.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesUnknownOnlyRoadmapWithoutGitHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Single project summary.",
+                new[] { "Project detail line." },
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("src", "main.go"), "main", "Observed entry", WorkspaceEvidenceConfidenceLevel.Likely) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var documentRuntime = new ProjectDocumentRuntimeService(new GitRoadmapHistoryReader(new FakeExternalProcessRunner(_ => new ExternalProcessResult(1, string.Empty, "unexpected", false))));
+
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewRoadmapText = File.ReadAllText(artifacts.PreviewRoadmapPath);
+
+        AssertContains(previewRoadmapText, "# Roadmap (Preview)", "Preview roadmap should still be materialized without git history.");
+        AssertContains(previewRoadmapText, "## Unknown / not-yet-established", "No-git roadmap preview should contain Unknown section.");
+        AssertContains(previewRoadmapText, "No git history was available at the project root.", "No-git roadmap preview should state the blocker.");
+        AssertFalse(previewRoadmapText.Contains("## Candidate phases", StringComparison.Ordinal), "No-git roadmap preview must not include candidate section.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "roadmap.md")), "No-git roadmap preview must not silently promote canonical roadmap.md.");
     }
     finally
     {
@@ -12406,10 +12846,93 @@ static void ProjectDocumentRuntimeConfirmsPreviewDocsIntoCanonicalProjectAndCaps
         AssertContains(projectText, "Confirmed canonical project base materialized from `preview_project.md`.", "Canonical project doc should expose confirm/materialization provenance.");
         AssertContains(projectText, "Single project summary", "Canonical project doc should preserve confirmed summary.");
         AssertContains(capsuleText, "# Capsule", "Canonical capsule should use canonical heading.");
-        AssertContains(capsuleText, "Derived companion of confirmed `project.md`.", "Canonical capsule must remain derived.");
+        AssertCapsuleV2Shape(capsuleText, "mixed");
+        AssertContains(capsuleText, "Derived capsule v2. This document is a compressed view over Layer A sources, not an independent truth layer.", "Canonical capsule must remain derived.");
+        AssertContains(capsuleText, "- Source: `project.md` [canonical]", "Canonical capsule should trace project section to canonical project.");
+        AssertContains(capsuleText, "- Source: `preview_direction.md` [preview]", "Mixed capsule should draw direction from preview when canonical direction is absent.");
+        AssertContains(capsuleText, "- Source: runtime overlay [runtime]", "Canonical capsule should mark current focus as runtime overlay.");
+        AssertContains(capsuleText, "- Status: canonical 2/5, preview 3/5, absent 0/5", "Mixed capsule should expose canonical/preview completeness counts.");
+        AssertContains(capsuleText, "- Project identity source: canonical", "Mixed capsule should list per-section source stages.");
+        AssertContains(capsuleText, "- Current direction source: preview", "Mixed capsule should list preview section source stages.");
+        AssertContains(capsuleText, "Single project summary", "Canonical capsule should derive summary from project content, not section metadata.");
         AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "direction.md")), "Direction should remain absent until later confirmed work.");
         AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "roadmap.md")), "Roadmap should remain absent until later confirmed work.");
         AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "canon.md")), "Canon should remain absent until later confirmed work.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeRegeneratesCapsuleV2DeterministicallyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var state = ProjectStateStorage.EnsureInitialized(root, "capsule-v2-test", "Capsule V2 Test");
+        state = ProjectStateStorage.Save(state with { ActiveShiftId = "SHIFT-123", ActiveTaskId = "TASK-456" });
+        File.WriteAllText(state.TruthPointers.ProjectDocumentPath, """
+# Project
+
+Confirmed canonical project base.
+
+## Identity
+
+- Project Id: `capsule-v2-test`
+- Project Name: `Capsule V2 Test`
+
+## What this project appears to be
+
+- Single project summary.
+- Project detail line.
+""");
+        File.WriteAllText(state.TruthPointers.DirectionDocumentPath, """
+# Direction
+
+## Confirmed direction
+
+- Stabilize canonical docs generation.
+""");
+        File.WriteAllText(state.TruthPointers.RoadmapDocumentPath, """
+# Roadmap
+
+## Candidate phases
+
+- Harden capsule regeneration.
+""");
+        File.WriteAllText(state.TruthPointers.CanonDocumentPath, """
+# Canon
+
+## Contributor-authored rules
+
+- Rule: Preview is never canonical truth.
+- Rule: Capsule remains derived.
+
+## Unknown / not-yet-established
+
+- None listed.
+""");
+        var documentRuntime = new ProjectDocumentRuntimeService();
+
+        var first = documentRuntime.RegenerateCapsule(root);
+        var second = documentRuntime.RegenerateCapsule(root);
+        var firstText = first.Markdown;
+        var secondText = second.Markdown;
+
+        AssertEqual(firstText, secondText, "Capsule regeneration must be deterministic for identical Layer A inputs.");
+        AssertContains(firstText, "# Capsule", "Regenerated capsule should use canonical heading.");
+        AssertCapsuleV2Shape(firstText, "canonical");
+        AssertContains(firstText, "- Status: canonical 5/5, preview 0/5, absent 0/5", "Fully canonical Layer A should produce 5/5 canonical status.");
+        AssertContains(firstText, "- Active shift: `SHIFT-123`", "Capsule current focus overlay should include active shift when present.");
+        AssertContains(firstText, "- Active task: `TASK-456`", "Capsule current focus overlay should include active task when present.");
+        AssertContains(firstText, "- Rule: Preview is never canonical truth.", "Capsule should compress contributor-authored canon rules.");
+
+        File.AppendAllText(state.TruthPointers.DirectionDocumentPath, "\n- Keep source stages explicit.\n");
+        var changed = documentRuntime.RegenerateCapsule(root).Markdown;
+
+        AssertFalse(string.Equals(firstText, changed, StringComparison.Ordinal), "Capsule regeneration should reflect Layer A document changes.");
+        AssertContains(changed, "- Keep source stages explicit.", "Regenerated capsule should pick up changed direction content.");
     }
     finally
     {
@@ -13411,6 +13934,47 @@ static void AssertContains(string text, string expected, string message)
     {
         throw new InvalidOperationException($"{message} Missing: {expected}.");
     }
+}
+
+static void AssertCapsuleV2Shape(string text, string expectedSourceStage)
+{
+    AssertContains(text, $"source_stage: {expectedSourceStage}", "Capsule v2 must expose source_stage marker.");
+    var normalized = text.Replace("\r\n", "\n");
+    var headings = normalized
+        .Split('\n')
+        .Where(static line => line.StartsWith("## ", StringComparison.Ordinal))
+        .Select(static line => line.Trim())
+        .ToArray();
+    var expectedHeadings = new[]
+    {
+        "## Project identity",
+        "## What this project is",
+        "## Current direction",
+        "## Current roadmap phase",
+        "## Core canon rules",
+        "## Current focus",
+        "## Open risks / unresolved items",
+        "## Canon completeness status"
+    };
+
+    AssertEqual(expectedHeadings.Length, headings.Length, "Capsule v2 must have exactly 8 sections.");
+    for (var index = 0; index < expectedHeadings.Length; index++)
+    {
+        AssertEqual(expectedHeadings[index], headings[index], $"Capsule v2 section {index + 1} must match canon order.");
+    }
+}
+
+static string ExtractMarkdownSection(string markdown, string heading)
+{
+    var normalized = markdown.Replace("\r\n", "\n");
+    var start = normalized.IndexOf(heading, StringComparison.Ordinal);
+    if (start < 0)
+    {
+        throw new InvalidOperationException($"Markdown section not found: {heading}.");
+    }
+
+    var next = normalized.IndexOf("\n## ", start + heading.Length, StringComparison.Ordinal);
+    return (next < 0 ? normalized[start..] : normalized[start..next]).Trim();
 }
 
 static void LogIntentClassification(string text, IntentClassificationResult result)
