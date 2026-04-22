@@ -1088,7 +1088,7 @@ internal sealed class WorkCycleActionController
             DateTimeOffset.Now);
 
         // Aggressive cleanup policy: staged tree is disposable once state
-        // bookkeeping committed. Diagnostic trace lives in .zavod/lab/.
+        // bookkeeping committed. Diagnostic trace lives in .zavod.local/lab/.
         StagingWriter.Cleanup(context.QueryState.ProjectRoot, executionContext.TaskState.TaskId);
 
         _sageHooks.OnAfterResult(new SageAfterResultContext(

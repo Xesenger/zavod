@@ -66,7 +66,7 @@ public static class StagingWriter
     /// <summary>
     /// Called after user Accept applied the staged files to the project.
     /// The staged tree is disposable; delete it outright. Diagnostic history
-    /// lives in <c>.zavod/lab/</c>, not in staging.
+    /// lives in <c>.zavod.local/lab/</c>, not in staging.
     /// </summary>
     public static void Cleanup(string projectRoot, string taskId)
     {

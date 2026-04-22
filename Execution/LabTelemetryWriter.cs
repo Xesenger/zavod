@@ -32,9 +32,12 @@ public sealed class LabTelemetryWriter
             var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ");
             var safeCall = string.IsNullOrWhiteSpace(callId) ? "call" : SanitizeSegment(callId);
             var safeRole = string.IsNullOrWhiteSpace(role) ? "role" : SanitizeSegment(role);
+            // Lab telemetry is Local Ephemeral per local_workspace_layout_v1.md:
+            // per-LLM-call debug artifacts, per-machine, git-ignored. The
+            // Truth-tier audit trail lives in .zavod/journal/ (not lab).
             var directory = Path.Combine(
                 Path.GetFullPath(projectRoot),
-                ".zavod",
+                ".zavod.local",
                 "lab",
                 $"{timestamp}-{safeRole}-{safeCall}");
             Directory.CreateDirectory(directory);

@@ -9,8 +9,14 @@ namespace zavod.Sage;
 // S1 persistence for the sage_only channel.
 //
 // Observations are appended to
-//   <projectRoot>/.zavod/sage/observations.jsonl
+//   <projectRoot>/.zavod.local/sage/observations.jsonl
 // one JSON object per line, UTF-8 without BOM.
+//
+// Location is Local Ephemeral per local_workspace_layout_v1.md:
+// Sage raw observations are per-machine, git-ignored, and may be
+// deleted by the contributor without loss of project truth.
+// Promotion of learned patterns from these raw observations to
+// Truth is a future slice requiring explicit human act.
 //
 // This file is write-only from the system's point of view:
 // v2.1a guardrail #2 forbids reading it back into any role
@@ -39,7 +45,7 @@ public sealed class SageObservationSink
                 "S1 sink only accepts SageChannel.SageOnly. Other channels are reserved for future slices.");
         }
 
-        var directory = Path.Combine(Path.GetFullPath(projectRootPath), ".zavod", "sage");
+        var directory = Path.Combine(Path.GetFullPath(projectRootPath), ".zavod.local", "sage");
         Directory.CreateDirectory(directory);
         var file = Path.Combine(directory, "observations.jsonl");
 
