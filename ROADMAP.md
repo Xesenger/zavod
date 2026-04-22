@@ -327,7 +327,7 @@ It is a factual snapshot, not a claim of completeness.
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
 | Acceptance / Apply Boundary | Functional | SHA256 hash-guarded atomic apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
 | Dispatching / Router | Functional | ExecutionDispatcher + Bootstrap/ActiveShift/Idle subsystems + ProjectRouter |
-| Advisory layer (Sage) | Partial (S0) | Current ProjectSageService is keyword-scored advisory only; typed Sage S1+ (SageObservation records with type/severity/stage/channel, middle-truth layer, pattern memory) is the next planned slice |
+| Advisory layer (Sage) | Functional (S1–S5a) | Two layers coexist: legacy `ProjectSageService` keyword advisory (S0) that still feeds Lead/Worker framing, and typed Sage pipeline (S1–S5a) emitting `SageObservation` records into sage_only JSONL at `.zavod/sage/observations.jsonl`. Pipeline hooks at AfterIntent / BeforeExecution / BeforeResult / AfterResult; core-enforced per-hook and per-task budgets; two field-verified emitters (`semantic_gap` on AfterIntent, `attention_miss` on BeforeExecution). Observations never enter role prompts (v2.1a isolation contract). Pattern memory (`pattern_repeat`), middle-truth correlation layer, and S3 deterministic rules are deferred until real field pain justifies them |
 
 ---
 
@@ -381,12 +381,13 @@ It is a factual snapshot, not a claim of completeness.
 - Chats mode and Projects mode both run on the web renderer
 - Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → hash-guarded apply on user Accept → commit recorded
 - Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, atomic copy to project on Accept, quarantine on abandon
-- Advisory layer currently operates at S0 (keyword-scored); typed Sage S1+ (SageObservation with pipeline hooks, middle-truth layer, pattern memory with invariant-binding) is the next planned slice
+- Advisory layer runs in two coexisting modes: S0 (keyword-scored) still informs Lead/Worker framing; S1–S5a typed Sage pipeline emits `SageObservation` records (semantic_gap, attention_miss) into sage_only JSONL with zero prompt pollution. Field-verified on real tasks: `attention_miss` caught a missing-file reference ~1ms before Worker LLM dispatch, independently corroborated by Worker's own rationale
+- Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, and in-UI Sage surface are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)
 - Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
 - External changes detected via scan/baseline/acceptance; realtime file watching not implemented
 
 ZAVOD at this stage can be described as:
 
 → a structured and working system foundation with a closed execution loop
-→ end-to-end code delivery works against real project files
-→ not yet a complete end-user product; next direction is typed semantic observation (Sage) and mechanical verification layers
+→ end-to-end code delivery works against real project files, with typed Sage advisory already observing the pipeline (fail-open, sage-only, zero prompt pollution)
+→ not yet a complete end-user product; immediate direction is making 5/5 canonical document production (Project / Direction / Roadmap / Canon / Capsule) a product capability; longer-term: middle-truth correlation layer, mechanical verification, guided user flow

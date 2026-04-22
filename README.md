@@ -42,9 +42,9 @@ Reads files, structure, dependencies → produces cold, evidence-based data
 Explains what the project might be → explicitly marks confidence (Confirmed / Likely / Unknown)
 The system derives and maintains documentation based on this interpretation.
 
-3. Documentation (System-managed)
-The system continuously builds and maintains project documentation based on evidence and interpretation.
-Documentation is not written manually — it is derived, updated, and kept consistent with the project state.
+3. Documentation (System-derived)
+The system derives project documentation from evidence and interpretation across five canonical kinds: Project, Direction, Roadmap, Canon, Capsule.
+Documents flow through stages (ImportPreview → PreviewDocs → CanonicalDocs). Making 5/5 canonical production a dependable product capability is the next direction — today not every document reaches CanonicalDocs automatically.
 
 4. Role-based work
 Lead - understands intent and builds a plan
@@ -140,24 +140,29 @@ ZAVOD is a **prototype and ongoing research**, not a finished product.
 
 ### What exists
 
-* basic Scanner (import)
-* early Importer (interpretation)
-* document pipeline (preview → canonical)
-* core architectural model (roles, anchors, runtime separation)
+* Scanner and Importer for evidence-based project grounding
+* Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs
+* Role system: Lead, Worker, QC — all live via typed LLM contracts
+* End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 hash-guarded apply on user Accept
+* Revision loop carries forward structured feedback: prior QC rationale, user revision intake, staging skip reasons
+* Quarantine on abandon preserves staged artefacts under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` rather than deleting
+* Sage advisory pipeline (S1–S5a): typed `SageObservation` records in sage-only JSONL, pipeline hooks at four stages, core-enforced budgets, two field-verified emitters (`semantic_gap`, `attention_miss`) — zero prompt pollution
+* Web-rendered Projects and Chats modes with phase-aware surfaces
 
 ### What is incomplete
 
-* Worker execution is not yet fully explored or stabilized
-* Execution pipeline is not end-to-end
-* QC is only partially implemented
-* UI is currently unstable (recent regressions during development)
+* Producing all five canonical documents (Project / Direction / Roadmap / Canon / Capsule) is not yet a product capability — derivation exists, but reaching 5/5 consistently is the next direction
+* Mechanical verification (build / lint / test) via typed tool contracts is deferred; current drift detection is SHA256 origin-hash + staging manifest
+* No internal editor or realtime file watchers — external edits surface only on scan/baseline
+* No in-UI Sage surface yet; observations live in `.zavod/sage/observations.jsonl` for manual inspection
+* Pattern memory, deterministic Sage rules, and middle-truth correlation layer are deferred until real use justifies them
 * Importer may over-interpret or produce inaccurate explanations
 
 ### Important note
 
-* some architectural ideas have already evolved
-* `canon` documentation may lag behind current thinking
-* parts of the system exist as design, not full implementation
+* Some architectural ideas have already evolved
+* Parts of the system exist as design, not full implementation
+* Sage is designed to observe, not adjudicate — role boundaries (Sage observes, QC adjudicates) are enforced by construction
 
 ---
 
