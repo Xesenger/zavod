@@ -514,7 +514,11 @@ var tests = new (string Name, Action Run)[]
     ("Work Packet input carries canonical docs status when provided", WorkPacketInputCarriesCanonicalDocsStatusWhenProvided),
     ("Work Packet input carries first-cycle flag and preview status", WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus),
     ("Work Packet metadata defaults are null or false", WorkPacketMetadataDefaultsAreNullOrFalse),
-    ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly)
+    ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly),
+    ("Work Packet builder maps selection to canonical status honestly", WorkPacketBuilderMapsSelectionToCanonicalStatusHonestly),
+    ("Work Packet builder returns null preview status when 5 of 5 canonical", WorkPacketBuilderReturnsNullPreviewStatusWhen5Of5Canonical),
+    ("Work Packet builder lists preview kinds when mixed", WorkPacketBuilderListsPreviewKindsWhenMixed),
+    ("Work Packet builder produces honest warnings for absent and preview", WorkPacketBuilderProducesHonestWarningsForAbsentAndPreview)
 };
 
 var failures = new List<string>();
@@ -13864,6 +13868,141 @@ static void WorkPacketMetadataDefaultsAreNullOrFalse()
     if (metadata.IsFirstCycle)
     {
         throw new Exception("Default metadata IsFirstCycle must be false.");
+    }
+}
+
+static zavod.Persistence.ProjectDocumentSourceSelection BuildSelectionForBuilder(
+    zavod.Persistence.ProjectDocumentStage? project = null,
+    zavod.Persistence.ProjectDocumentStage? direction = null,
+    zavod.Persistence.ProjectDocumentStage? roadmap = null,
+    zavod.Persistence.ProjectDocumentStage? canon = null,
+    zavod.Persistence.ProjectDocumentStage? capsule = null)
+{
+    zavod.Persistence.ProjectDocumentSourceDescriptor? D(
+        zavod.Persistence.ProjectDocumentKind kind,
+        zavod.Persistence.ProjectDocumentStage? stage)
+    {
+        if (stage is null)
+        {
+            return null;
+        }
+        return new zavod.Persistence.ProjectDocumentSourceDescriptor(kind, stage.Value, $"path/{kind}.md", true);
+    }
+    return new zavod.Persistence.ProjectDocumentSourceSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        D(zavod.Persistence.ProjectDocumentKind.Project, project),
+        D(zavod.Persistence.ProjectDocumentKind.Direction, direction),
+        D(zavod.Persistence.ProjectDocumentKind.Roadmap, roadmap),
+        D(zavod.Persistence.ProjectDocumentKind.Canon, canon),
+        D(zavod.Persistence.ProjectDocumentKind.Capsule, capsule));
+}
+
+static void WorkPacketBuilderMapsSelectionToCanonicalStatusHonestly()
+{
+    var selection = BuildSelectionForBuilder(
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        canon: zavod.Persistence.ProjectDocumentStage.ImportPreview);
+    var status = WorkPacketBuilder.BuildCanonicalDocsStatus(selection);
+
+    if (status.Project != DocumentCanonicalState.Canonical)
+    {
+        throw new Exception($"Project must map to Canonical, got {status.Project}.");
+    }
+    if (status.Direction != DocumentCanonicalState.Preview)
+    {
+        throw new Exception($"Direction PreviewDocs must map to Preview, got {status.Direction}.");
+    }
+    if (status.Canon != DocumentCanonicalState.Preview)
+    {
+        throw new Exception($"Canon ImportPreview must also map to Preview, got {status.Canon}.");
+    }
+    if (status.Roadmap != DocumentCanonicalState.Absent)
+    {
+        throw new Exception($"Missing Roadmap must map to Absent, got {status.Roadmap}.");
+    }
+    if (status.Capsule != DocumentCanonicalState.Absent)
+    {
+        throw new Exception($"Missing Capsule must map to Absent, got {status.Capsule}.");
+    }
+}
+
+static void WorkPacketBuilderReturnsNullPreviewStatusWhen5Of5Canonical()
+{
+    var selection = BuildSelectionForBuilder(
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        canon: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.CanonicalDocs);
+    var preview = WorkPacketBuilder.BuildPreviewStatus(selection);
+
+    if (preview is not null)
+    {
+        throw new Exception("PreviewStatus must be null when all 5 docs are canonical.");
+    }
+}
+
+static void WorkPacketBuilderListsPreviewKindsWhenMixed()
+{
+    var selection = BuildSelectionForBuilder(
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.PreviewDocs,
+        capsule: zavod.Persistence.ProjectDocumentStage.PreviewDocs);
+    var preview = WorkPacketBuilder.BuildPreviewStatus(selection);
+
+    if (preview is null)
+    {
+        throw new Exception("PreviewStatus must be present when at least one doc is preview.");
+    }
+    if (preview.PreviewKinds.Count != 2)
+    {
+        throw new Exception($"PreviewStatus must list 2 preview kinds (Direction, Capsule), got {preview.PreviewKinds.Count}.");
+    }
+    if (!preview.PreviewKinds.Contains(zavod.Persistence.ProjectDocumentKind.Direction))
+    {
+        throw new Exception("PreviewStatus must include Direction as preview kind.");
+    }
+    if (!preview.PreviewKinds.Contains(zavod.Persistence.ProjectDocumentKind.Capsule))
+    {
+        throw new Exception("PreviewStatus must include Capsule as preview kind.");
+    }
+    if (preview.PreviewKinds.Contains(zavod.Persistence.ProjectDocumentKind.Project))
+    {
+        throw new Exception("PreviewStatus must NOT include Project (it is canonical).");
+    }
+}
+
+static void WorkPacketBuilderProducesHonestWarningsForAbsentAndPreview()
+{
+    var status = new CanonicalDocsStatus(
+        DocumentCanonicalState.Canonical,  // project — no warning
+        DocumentCanonicalState.Preview,    // direction — preview warning
+        DocumentCanonicalState.Absent,     // roadmap — absent warning
+        DocumentCanonicalState.Absent,     // canon — absent warning
+        DocumentCanonicalState.Canonical); // capsule — no warning
+    var warnings = WorkPacketBuilder.BuildMissingTruthWarnings(status);
+
+    if (warnings.Count != 3)
+    {
+        throw new Exception($"Expected 3 warnings (1 preview + 2 absent), got {warnings.Count}.");
+    }
+    var joined = string.Join("\n", warnings);
+    if (!joined.Contains("roadmap.md absent"))
+    {
+        throw new Exception("Warnings must mention roadmap.md absent.");
+    }
+    if (!joined.Contains("canon.md absent"))
+    {
+        throw new Exception("Warnings must mention canon.md absent.");
+    }
+    if (!joined.Contains("direction.md available as preview only"))
+    {
+        throw new Exception("Warnings must mention direction.md preview only.");
+    }
+    if (joined.Contains("project.md"))
+    {
+        throw new Exception("Warnings must NOT mention canonical project.md.");
     }
 }
 
