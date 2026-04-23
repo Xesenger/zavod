@@ -10,6 +10,7 @@
 
 # Local Codex working surface
 /agent/
+/.codex/
 
 # Local demo / audit outputs
 /.zavod-demo-project/

@@ -177,7 +177,9 @@ var tests = new (string Name, Action Run)[]
     ("Project document runtime writes candidate roadmap preview honestly", ProjectDocumentRuntimeWritesCandidateRoadmapPreviewHonestly),
     ("Project document runtime writes unknown-only roadmap without git honestly", ProjectDocumentRuntimeWritesUnknownOnlyRoadmapWithoutGitHonestly),
     ("Project document source selector resolves import preview preview docs and canonical stages honestly", ProjectDocumentSourceSelectorResolvesStagesHonestly),
-    ("Project document runtime confirms preview docs into canonical project and capsule honestly", ProjectDocumentRuntimeConfirmsPreviewDocsIntoCanonicalProjectAndCapsuleHonestly),
+    ("Project document runtime confirms preview docs into 5 of 5 canonical docs honestly", ProjectDocumentRuntimeConfirmsPreviewDocsIntoFiveCanonicalDocsHonestly),
+    ("Project document runtime promotes capsule without phantom project canon honestly", ProjectDocumentRuntimePromotesCapsuleWithoutPhantomProjectCanonHonestly),
+    ("Project document runtime rejects preview doc with journal event honestly", ProjectDocumentRuntimeRejectsPreviewDocWithJournalEventHonestly),
     ("Project document runtime regenerates capsule v2 deterministically honestly", ProjectDocumentRuntimeRegeneratesCapsuleV2DeterministicallyHonestly),
     ("Workspace import material interpreter runtime preserves upstream failure honestly", WorkspaceImportMaterialInterpreterRuntimePreservesUpstreamFailureHonestly),
     ("Workspace scanner separates primary source roots from build roots honestly", WorkspaceScannerSeparatesPrimarySourceRootsFromBuildRootsHonestly),
@@ -12845,7 +12847,7 @@ static void ProjectDocumentSourceSelectorResolvesStagesHonestly()
     }
 }
 
-static void ProjectDocumentRuntimeConfirmsPreviewDocsIntoCanonicalProjectAndCapsuleHonestly()
+static void ProjectDocumentRuntimeConfirmsPreviewDocsIntoFiveCanonicalDocsHonestly()
 {
     var root = CreateScratchWorkspace();
     try
@@ -12883,28 +12885,158 @@ static void ProjectDocumentRuntimeConfirmsPreviewDocsIntoCanonicalProjectAndCaps
         _ = artifactService.WriteBundle(run);
 
         var documentRuntime = new ProjectDocumentRuntimeService();
-        var materialized = documentRuntime.ConfirmPreviewDocs(root);
+        var materialized = documentRuntime.ConfirmPreviewDocs(root, "test-contributor");
         var projectText = File.ReadAllText(materialized.ProjectDocumentPath);
+        var directionText = File.ReadAllText(materialized.DirectionDocumentPath);
+        var roadmapText = File.ReadAllText(materialized.RoadmapDocumentPath);
+        var canonText = File.ReadAllText(materialized.CanonDocumentPath);
         var capsuleText = File.ReadAllText(materialized.CapsuleDocumentPath);
 
         AssertTrue(File.Exists(materialized.ProjectDocumentPath), "Confirm path should write canonical project.md.");
+        AssertTrue(File.Exists(materialized.DirectionDocumentPath), "Confirm path should write canonical direction.md.");
+        AssertTrue(File.Exists(materialized.RoadmapDocumentPath), "Confirm path should write canonical roadmap.md.");
+        AssertTrue(File.Exists(materialized.CanonDocumentPath), "Confirm path should write canonical canon.md.");
         AssertTrue(File.Exists(materialized.CapsuleDocumentPath), "Confirm path should write derived canonical capsule.md.");
+        AssertEqual(5, materialized.Promotions.Count, "Confirm path should promote all 5 document kinds explicitly.");
         AssertContains(projectText, "# Project", "Canonical project doc should use canonical heading.");
         AssertContains(projectText, "Confirmed canonical project base materialized from `preview_project.md`.", "Canonical project doc should expose confirm/materialization provenance.");
         AssertContains(projectText, "Single project summary", "Canonical project doc should preserve confirmed summary.");
+        AssertContains(directionText, "# Direction", "Canonical direction doc should use canonical heading.");
+        AssertContains(directionText, "Confirmed canonical direction.md materialized from `preview_direction.md`.", "Canonical direction doc should expose promotion provenance.");
+        AssertContains(directionText, "## Likely / candidate direction signals", "Canonical direction should preserve reviewed preview sections.");
+        AssertContains(roadmapText, "# Roadmap", "Canonical roadmap doc should use canonical heading.");
+        AssertContains(roadmapText, "Confirmed canonical roadmap.md materialized from `preview_roadmap.md`.", "Canonical roadmap doc should expose promotion provenance.");
+        AssertContains(roadmapText, "## Unknown / not-yet-established", "Canonical roadmap should preserve reviewed preview sections.");
+        AssertContains(canonText, "# Canon", "Canonical canon doc should use canonical heading.");
+        AssertContains(canonText, "Confirmed canonical canon.md materialized from `preview_canon.md`.", "Canonical canon doc should expose promotion provenance.");
+        AssertContains(canonText, "## Contributor-authored rules", "Canonical canon should preserve contributor-authored rules surface.");
         AssertContains(capsuleText, "# Capsule", "Canonical capsule should use canonical heading.");
-        AssertCapsuleV2Shape(capsuleText, "mixed");
+        AssertCapsuleV2Shape(capsuleText, "canonical");
         AssertContains(capsuleText, "Derived capsule v2. This document is a compressed view over Layer A sources, not an independent truth layer.", "Canonical capsule must remain derived.");
         AssertContains(capsuleText, "- Source: `project.md` [canonical]", "Canonical capsule should trace project section to canonical project.");
-        AssertContains(capsuleText, "- Source: `preview_direction.md` [preview]", "Mixed capsule should draw direction from preview when canonical direction is absent.");
+        AssertContains(capsuleText, "- Source: `direction.md` [canonical]", "Canonical capsule should draw direction from canonical direction when promoted.");
+        AssertContains(capsuleText, "- Source: `roadmap.md` [canonical]", "Canonical capsule should draw roadmap from canonical roadmap when promoted.");
+        AssertContains(capsuleText, "- Source: `canon.md` [canonical]", "Canonical capsule should draw canon from canonical canon when promoted.");
         AssertContains(capsuleText, "- Source: runtime overlay [runtime]", "Canonical capsule should mark current focus as runtime overlay.");
-        AssertContains(capsuleText, "- Status: canonical 2/5, preview 3/5, absent 0/5", "Mixed capsule should expose canonical/preview completeness counts.");
-        AssertContains(capsuleText, "- Project identity source: canonical", "Mixed capsule should list per-section source stages.");
-        AssertContains(capsuleText, "- Current direction source: preview", "Mixed capsule should list preview section source stages.");
+        AssertContains(capsuleText, "- Status: canonical 5/5, preview 0/5, absent 0/5", "Canonical capsule should expose full 5/5 canonical completeness.");
+        AssertContains(capsuleText, "- Project identity source: canonical", "Canonical capsule should list per-section source stages.");
+        AssertContains(capsuleText, "- Current direction source: canonical", "Canonical capsule should list canonical section source stages.");
         AssertContains(capsuleText, "Single project summary", "Canonical capsule should derive summary from project content, not section metadata.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "direction.md")), "Direction should remain absent until later confirmed work.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "roadmap.md")), "Roadmap should remain absent until later confirmed work.");
-        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "canon.md")), "Canon should remain absent until later confirmed work.");
+
+        var decisionsRoot = Path.GetDirectoryName(materialized.Promotions[0].DecisionPath)!;
+        var decisionFiles = Directory.GetFiles(decisionsRoot, "DEC-*.md");
+        AssertEqual(5, decisionFiles.Length, "Each promoted canonical kind must leave a Layer C decision entry.");
+        foreach (var promotion in materialized.Promotions)
+        {
+            var decisionText = File.ReadAllText(promotion.DecisionPath);
+            AssertTrue(File.Exists(promotion.DecisionPath), "Promotion result should point to a real decision file.");
+            AssertTrue(File.Exists(promotion.JournalPath), "Promotion result should point to a real journal file.");
+            AssertContains(decisionText, "type: canonical_promotion", "Promotion decision must use canonical_promotion type.");
+            AssertContains(decisionText, "contributor: test-contributor", "Promotion decision must carry contributor identity.");
+            AssertContains(decisionText, $"related_journal: {promotion.CanonicalPromotedEventId}", "Promotion decision must cross-reference the canonical promotion journal event.");
+            AssertContains(decisionText, promotion.PreviewSha256, "Promotion decision must record source preview hash.");
+        }
+
+        var journalRoot = Path.GetDirectoryName(materialized.Promotions[0].JournalPath)!;
+        var journalLines = Directory.GetFiles(journalRoot, "*.jsonl")
+            .SelectMany(File.ReadAllLines)
+            .ToArray();
+        AssertEqual(10, journalLines.Length, "Five promotions should emit decision_recorded and canonical_promoted events.");
+        AssertTrue(journalLines.Any(line => line.Contains("\"event_type\":\"decision_recorded\"", StringComparison.Ordinal)), "Journal must include decision_recorded events.");
+        AssertTrue(journalLines.Any(line => line.Contains("\"event_type\":\"canonical_promoted\"", StringComparison.Ordinal)), "Journal must include canonical_promoted events.");
+        AssertTrue(journalLines.Any(line => line.Contains("\"kind\":\"direction\"", StringComparison.Ordinal)), "Journal must identify promoted direction kind.");
+        AssertTrue(journalLines.Any(line => line.Contains("\"kind\":\"capsule\"", StringComparison.Ordinal)), "Journal must identify promoted capsule kind.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimePromotesCapsuleWithoutPhantomProjectCanonHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        ProjectDocumentPathResolver.EnsurePreviewDocsRoot(root);
+        File.WriteAllText(ProjectDocumentPathResolver.GetPreviewProjectPath(root), """
+# Project (Preview)
+
+## Identity
+
+- Project Id: `capsule-only`
+
+## What this project appears to be
+
+- Preview-only project identity.
+""");
+        File.WriteAllText(ProjectDocumentPathResolver.GetPreviewDirectionPath(root), """
+# Direction (Preview)
+
+## Unknown / not-yet-established
+
+- Direction is preview-only.
+""");
+        File.WriteAllText(ProjectDocumentPathResolver.GetPreviewRoadmapPath(root), """
+# Roadmap (Preview)
+
+## Unknown / not-yet-established
+
+- Roadmap is preview-only.
+""");
+        File.WriteAllText(ProjectDocumentPathResolver.GetPreviewCanonPath(root), """
+# Canon (Preview)
+
+## Contributor-authored rules
+
+- No authored rules yet.
+""");
+        File.WriteAllText(ProjectDocumentPathResolver.GetPreviewCapsulePath(root), "# Capsule (Preview)");
+
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        var promotion = documentRuntime.PromotePreviewDoc(root, ProjectDocumentKind.Capsule, "test-contributor");
+        var capsuleText = File.ReadAllText(promotion.CanonicalDocumentPath);
+
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "project.md")), "Promoting capsule alone must not create phantom project.md.");
+        AssertContains(capsuleText, "- Source: `preview_project.md` [preview]", "Capsule-only promotion must keep project source at preview stage.");
+        AssertContains(capsuleText, "- Status: canonical 1/5, preview 4/5, absent 0/5", "Capsule-only promotion must count only capsule as canonical.");
+        AssertContains(capsuleText, "- Project identity source: preview", "Capsule-only promotion must not report project identity as canonical.");
+        AssertContains(capsuleText, "- Current direction source: preview", "Capsule-only promotion must preserve preview direction source.");
+        AssertTrue(File.Exists(promotion.DecisionPath), "Capsule-only promotion should still write a promotion decision.");
+        AssertTrue(File.Exists(promotion.JournalPath), "Capsule-only promotion should still write journal events.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeRejectsPreviewDocWithJournalEventHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        ProjectDocumentPathResolver.EnsurePreviewDocsRoot(root);
+        var previewPath = ProjectDocumentPathResolver.GetPreviewDirectionPath(root);
+        File.WriteAllText(previewPath, "# Direction Preview\n\n- Candidate only.");
+
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        var rejection = documentRuntime.RejectPreviewDoc(root, ProjectDocumentKind.Direction, "test-contributor");
+
+        AssertFalse(File.Exists(previewPath), "Rejecting a preview doc should remove the rejected preview file.");
+        AssertEqual(ProjectDocumentKind.Direction, rejection.Kind, "Rejection result should preserve rejected kind.");
+        AssertEqual(previewPath, rejection.PreviewDocumentPath, "Rejection result should preserve preview path.");
+        AssertTrue(File.Exists(rejection.JournalPath), "Preview rejection must flush a journal event.");
+
+        var journalText = File.ReadAllText(rejection.JournalPath);
+        AssertContains(journalText, "\"event_type\":\"preview_rejected\"", "Journal must record preview_rejected event.");
+        AssertContains(journalText, "\"kind\":\"direction\"", "Journal must identify rejected preview kind.");
+        AssertContains(journalText, "\"contributor\":\"test-contributor\"", "Journal must carry contributor attribution.");
+        AssertContains(journalText, rejection.PreviewSha256, "Journal must record rejected preview hash.");
+        AssertContains(journalText, "preview_docs/preview_direction.md", "Journal must reference rejected preview path.");
+
+        var decisionsRoot = Path.Combine(root, ".zavod", "decisions");
+        AssertFalse(Directory.Exists(decisionsRoot), "Routine preview rejection should not create a Layer C decision.");
     }
     finally
     {

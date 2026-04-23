@@ -398,7 +398,7 @@ It is a factual snapshot, not a claim of completeness.
 | Area | Status | Notes |
 |------|--------|------|
 | Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving; future scanner work should build an evidence-based architecture map and external sync boundary |
-| Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind canonical promotion / authoring and 5/5 state awareness are still upcoming |
+| Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind promote and reject are wired with Layer C/D attribution; edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still upcoming |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
 | Acceptance / Apply Boundary | Functional | SHA256 hash-guarded atomic apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
@@ -466,4 +466,4 @@ ZAVOD at this stage can be described as:
 
 → a structured and working system foundation with a closed execution loop
 → end-to-end code delivery works against real project files, with typed Sage advisory already observing the pipeline (fail-open, sage-only, zero prompt pollution)
-→ not yet a complete end-user product; immediate direction is finishing 5/5 preview review, per-kind preview-to-canonical promotion, and runtime 5/5 state awareness; longer-term: architecture maps, Sage uncertainty memory, middle-truth correlation layer, mechanical verification, guided user flow
+→ not yet a complete end-user product; immediate direction is finishing edit-before-promote, author-from-scratch, runtime 5/5 state awareness, and scanner/importer ranking improvements found by alpha repo imports; longer-term: architecture maps, Sage uncertainty memory, middle-truth correlation layer, mechanical verification, guided user flow

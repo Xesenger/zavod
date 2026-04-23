@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using zavod.Persistence;
 using zavod.Workspace;
 
@@ -10,6 +12,8 @@ namespace zavod.Execution;
 
 public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadmapHistoryReader = null)
 {
+    private const string DefaultContributorId = "local-contributor";
+
     private readonly GitRoadmapHistoryReader _roadmapHistoryReader = roadmapHistoryReader ?? new GitRoadmapHistoryReader();
 
     public ProjectPreviewDocsArtifacts WritePreviewDocs(
@@ -57,29 +61,118 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             previewCapsulePath);
     }
 
-    public ProjectCanonicalMaterializationResult ConfirmPreviewDocs(string projectRootPath)
+    public ProjectCanonicalMaterializationResult ConfirmPreviewDocs(
+        string projectRootPath,
+        string contributorId = DefaultContributorId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contributorId);
 
         var normalizedProjectRoot = ResolveEffectiveDocumentRoot(projectRootPath);
-        var projectState = EnsureProjectState(normalizedProjectRoot);
-        var previewProjectPath = ProjectDocumentPathResolver.GetPreviewProjectPath(normalizedProjectRoot);
-        var previewCapsulePath = ProjectDocumentPathResolver.GetPreviewCapsulePath(normalizedProjectRoot);
-        if (!File.Exists(previewProjectPath))
+        var promotions = new List<ProjectDocumentPromotionResult>
         {
-            throw new InvalidOperationException("Preview project document must exist before canonical materialization.");
-        }
-
-        var previewProjectMarkdown = File.ReadAllText(previewProjectPath, Encoding.UTF8);
-        var canonicalProjectMarkdown = BuildCanonicalProjectMarkdown(previewProjectMarkdown);
-        File.WriteAllText(projectState.TruthPointers.ProjectDocumentPath, canonicalProjectMarkdown, Encoding.UTF8);
-
-        var canonicalCapsuleMarkdown = BuildCanonicalCapsuleMarkdown(projectState, normalizedProjectRoot, canonicalProjectMarkdown);
-        File.WriteAllText(projectState.TruthPointers.CapsuleDocumentPath, canonicalCapsuleMarkdown, Encoding.UTF8);
+            PromotePreviewDoc(normalizedProjectRoot, ProjectDocumentKind.Project, contributorId),
+            PromotePreviewDoc(normalizedProjectRoot, ProjectDocumentKind.Direction, contributorId),
+            PromotePreviewDoc(normalizedProjectRoot, ProjectDocumentKind.Roadmap, contributorId),
+            PromotePreviewDoc(normalizedProjectRoot, ProjectDocumentKind.Canon, contributorId),
+            PromotePreviewDoc(normalizedProjectRoot, ProjectDocumentKind.Capsule, contributorId)
+        };
+        var projectState = EnsureProjectState(normalizedProjectRoot);
 
         return new ProjectCanonicalMaterializationResult(
             projectState.TruthPointers.ProjectDocumentPath,
-            projectState.TruthPointers.CapsuleDocumentPath);
+            projectState.TruthPointers.DirectionDocumentPath,
+            projectState.TruthPointers.RoadmapDocumentPath,
+            projectState.TruthPointers.CanonDocumentPath,
+            projectState.TruthPointers.CapsuleDocumentPath,
+            promotions);
+    }
+
+    public ProjectDocumentPromotionResult PromotePreviewDoc(
+        string projectRootPath,
+        ProjectDocumentKind kind,
+        string contributorId = DefaultContributorId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contributorId);
+
+        var normalizedProjectRoot = ResolveEffectiveDocumentRoot(projectRootPath);
+        var projectState = EnsureProjectState(normalizedProjectRoot);
+        var previewPath = GetPreviewPath(normalizedProjectRoot, kind);
+        if (!File.Exists(previewPath))
+        {
+            throw new InvalidOperationException($"Preview {GetCanonicalFileName(kind)} document must exist before canonical promotion.");
+        }
+
+        var previewMarkdown = File.ReadAllText(previewPath, Encoding.UTF8);
+        var canonicalPath = GetCanonicalPath(projectState, kind);
+        var canonicalMarkdown = kind switch
+        {
+            ProjectDocumentKind.Project => BuildCanonicalProjectMarkdown(previewMarkdown),
+            ProjectDocumentKind.Capsule => BuildCanonicalCapsuleMarkdown(projectState, normalizedProjectRoot),
+            _ => BuildCanonicalMarkdown(kind, previewMarkdown)
+        };
+
+        File.WriteAllText(canonicalPath, canonicalMarkdown, Encoding.UTF8);
+        if (kind != ProjectDocumentKind.Capsule)
+        {
+            TryRegenerateCanonicalCapsule(projectState, normalizedProjectRoot);
+        }
+
+        var previewHash = ComputeSha256(previewMarkdown);
+        var attribution = WritePromotionAttribution(
+            projectState,
+            kind,
+            contributorId,
+            previewPath,
+            previewHash,
+            canonicalPath);
+
+        return new ProjectDocumentPromotionResult(
+            kind,
+            previewPath,
+            canonicalPath,
+            previewHash,
+            attribution.DecisionId,
+            attribution.DecisionPath,
+            attribution.DecisionRecordedEventId,
+            attribution.CanonicalPromotedEventId,
+            attribution.JournalPath);
+    }
+
+    public ProjectDocumentRejectionResult RejectPreviewDoc(
+        string projectRootPath,
+        ProjectDocumentKind kind,
+        string contributorId = DefaultContributorId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contributorId);
+
+        var normalizedProjectRoot = ResolveEffectiveDocumentRoot(projectRootPath);
+        var projectState = EnsureProjectState(normalizedProjectRoot);
+        var previewPath = GetPreviewPath(normalizedProjectRoot, kind);
+        if (!File.Exists(previewPath))
+        {
+            throw new InvalidOperationException($"Preview {GetCanonicalFileName(kind)} document must exist before preview rejection.");
+        }
+
+        var previewMarkdown = File.ReadAllText(previewPath, Encoding.UTF8);
+        var previewHash = ComputeSha256(previewMarkdown);
+        var journal = WritePreviewRejectedJournalEvent(
+            projectState,
+            kind,
+            contributorId,
+            previewPath,
+            previewHash);
+
+        File.Delete(previewPath);
+
+        return new ProjectDocumentRejectionResult(
+            kind,
+            previewPath,
+            previewHash,
+            journal.EventId,
+            journal.JournalPath);
     }
 
     public ProjectDocumentReadResult RegenerateCapsule(string projectRootPath)
@@ -91,8 +184,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         if (File.Exists(canonicalProjectPath))
         {
             var projectState = EnsureProjectState(normalizedProjectRoot);
-            var canonicalProjectMarkdown = File.ReadAllText(canonicalProjectPath, Encoding.UTF8);
-            var canonicalCapsuleMarkdown = BuildCanonicalCapsuleMarkdown(projectState, normalizedProjectRoot, canonicalProjectMarkdown);
+            var canonicalCapsuleMarkdown = BuildCanonicalCapsuleMarkdown(projectState, normalizedProjectRoot);
             File.WriteAllText(projectState.TruthPointers.CapsuleDocumentPath, canonicalCapsuleMarkdown, Encoding.UTF8);
 
             return new ProjectDocumentReadResult(
@@ -724,13 +816,38 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         return builder.ToString().TrimEnd();
     }
 
+    private static string BuildCanonicalMarkdown(ProjectDocumentKind kind, string previewMarkdown)
+    {
+        var lines = previewMarkdown.Replace("\r\n", "\n").Split('\n');
+        var body = lines.SkipWhile(static line => !line.StartsWith("## ", StringComparison.Ordinal)).ToArray();
+        var builder = new StringBuilder();
+
+        builder.AppendLine($"# {GetCanonicalTitle(kind)}");
+        builder.AppendLine();
+        builder.AppendLine($"Confirmed canonical {GetCanonicalFileName(kind)} materialized from `{GetPreviewFileName(kind)}`.");
+        builder.AppendLine();
+
+        if (body.Length > 0)
+        {
+            foreach (var line in body)
+            {
+                builder.AppendLine(line);
+            }
+        }
+        else
+        {
+            builder.AppendLine("- Preview content had no parseable sections. Contributor confirmed the document boundary, but body remains coarse.");
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
     private static string BuildCanonicalCapsuleMarkdown(
         ProjectState projectState,
-        string projectRootPath,
-        string canonicalProjectMarkdown)
+        string projectRootPath)
     {
         var sources = new CapsuleLayerSources(
-            new CapsuleSourceDocument(ProjectDocumentKind.Project, ProjectDocumentStage.CanonicalDocs, "project.md", canonicalProjectMarkdown, Exists: true),
+            ReadLayerSource(projectState.TruthPointers.ProjectDocumentPath, ProjectDocumentKind.Project, "project.md", ProjectDocumentStage.CanonicalDocs, ProjectDocumentPathResolver.GetPreviewProjectPath(projectRootPath), "preview_project.md"),
             ReadLayerSource(projectState.TruthPointers.DirectionDocumentPath, ProjectDocumentKind.Direction, "direction.md", ProjectDocumentStage.CanonicalDocs, ProjectDocumentPathResolver.GetPreviewDirectionPath(projectRootPath), "preview_direction.md"),
             ReadLayerSource(projectState.TruthPointers.RoadmapDocumentPath, ProjectDocumentKind.Roadmap, "roadmap.md", ProjectDocumentStage.CanonicalDocs, ProjectDocumentPathResolver.GetPreviewRoadmapPath(projectRootPath), "preview_roadmap.md"),
             ReadLayerSource(projectState.TruthPointers.CanonDocumentPath, ProjectDocumentKind.Canon, "canon.md", ProjectDocumentStage.CanonicalDocs, ProjectDocumentPathResolver.GetPreviewCanonPath(projectRootPath), "preview_canon.md"));
@@ -868,6 +985,291 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
     private static ProjectDocumentSourceDescriptor CreateDescriptor(ProjectDocumentKind kind, ProjectDocumentStage stage, string path)
     {
         return new ProjectDocumentSourceDescriptor(kind, stage, path, File.Exists(path));
+    }
+
+    private static string GetPreviewPath(string projectRootPath, ProjectDocumentKind kind)
+    {
+        return kind switch
+        {
+            ProjectDocumentKind.Project => ProjectDocumentPathResolver.GetPreviewProjectPath(projectRootPath),
+            ProjectDocumentKind.Direction => ProjectDocumentPathResolver.GetPreviewDirectionPath(projectRootPath),
+            ProjectDocumentKind.Roadmap => ProjectDocumentPathResolver.GetPreviewRoadmapPath(projectRootPath),
+            ProjectDocumentKind.Canon => ProjectDocumentPathResolver.GetPreviewCanonPath(projectRootPath),
+            ProjectDocumentKind.Capsule => ProjectDocumentPathResolver.GetPreviewCapsulePath(projectRootPath),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown project document kind.")
+        };
+    }
+
+    private static string GetCanonicalPath(ProjectState projectState, ProjectDocumentKind kind)
+    {
+        return kind switch
+        {
+            ProjectDocumentKind.Project => projectState.TruthPointers.ProjectDocumentPath,
+            ProjectDocumentKind.Direction => projectState.TruthPointers.DirectionDocumentPath,
+            ProjectDocumentKind.Roadmap => projectState.TruthPointers.RoadmapDocumentPath,
+            ProjectDocumentKind.Canon => projectState.TruthPointers.CanonDocumentPath,
+            ProjectDocumentKind.Capsule => projectState.TruthPointers.CapsuleDocumentPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown project document kind.")
+        };
+    }
+
+    private static string GetCanonicalTitle(ProjectDocumentKind kind)
+    {
+        return kind switch
+        {
+            ProjectDocumentKind.Project => "Project",
+            ProjectDocumentKind.Direction => "Direction",
+            ProjectDocumentKind.Roadmap => "Roadmap",
+            ProjectDocumentKind.Canon => "Canon",
+            ProjectDocumentKind.Capsule => "Capsule",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown project document kind.")
+        };
+    }
+
+    private static string GetCanonicalFileName(ProjectDocumentKind kind)
+    {
+        return kind switch
+        {
+            ProjectDocumentKind.Project => "project.md",
+            ProjectDocumentKind.Direction => "direction.md",
+            ProjectDocumentKind.Roadmap => "roadmap.md",
+            ProjectDocumentKind.Canon => "canon.md",
+            ProjectDocumentKind.Capsule => "capsule.md",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown project document kind.")
+        };
+    }
+
+    private static string GetPreviewFileName(ProjectDocumentKind kind)
+    {
+        return kind switch
+        {
+            ProjectDocumentKind.Project => "preview_project.md",
+            ProjectDocumentKind.Direction => "preview_direction.md",
+            ProjectDocumentKind.Roadmap => "preview_roadmap.md",
+            ProjectDocumentKind.Canon => "preview_canon.md",
+            ProjectDocumentKind.Capsule => "preview_capsule.md",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown project document kind.")
+        };
+    }
+
+    private static string ReadRequired(string path, ProjectDocumentKind kind)
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException($"Preview {GetCanonicalFileName(kind)} document must exist before canonical promotion.");
+        }
+
+        return File.ReadAllText(path, Encoding.UTF8);
+    }
+
+    private static void TryRegenerateCanonicalCapsule(ProjectState projectState, string projectRootPath)
+    {
+        if (!File.Exists(projectState.TruthPointers.CapsuleDocumentPath) ||
+            !File.Exists(projectState.TruthPointers.ProjectDocumentPath))
+        {
+            return;
+        }
+
+        var canonicalCapsuleMarkdown = BuildCanonicalCapsuleMarkdown(projectState, projectRootPath);
+        File.WriteAllText(projectState.TruthPointers.CapsuleDocumentPath, canonicalCapsuleMarkdown, Encoding.UTF8);
+    }
+
+    private static PromotionAttribution WritePromotionAttribution(
+        ProjectState projectState,
+        ProjectDocumentKind kind,
+        string contributorId,
+        string previewPath,
+        string previewHash,
+        string canonicalPath)
+    {
+        var timestamp = DateTimeOffset.UtcNow;
+        var decisionsRoot = Path.Combine(projectState.Paths.ZavodRoot, "decisions");
+        var traceRoot = Path.Combine(projectState.Paths.ZavodRoot, "journal", "trace");
+        Directory.CreateDirectory(decisionsRoot);
+        Directory.CreateDirectory(traceRoot);
+
+        var decisionNumber = ResolveNextDecisionNumber(decisionsRoot);
+        var decisionId = $"DEC-{decisionNumber:0000}";
+        var kindFileName = GetCanonicalFileName(kind);
+        var decisionPath = Path.Combine(decisionsRoot, $"{decisionId}-promote-{kindFileName.Replace(".", "-", StringComparison.OrdinalIgnoreCase)}.md");
+        var canonicalEventId = BuildJournalEventId(timestamp, $"canonical_promoted|{decisionId}|{kind}|{previewHash}");
+        var decisionEventId = BuildJournalEventId(timestamp, $"decision_recorded|{decisionId}|canonical_promotion");
+        var journalPath = Path.Combine(traceRoot, $"{timestamp.UtcDateTime:yyyy-MM-dd}.jsonl");
+
+        File.WriteAllText(
+            decisionPath,
+            BuildPromotionDecisionMarkdown(
+                decisionId,
+                kind,
+                timestamp,
+                contributorId,
+                canonicalEventId,
+                projectState.Paths.ProjectRoot,
+                previewPath,
+                previewHash,
+                canonicalPath),
+            Encoding.UTF8);
+
+        AppendJournalEvent(journalPath, new
+        {
+            event_type = "decision_recorded",
+            timestamp = timestamp.UtcDateTime.ToString("O"),
+            event_id = decisionEventId,
+            decision_id = decisionId,
+            payload = new
+            {
+                decision_id = decisionId,
+                type = "canonical_promotion"
+            }
+        });
+        AppendJournalEvent(journalPath, new
+        {
+            event_type = "canonical_promoted",
+            timestamp = timestamp.UtcDateTime.ToString("O"),
+            event_id = canonicalEventId,
+            decision_id = decisionId,
+            payload = new
+            {
+                kind = kind.ToString().ToLowerInvariant(),
+                from_preview_ref = new
+                {
+                    path = NormalizeRelativePath(projectState.Paths.ProjectRoot, previewPath),
+                    sha256 = previewHash
+                },
+                canonical_path = NormalizeRelativePath(projectState.Paths.ProjectRoot, canonicalPath)
+            }
+        });
+
+        return new PromotionAttribution(decisionId, decisionPath, decisionEventId, canonicalEventId, journalPath);
+    }
+
+    private static PreviewRejectionJournalEvent WritePreviewRejectedJournalEvent(
+        ProjectState projectState,
+        ProjectDocumentKind kind,
+        string contributorId,
+        string previewPath,
+        string previewHash)
+    {
+        var timestamp = DateTimeOffset.UtcNow;
+        var traceRoot = Path.Combine(projectState.Paths.ZavodRoot, "journal", "trace");
+        Directory.CreateDirectory(traceRoot);
+
+        var eventId = BuildJournalEventId(timestamp, $"preview_rejected|{kind}|{previewHash}|{contributorId}");
+        var journalPath = Path.Combine(traceRoot, $"{timestamp.UtcDateTime:yyyy-MM-dd}.jsonl");
+
+        AppendJournalEvent(journalPath, new
+        {
+            event_type = "preview_rejected",
+            timestamp = timestamp.UtcDateTime.ToString("O"),
+            event_id = eventId,
+            payload = new
+            {
+                kind = kind.ToString().ToLowerInvariant(),
+                contributor = SanitizeFrontmatterScalar(contributorId),
+                preview_ref = new
+                {
+                    path = NormalizeRelativePath(projectState.Paths.ProjectRoot, previewPath),
+                    sha256 = previewHash
+                }
+            }
+        });
+
+        return new PreviewRejectionJournalEvent(eventId, journalPath);
+    }
+
+    private static string BuildPromotionDecisionMarkdown(
+        string decisionId,
+        ProjectDocumentKind kind,
+        DateTimeOffset timestamp,
+        string contributorId,
+        string relatedJournalEventId,
+        string projectRootPath,
+        string previewPath,
+        string previewHash,
+        string canonicalPath)
+    {
+        var builder = new StringBuilder();
+        var kindFileName = GetCanonicalFileName(kind);
+
+        builder.AppendLine("---");
+        builder.AppendLine($"id: {decisionId}");
+        builder.AppendLine("type: canonical_promotion");
+        builder.AppendLine($"timestamp: {timestamp.UtcDateTime:O}");
+        builder.AppendLine($"contributor: {SanitizeFrontmatterScalar(contributorId)}");
+        builder.AppendLine("supersedes: []");
+        builder.AppendLine("superseded_by: null");
+        builder.AppendLine("related_shift: null");
+        builder.AppendLine("related_task: null");
+        builder.AppendLine($"related_journal: {relatedJournalEventId}");
+        builder.AppendLine("---");
+        builder.AppendLine();
+        builder.AppendLine($"# Promote {kindFileName}");
+        builder.AppendLine();
+        builder.AppendLine("## Context");
+        builder.AppendLine();
+        builder.AppendLine($"- `{GetPreviewFileName(kind)}` existed as PreviewDocs material and was explicitly promoted into `{kindFileName}`.");
+        builder.AppendLine($"- Preview reference: `{NormalizeRelativePath(projectRootPath, previewPath)}`.");
+        builder.AppendLine($"- Preview SHA-256: `{previewHash}`.");
+        builder.AppendLine($"- Canonical target: `{NormalizeRelativePath(projectRootPath, canonicalPath)}`.");
+        builder.AppendLine();
+        builder.AppendLine("## Options considered");
+        builder.AppendLine();
+        builder.AppendLine("- Do nothing: leave the document in preview only, keeping canonical coverage incomplete.");
+        builder.AppendLine($"- Promote `{GetPreviewFileName(kind)}` now: accept the reviewed preview content as the current canonical `{kindFileName}`.");
+        builder.AppendLine();
+        builder.AppendLine("## Chosen option");
+        builder.AppendLine();
+        builder.AppendLine($"- Promote `{GetPreviewFileName(kind)}` into `{kindFileName}`.");
+        builder.AppendLine();
+        builder.AppendLine("## Rationale");
+        builder.AppendLine();
+        builder.AppendLine("- Contributor confirmation approved this preview document as canonical project truth at this moment.");
+        builder.AppendLine("- The promotion records the preview hash so future readers can identify the exact preview source.");
+        builder.AppendLine();
+        builder.AppendLine("## Invalidation criteria");
+        builder.AppendLine();
+        builder.AppendLine("- Revisit this decision if later scanner/importer evidence contradicts a promoted section.");
+        builder.AppendLine("- Revisit this decision if a contributor replaces the canonical document through a later promotion or authoring decision.");
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private static int ResolveNextDecisionNumber(string decisionsRoot)
+    {
+        var max = Directory.EnumerateFiles(decisionsRoot, "DEC-*.md", SearchOption.TopDirectoryOnly)
+            .Select(static path => Path.GetFileNameWithoutExtension(path))
+            .Select(static name => name.Length >= 8 && int.TryParse(name.Substring(4, 4), out var value) ? value : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return max + 1;
+    }
+
+    private static void AppendJournalEvent(string journalPath, object journalEvent)
+    {
+        var serialized = JsonSerializer.Serialize(journalEvent);
+        File.AppendAllText(journalPath, serialized + Environment.NewLine, Encoding.UTF8);
+    }
+
+    private static string BuildJournalEventId(DateTimeOffset timestamp, string seed)
+    {
+        var hash = ComputeSha256(seed)[..8].ToUpperInvariant();
+        return $"EVT-{timestamp.UtcDateTime:yyyyMMddHHmmssfff}-{hash}";
+    }
+
+    private static string ComputeSha256(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string NormalizeRelativePath(string projectRootPath, string path)
+    {
+        return Path.GetRelativePath(projectRootPath, path).Replace('\\', '/');
+    }
+
+    private static string SanitizeFrontmatterScalar(string value)
+    {
+        return value.Replace("\r", string.Empty, StringComparison.Ordinal).Replace("\n", string.Empty, StringComparison.Ordinal).Trim();
     }
 
     private static CapsuleSourceDocument ReadLayerSource(
@@ -1061,4 +1463,37 @@ public sealed record ProjectPreviewDocsArtifacts(
 
 public sealed record ProjectCanonicalMaterializationResult(
     string ProjectDocumentPath,
-    string CapsuleDocumentPath);
+    string DirectionDocumentPath,
+    string RoadmapDocumentPath,
+    string CanonDocumentPath,
+    string CapsuleDocumentPath,
+    IReadOnlyList<ProjectDocumentPromotionResult> Promotions);
+
+public sealed record ProjectDocumentPromotionResult(
+    ProjectDocumentKind Kind,
+    string PreviewDocumentPath,
+    string CanonicalDocumentPath,
+    string PreviewSha256,
+    string DecisionId,
+    string DecisionPath,
+    string DecisionRecordedEventId,
+    string CanonicalPromotedEventId,
+    string JournalPath);
+
+public sealed record ProjectDocumentRejectionResult(
+    ProjectDocumentKind Kind,
+    string PreviewDocumentPath,
+    string PreviewSha256,
+    string PreviewRejectedEventId,
+    string JournalPath);
+
+internal sealed record PromotionAttribution(
+    string DecisionId,
+    string DecisionPath,
+    string DecisionRecordedEventId,
+    string CanonicalPromotedEventId,
+    string JournalPath);
+
+internal sealed record PreviewRejectionJournalEvent(
+    string EventId,
+    string JournalPath);

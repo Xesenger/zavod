@@ -66,6 +66,7 @@ internal sealed class ProjectsWebSnapshotBuilder
         "projects.home.currentLabel",
         "projects.home.enterWork",
         "projects.home.scannerAnalysis",
+        "projects.home.truthDocs",
         "projects.home.userDocs",
         "projects.report.label",
         "projects.report.open",
@@ -79,6 +80,9 @@ internal sealed class ProjectsWebSnapshotBuilder
         "projects.docs.category.text",
         "projects.docs.category.pdf",
         "projects.docs.category.html",
+        "projects.docs.promote",
+        "projects.docs.canonical",
+        "projects.docs.absent",
         "projects.composer.placeholder",
         "projects.composer.intent",
         "projects.composer.intent.kbd",
@@ -236,7 +240,41 @@ internal sealed class ProjectsWebSnapshotBuilder
             Tasks: stats.Tasks,
             Docs: stats.Docs,
             AnchorRows: BuildAnchorRows(snippets),
-            DocumentRows: BuildDocumentRows(snippets));
+            DocumentRows: BuildDocumentRows(snippets),
+            CanonicalDocs: BuildCanonicalDocRows(entry.RootPath));
+    }
+
+    private static IReadOnlyList<ProjectsWebDocStatus> BuildCanonicalDocRows(string projectRoot)
+    {
+        var projectDir = Path.Combine(projectRoot, ".zavod", "project");
+        var previewDir = Path.Combine(projectRoot, ".zavod", "preview_docs");
+        return new[]
+        {
+            BuildDocStatus("project", "project.md", Path.Combine(projectDir, "project.md"), Path.Combine(previewDir, "preview_project.md")),
+            BuildDocStatus("direction", "direction.md", Path.Combine(projectDir, "direction.md"), Path.Combine(previewDir, "preview_direction.md")),
+            BuildDocStatus("roadmap", "roadmap.md", Path.Combine(projectDir, "roadmap.md"), Path.Combine(previewDir, "preview_roadmap.md")),
+            BuildDocStatus("canon", "canon.md", Path.Combine(projectDir, "canon.md"), Path.Combine(previewDir, "preview_canon.md")),
+            BuildDocStatus("capsule", "capsule.md", Path.Combine(projectDir, "capsule.md"), Path.Combine(previewDir, "preview_capsule.md"))
+        };
+    }
+
+    private static ProjectsWebDocStatus BuildDocStatus(string kind, string fileName, string canonicalPath, string previewPath)
+    {
+        var canonicalExists = File.Exists(canonicalPath);
+        var previewExists = File.Exists(previewPath);
+        var stage = canonicalExists
+            ? "canonical"
+            : previewExists
+                ? "preview"
+                : "absent";
+
+        return new ProjectsWebDocStatus(
+            kind,
+            fileName,
+            canonicalExists,
+            stage,
+            CanPromote: !canonicalExists && previewExists,
+            CanReject: !canonicalExists && previewExists);
     }
 
     private static readonly string[] DocumentCategories =

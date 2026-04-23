@@ -48,12 +48,16 @@
   <ItemGroup>
     <Compile Remove="zavod.Tests\**\*.cs" />
     <Compile Remove="tools\WorkspaceProbe\**\*.cs" />
+    <Compile Remove="zavod-import-test\**\*.cs" />
     <EmbeddedResource Remove="zavod.Tests\**\*" />
     <EmbeddedResource Remove="tools\WorkspaceProbe\**\*" />
+    <EmbeddedResource Remove="zavod-import-test\**\*" />
     <None Remove="zavod.Tests\**\*" />
     <None Remove="tools\WorkspaceProbe\**\*" />
+    <None Remove="zavod-import-test\**\*" />
     <Page Remove="zavod.Tests\**\*" />
     <Page Remove="tools\WorkspaceProbe\**\*" />
+    <Page Remove="zavod-import-test\**\*" />
   </ItemGroup>
 
   <!--

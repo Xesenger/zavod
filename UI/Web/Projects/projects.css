@@ -159,6 +159,20 @@ input[type=file]{display:none}
 .anchor-conf.likely{color:var(--accent-soft)}
 .anchor-conf.unknown{color:var(--td)}
 
+.canon-doc-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.canon-doc-row:last-child{border-bottom:none}
+.canon-doc-main{min-width:0}
+.canon-doc-name{font-family:var(--mono);font-size:12px;color:var(--t-mid);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.canon-doc-meta{font-family:var(--mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--td);line-height:1.6}
+.canon-doc-row.canonical .canon-doc-meta{color:var(--green-soft)}
+.canon-doc-row.preview .canon-doc-meta{color:var(--accent-soft)}
+.canon-doc-actions{display:flex;gap:6px;align-items:center}
+.canon-doc-promote{appearance:none;border:1px solid var(--accent-mute);background:var(--accent-bg);border-radius:var(--r-md);padding:6px 10px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent-mid);cursor:pointer;line-height:1.2;min-width:84px;transition:background 150ms,border-color 150ms,color 150ms}
+.canon-doc-promote:hover{background:var(--accent-mute);border-color:var(--accent-mid);color:var(--t-hi)}
+.canon-doc-reject{appearance:none;border:1px solid rgba(255,255,255,0.08);background:transparent;border-radius:var(--r-md);padding:6px 10px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--td);cursor:pointer;line-height:1.2;min-width:84px;transition:background 150ms,border-color 150ms,color 150ms}
+.canon-doc-reject:hover{background:var(--red-bg);border-color:var(--red-line);color:var(--red-soft)}
+.canon-doc-status{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--td)}
+
 .udoc-category{margin-bottom:14px}
 .udoc-cat-label{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--td);padding:10px 0 4px;border-bottom:1px solid var(--line)}
 .udoc-cat-label svg{width:11px;height:11px;opacity:0.5}

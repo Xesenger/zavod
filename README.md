@@ -1,6 +1,7 @@
 ## Documentation
 
 - [Roadmap](./ROADMAP.md)
+- [Alpha testing guide](./ALPHA_TESTING.md)
 - [License](./LICENSE)
 
 # ZAVOD
@@ -44,7 +45,7 @@ The system derives and maintains documentation based on this interpretation.
 
 3. Documentation (System-derived)
 The system derives project documentation from evidence and interpretation across five canonical kinds: Project, Direction, Roadmap, Canon, Capsule.
-Documents flow through stages (ImportPreview → PreviewDocs → CanonicalDocs). Import can produce 5/5 preview docs; turning those previews into canonical project truth remains a contributor-owned promotion / authoring flow.
+Documents flow through stages (ImportPreview → PreviewDocs → CanonicalDocs). Import can produce 5/5 preview docs; per-document promote/reject is wired, while edit-before-promote and author-from-scratch remain under construction.
 
 4. Role-based work
 Lead - understands intent and builds a plan
@@ -138,10 +139,18 @@ and are not yet implemented as stable features.
 
 ZAVOD is a **prototype and ongoing research**, not a finished product.
 
+It is ready only for a small friendly alpha with people who understand that
+generated preview documents are candidates, not truth. See
+[Alpha testing guide](./ALPHA_TESTING.md) for the current test script and known
+limits.
+
 ### What exists
 
 * Scanner and Importer for evidence-based project grounding
 * Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs, with 5/5 preview generation for Project / Direction / Roadmap / Canon / Capsule
+* Projects Home truth-doc status block for the five canonical document kinds
+* Per-document preview promotion into canonical docs, with Layer C decision records and Layer D journal events
+* Per-document preview rejection, with Layer D journal attribution
 * Role system: Lead, Worker, QC — all live via typed LLM contracts
 * End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 hash-guarded apply on user Accept
 * Revision loop carries forward structured feedback: prior QC rationale, user revision intake, staging skip reasons
@@ -151,12 +160,13 @@ ZAVOD is a **prototype and ongoing research**, not a finished product.
 
 ### What is incomplete
 
-* 5/5 canonical creation is not yet product-complete: per-kind promote / reject / author actions, Layer C decisions, Layer D events, and runtime 5/5 state awareness are still next work
+* 5/5 canonical creation is not yet product-complete: per-kind promote / reject exist, but edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still next work
 * Mechanical verification (build / lint / test) via typed tool contracts is deferred; current drift detection is SHA256 origin-hash + staging manifest
 * No internal editor or realtime file watchers — external edits surface only on scan/baseline
 * No in-UI Sage surface yet; observations live in `.zavod/sage/observations.jsonl` for manual inspection
 * Pattern memory, deterministic Sage rules, and middle-truth correlation layer are deferred until real use justifies them
 * Importer may over-interpret or produce inaccurate explanations
+* Large monorepos can still expose scanner/importer ranking gaps: root README product identity, Cargo default members, and main entry points are not always weighted strongly enough yet
 
 ### Important note
 

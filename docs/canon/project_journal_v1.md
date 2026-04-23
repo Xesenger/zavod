@@ -127,6 +127,7 @@ values. Adding a new kind requires extending this canon.
 
 - `evidence_scanned` — payload: `{bundle_id}`
 - `preview_regenerated` — payload: `{kinds}`
+- `preview_rejected` — payload: `{kind, preview_ref, contributor}`
 - `canonical_promoted` — payload: `{kind, from_preview_ref}` (cross-refs `decision_id`)
 - `document_archived` — payload: `{kind, archive_path}` (cross-refs `decision_id`)
 
@@ -178,9 +179,10 @@ values. Adding a new kind requires extending this canon.
 - **Layer D (shifts / tasks):** shifts and tasks carry their own
   detailed state files; journal records the lifecycle boundaries
   and role events, not the full state snapshots.
-- **Layer E (evidence / preview):** scan and regen events are
-  journaled; evidence bundle bodies are not (they live in Layer E
-  itself, referenced by id).
+- **Layer E (evidence / preview):** scan, regen, and explicit
+  preview rejection events are journaled; evidence bundle bodies
+  and preview bodies are not (they live in Layer E itself,
+  referenced by id / path / hash).
 - **Layer F (archive):** archival is journaled via
   `document_archived`. Archive contents themselves are not
   re-journaled after archival.

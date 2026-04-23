@@ -23,6 +23,8 @@ const zavodProjectsBridge = (() => {
   const reportIframe = document.getElementById('report-iframe');
   const homeAnchorsSection = document.getElementById('home-anchors-section');
   const homeAnchorsEl = document.getElementById('home-anchors');
+  const homeCanonDocsSection = document.getElementById('home-canon-docs-section');
+  const homeCanonDocsEl = document.getElementById('home-canon-docs');
   const homeDocsSection = document.getElementById('home-docs-section');
   const homeDocsEl = document.getElementById('home-docs');
   const newProjectModal = document.getElementById('new-project-modal');
@@ -223,9 +225,11 @@ const zavodProjectsBridge = (() => {
       if (modalProjName) modalProjName.textContent = p.name || '—';
 
       renderHomeAnchors(p.anchorRows);
+      renderCanonicalDocs(p.canonicalDocs);
       renderHomeDocuments(p.documentRows);
     } else {
       renderHomeAnchors(null);
+      renderCanonicalDocs(null);
       renderHomeDocuments(null);
     }
 
@@ -324,6 +328,71 @@ const zavodProjectsBridge = (() => {
       el.appendChild(tag);
       el.appendChild(val);
       homeAnchorsEl.appendChild(el);
+    });
+  }
+
+  // ── Home: canonical truth document rows ────────────────────────
+  function renderCanonicalDocs(rows) {
+    if (!homeCanonDocsEl || !homeCanonDocsSection) return;
+    const list = Array.isArray(rows) ? rows : [];
+    homeCanonDocsEl.innerHTML = '';
+    homeCanonDocsSection.hidden = list.length === 0;
+
+    list.forEach((row) => {
+      if (!row) return;
+      const item = document.createElement('div');
+      item.className = `canon-doc-row ${row.stage || 'absent'}`;
+
+      const main = document.createElement('div');
+      main.className = 'canon-doc-main';
+      const name = document.createElement('div');
+      name.className = 'canon-doc-name';
+      name.textContent = row.fileName || row.kind || '';
+      const meta = document.createElement('div');
+      meta.className = 'canon-doc-meta';
+      meta.textContent = row.stage || 'absent';
+      main.appendChild(name);
+      main.appendChild(meta);
+      item.appendChild(main);
+
+      if ((row.canPromote === true || row.canReject === true) && row.kind) {
+        const actions = document.createElement('div');
+        actions.className = 'canon-doc-actions';
+
+        if (row.canReject === true) {
+          const rejectBtn = document.createElement('button');
+          rejectBtn.type = 'button';
+          rejectBtn.className = 'canon-doc-reject';
+          rejectBtn.dataset.kind = row.kind;
+          rejectBtn.textContent = localizedText['projects.docs.reject'] || 'reject';
+          rejectBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            emit({ type: 'reject_preview_doc', payload: { kind: row.kind } });
+          });
+          actions.appendChild(rejectBtn);
+        }
+
+        if (row.canPromote === true) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'canon-doc-promote';
+          btn.dataset.kind = row.kind;
+          btn.textContent = localizedText['projects.docs.promote'] || 'promote';
+          btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            emit({ type: 'promote_preview_doc', payload: { kind: row.kind } });
+          });
+          actions.appendChild(btn);
+        }
+        item.appendChild(actions);
+      } else {
+        const status = document.createElement('span');
+        status.className = 'canon-doc-status';
+        status.textContent = row.exists ? (localizedText['projects.docs.canonical'] || 'canonical') : (localizedText['projects.docs.absent'] || 'absent');
+        item.appendChild(status);
+      }
+
+      homeCanonDocsEl.appendChild(item);
     });
   }
 

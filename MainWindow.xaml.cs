@@ -22,6 +22,7 @@ using Windows.UI;
 using WinRT.Interop;
 using zavod.Bootstrap;
 using zavod.Contexting;
+using zavod.Execution;
 using zavod.Workspace;
 using zavod.Flow;
 using zavod.Persistence;
@@ -1496,6 +1497,14 @@ namespace zavod
                     }
                     break;
 
+                case "promote_preview_doc":
+                    _ = HandleProjectsWebPromotePreviewDocAsync(payload);
+                    break;
+
+                case "reject_preview_doc":
+                    _ = HandleProjectsWebRejectPreviewDocAsync(payload);
+                    break;
+
                 case "import_project":
                     _ = HandleProjectsWebImportAsync();
                     break;
@@ -1799,6 +1808,117 @@ namespace zavod
             if (await StageComposerFilesAsync(projectsMode: true))
             {
                 PushProjectsWebSnapshot();
+            }
+        }
+
+        private async Task HandleProjectsWebPromotePreviewDocAsync(JsonElement payload)
+        {
+            if (payload.ValueKind != JsonValueKind.Object ||
+                !payload.TryGetProperty("kind", out var kindProp) ||
+                kindProp.ValueKind != JsonValueKind.String ||
+                !TryParseProjectDocumentKind(kindProp.GetString(), out var kind))
+            {
+                Debug.WriteLine("[ProjectsWeb promote] missing or invalid document kind");
+                return;
+            }
+
+            var selectedProjectId = _projectsWebSnapshotBuilder.SelectedProjectId;
+            if (string.IsNullOrWhiteSpace(selectedProjectId))
+            {
+                Debug.WriteLine("[ProjectsWeb promote] no selected project");
+                return;
+            }
+
+            var entry = ProjectRegistryStorage.Load().Projects
+                .FirstOrDefault(p => string.Equals(p.Id, selectedProjectId, StringComparison.Ordinal));
+            if (entry is null || !Directory.Exists(entry.RootPath))
+            {
+                Debug.WriteLine("[ProjectsWeb promote] selected project root unavailable");
+                return;
+            }
+
+            try
+            {
+                var result = await Task.Run(() =>
+                {
+                    var documentRuntime = new ProjectDocumentRuntimeService();
+                    return documentRuntime.PromotePreviewDoc(entry.RootPath, kind);
+                });
+                Debug.WriteLine($"[ProjectsWeb promote] {result.Kind} -> {result.CanonicalDocumentPath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb promote] FAILED: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            PushProjectsWebSnapshot();
+        }
+
+        private async Task HandleProjectsWebRejectPreviewDocAsync(JsonElement payload)
+        {
+            if (payload.ValueKind != JsonValueKind.Object ||
+                !payload.TryGetProperty("kind", out var kindProp) ||
+                kindProp.ValueKind != JsonValueKind.String ||
+                !TryParseProjectDocumentKind(kindProp.GetString(), out var kind))
+            {
+                Debug.WriteLine("[ProjectsWeb reject preview] missing or invalid document kind");
+                return;
+            }
+
+            var selectedProjectId = _projectsWebSnapshotBuilder.SelectedProjectId;
+            if (string.IsNullOrWhiteSpace(selectedProjectId))
+            {
+                Debug.WriteLine("[ProjectsWeb reject preview] no selected project");
+                return;
+            }
+
+            var entry = ProjectRegistryStorage.Load().Projects
+                .FirstOrDefault(p => string.Equals(p.Id, selectedProjectId, StringComparison.Ordinal));
+            if (entry is null || !Directory.Exists(entry.RootPath))
+            {
+                Debug.WriteLine("[ProjectsWeb reject preview] selected project root unavailable");
+                return;
+            }
+
+            try
+            {
+                var result = await Task.Run(() =>
+                {
+                    var documentRuntime = new ProjectDocumentRuntimeService();
+                    return documentRuntime.RejectPreviewDoc(entry.RootPath, kind);
+                });
+                Debug.WriteLine($"[ProjectsWeb reject preview] {result.Kind} -> {result.PreviewRejectedEventId}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProjectsWeb reject preview] FAILED: {ex.GetType().Name}: {ex.Message}");
+            }
+
+            PushProjectsWebSnapshot();
+        }
+
+        private static bool TryParseProjectDocumentKind(string? value, out ProjectDocumentKind kind)
+        {
+            switch (value?.Trim().ToLowerInvariant())
+            {
+                case "project":
+                    kind = ProjectDocumentKind.Project;
+                    return true;
+                case "direction":
+                    kind = ProjectDocumentKind.Direction;
+                    return true;
+                case "roadmap":
+                    kind = ProjectDocumentKind.Roadmap;
+                    return true;
+                case "canon":
+                    kind = ProjectDocumentKind.Canon;
+                    return true;
+                case "capsule":
+                    kind = ProjectDocumentKind.Capsule;
+                    return true;
+                default:
+                    kind = default;
+                    return false;
             }
         }
 

@@ -22,7 +22,8 @@ public sealed record ProjectsWebSelectedProject(
     int Tasks,
     int Docs,
     IReadOnlyList<ProjectsWebHomeAnchor> AnchorRows,
-    IReadOnlyList<ProjectsWebHomeDocument> DocumentRows);
+    IReadOnlyList<ProjectsWebHomeDocument> DocumentRows,
+    IReadOnlyList<ProjectsWebDocStatus> CanonicalDocs);
 
 public sealed record ProjectsWebHomeAnchor(
     string Tag,
@@ -67,7 +68,9 @@ public sealed record ProjectsWebDocStatus(
     string Kind,
     string FileName,
     bool Exists,
-    string Stage);
+    string Stage,
+    bool CanPromote,
+    bool CanReject);
 
 public sealed record ProjectsWebMaterialItem(
     string RelativePath,

@@ -430,6 +430,24 @@ runtime wires those files to the model.
 - [x] S4 roadmap.md (git reader + preview writer, candidate-level only)
 - [x] S5 capsule.md v2 upgrade
 - [ ] S6 promotion UI
+  - 2026-04-23: service-level per-kind preview → canonical promotion
+    landed for all five document kinds. `ConfirmPreviewDocs` now
+    materializes 5/5 canonical docs and writes Layer C promotion
+    decisions plus Layer D journal events. Projects Home now exposes
+    per-kind truth-doc status and calls per-kind promotion for preview
+    docs. UI actions for reject / edit-before-promote /
+    author-from-scratch remain pending.
+  - Blocker discovered 2026-04-23: reject-preview needs an allowed
+    Layer D journal event kind. `project_journal_v1.md` currently
+    permits `preview_regenerated` and `canonical_promoted`, but no
+    preview-rejected / preview-removed event. Do not invent this in
+    runtime code before the canon event vocabulary is extended.
+  - 2026-04-23: blocker resolved in canon by adding
+    `preview_rejected` as a Layer D document-pipeline event.
+    Runtime now removes rejected preview docs only after writing the
+    journal event, and Projects Home exposes a per-kind reject action
+    for preview-only documents. Edit-before-promote and
+    author-from-scratch remain pending.
 - [ ] S7 5/5 state awareness
 
 ---
