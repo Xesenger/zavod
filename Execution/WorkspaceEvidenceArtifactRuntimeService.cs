@@ -532,7 +532,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             BuildDocCardHtml("Direction", "direction.md", direction),
             BuildDocCardHtml("Roadmap", "roadmap.md", roadmap),
             BuildDocCardHtml("Canon", "canon.md", canon),
-            BuildDocCardHtml("Capsule", "capsule.md", capsule),
+            BuildDocCardHtml("Capsule", "capsule.md", capsule, "Companion Document"),
         };
 
         return $"""
@@ -545,7 +545,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 """;
     }
 
-    private static string BuildDocCardHtml(string label, string fileName, ProjectDocumentReadResult doc)
+    private static string BuildDocCardHtml(string label, string fileName, ProjectDocumentReadResult doc, string? roleLabel = null)
     {
         var (stageClass, stageName) = doc.Stage switch
         {
@@ -553,6 +553,10 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             ProjectDocumentStage.PreviewDocs => ("unknown", "Preview"),
             _ => ("warn", "Import")
         };
+        var sourceNote = HtmlEncode(DescribeSource(doc.Stage, doc.Path));
+        var roleHtml = string.IsNullOrWhiteSpace(roleLabel)
+            ? string.Empty
+            : $"<div class=\"source-note\">{HtmlEncode(roleLabel)}</div>";
 
         if (!doc.Exists)
         {
@@ -564,6 +568,8 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
     <span class="badge warn">Not created</span>
   </div>
   <div class="doc-card-body">
+    {roleHtml}
+    <div class="source-note">Source: {sourceNote}</div>
     <div class="doc-missing-note">This document has not been created yet.</div>
   </div>
 </div>
@@ -578,6 +584,8 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
     <span class="badge {stageClass}">{HtmlEncode(stageName)}</span>
   </div>
   <div class="doc-card-body">
+    {roleHtml}
+    <div class="source-note">Source: {sourceNote}</div>
     <div class="markdown">{RenderMarkdownToHtml(doc.Markdown)}</div>
   </div>
 </div>
