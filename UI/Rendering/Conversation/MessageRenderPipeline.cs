@@ -40,6 +40,7 @@ public sealed class MessageRenderPipeline
 
         buffer.Append(chunk);
         item.IsStreaming = true;
+        item.Text = buffer.CurrentText;
 
         if (buffer.TryFlush(StreamingThrottleMs, out var current))
         {

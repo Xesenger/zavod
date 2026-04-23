@@ -208,8 +208,8 @@ public static class ResumeStageNormalizer
         }
 
         // Running/Qc/Revision require a live runtime; if it's gone, the session was
-        // abandoned mid-flow (crash/force-close). Recover to reopened Discussion so
-        // the composer is usable.
+        // abandoned mid-flow (crash/force-close). Keep the user in explicit
+        // execution recovery instead of presenting it as ordinary discussion.
         // Preflight is ambiguous: legitimate Preflight before ConfirmPreflight has no
         // runtime AND no materialized active work; pathological Preflight (after
         // Confirm materialized the task but the runtime save never landed) has
@@ -223,7 +223,10 @@ public static class ResumeStageNormalizer
                 || (phaseState.ExecutionSubphase == ExecutionSubphase.Preflight && hasActiveWork));
         if (shouldRecover)
         {
-            return BuildSafeReopenedDiscussionState(phaseState.HasClarification);
+            return StepPhaseMachine.ResumeInterrupted() with
+            {
+                HasClarification = phaseState.HasClarification
+            };
         }
 
         return StepPhaseMachine.ResumeInterrupted() with

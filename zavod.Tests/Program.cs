@@ -43,10 +43,12 @@ using zavod.Presentation;
 using zavod.Prompting;
 using zavod.Retrieval;
 using zavod.Router;
+using zavod.Qc;
 using zavod.State;
 using zavod.Traceing;
 using zavod.Acceptance;
 using zavod.Tooling;
+using zavod.Worker;
 using zavod.UI.Modes.Chats;
 using zavod.UI.Modes.Projects;
 using zavod.UI.Modes.Projects.WorkCycle.Actions;
@@ -678,9 +680,9 @@ static void PromptRoleCoresLoadFromVersionedPromptFiles()
     var senior = PromptRoleCoreCatalog.Get(PromptRole.SeniorSpecialist);
 
     AssertEqual("Worker", worker.Role, "Worker core should load from stable prompt file.");
-    AssertContains(worker.Rules[0], "follow anchors strictly", "Worker file-backed core should preserve stable rules.");
+    AssertContains(worker.Rules[0], "Grounded Execution Only", "Worker file-backed core should preserve stable rules.");
     AssertEqual("Shift Lead", lead.Role, "Lead core should load from stable prompt file.");
-    AssertContains(lead.ResponseContract[0], "VALIDATION PACKET", "Lead file-backed core should preserve response contract.");
+    AssertContains(lead.ResponseContract[0], "single strict JSON object", "Lead file-backed core should preserve response contract.");
     AssertEqual("QC", qc.Role, "QC core should load from stable prompt file.");
     AssertContains(qc.Constraints[0], "validated intent required", "QC file-backed core should preserve constraints.");
     AssertEqual("Senior Specialist", senior.Role, "Senior core should load from stable prompt file.");
@@ -943,16 +945,26 @@ static void RoleToolResolverKeepsQcAndSeniorSpecialistBounded()
 static void ToolExecutionEnvelopeCarriesRouteAndEvidence()
 {
     var layer = UnifiedToolLayer.CreateDefault();
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Tooling"));
+        File.WriteAllText(Path.Combine(root, "Tooling", "tool.txt"), "workspace envelope fixture");
 
-    var workspaceEnvelope = layer.InspectWorkspaceWithEnvelope(
-        PromptRole.Qc,
-        new WorkspaceInspectRequest("REQ-WS-ENV-001", "C:\\Users\\Boris\\Documents\\Dev\\zavod", new[] { "Tooling" }));
+        var workspaceEnvelope = layer.InspectWorkspaceWithEnvelope(
+            PromptRole.Qc,
+            new WorkspaceInspectRequest("REQ-WS-ENV-001", root, new[] { "Tooling" }));
 
-    AssertTrue(workspaceEnvelope.Result.Success, "Workspace envelope should preserve successful tool result.");
-    AssertEqual("workspace.inspect", workspaceEnvelope.ResolvedTool.ToolName, "Envelope must preserve resolved tool identity.");
-    AssertEqual(RoleCapabilityProfile.ReadOnly, workspaceEnvelope.ResolvedTool.Route.CapabilityProfile, "QC envelope must preserve read-only capability profile.");
-    AssertContains(workspaceEnvelope.EvidenceSummary, "role=Qc", "Envelope evidence should include role.");
-    AssertContains(workspaceEnvelope.EvidenceSummary, "tool=workspace.inspect", "Envelope evidence should include tool id.");
+        AssertTrue(workspaceEnvelope.Result.Success, "Workspace envelope should preserve successful tool result.");
+        AssertEqual("workspace.inspect", workspaceEnvelope.ResolvedTool.ToolName, "Envelope must preserve resolved tool identity.");
+        AssertEqual(RoleCapabilityProfile.ReadOnly, workspaceEnvelope.ResolvedTool.Route.CapabilityProfile, "QC envelope must preserve read-only capability profile.");
+        AssertContains(workspaceEnvelope.EvidenceSummary, "role=Qc", "Envelope evidence should include role.");
+        AssertContains(workspaceEnvelope.EvidenceSummary, "tool=workspace.inspect", "Envelope evidence should include tool id.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
 
     var webEnvelope = layer.PerformWebSearchWithEnvelope(
         PromptRole.SeniorSpecialist,
@@ -8224,11 +8236,46 @@ static void ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly(
         var adapter = new ProjectsAdapter(
             storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
             artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var workerRuntime = new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "status": "success",
+              "summary": "Prepared a bounded runtime-backed execution result.",
+              "plan": ["Inspect task", "Produce bounded result"],
+              "actions": ["Produced deterministic test result"],
+              "modifications": [],
+              "edits": [],
+              "blockers": [],
+              "risks": [],
+              "warnings": []
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var qcRuntime = new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "decision": "ACCEPT",
+              "rationale": "The deterministic worker result is reviewable and bounded.",
+              "issues": [],
+              "next_action": "Surface the result to the user."
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
         var controller = new WorkCycleActionController(
             workspaceRoot,
             () => adapter,
             () => Task.CompletedTask,
-            () => { });
+            () => { },
+            workerAgentRuntime: workerRuntime,
+            qcAgentRuntime: qcRuntime);
 
         _ = controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult();
         _ = controller.EnterWorkAsync().GetAwaiter().GetResult();

@@ -125,7 +125,7 @@ Unrelated to Work Packet / Welcome / 5/5 docs work.
 **Impact:** pre-existing since before the canon foundation work.
 Blocks full integration testing of `PromptRequestPipeline` from tests.
 
-**Status:** KNOWN ISSUE (orthogonal, estimated quick win)
+**Status:** RESOLVED 2026-04-23
 **Risk tier when picked up:** LOW-MEDIUM (file hygiene, reversible)
 
 ---
@@ -168,7 +168,10 @@ plan for any section that becomes newly feasible.
 
 *(Entries appended as gaps close. Keep resolved items for audit.)*
 
-- *(empty)*
+- 2026-04-23 — Resolved Prompt File Drift (§4): Worker and QC prompt
+  files now expose machine-readable `Role`, `Stack`, `Style`,
+  `[Rules]`, `[Response Contract]`, and `[Constraints]` blocks while
+  preserving their richer markdown guidance. Prompt loader tests pass.
 
 ---
 

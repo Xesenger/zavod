@@ -9,6 +9,8 @@ public sealed class StreamingBuffer
     private string _lastFlushedText = string.Empty;
     private long _lastFlushTicks = Environment.TickCount64;
 
+    public string CurrentText => _buffer.ToString();
+
     public void Append(string chunk)
     {
         if (!string.IsNullOrEmpty(chunk))
