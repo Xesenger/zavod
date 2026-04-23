@@ -10,8 +10,8 @@ Scope: production pipeline for the five canonical project documents
 ## Purpose
 
 Defines the slice order and acceptance contract for bringing the
-system from today's **2/5 preview capability** (project + capsule v1)
-to a full **5/5 canonical production** capability.
+system from the original **2/5 preview capability** (project +
+capsule v1) to a full **5/5 canonical production** capability.
 
 This is a plan, not canon. Canon for the five documents lives in
 `docs/canon/project_truth_documents_v1.md`. This plan decides
@@ -19,9 +19,9 @@ This is a plan, not canon. Canon for the five documents lives in
 
 ---
 
-## Baseline (as of 2026-04-22)
+## Original Baseline (as of 2026-04-22)
 
-**Present in code:**
+**Present in code at plan start:**
 
 - `ProjectDocumentRuntimeService.WritePreviewDocs` produces
   `preview_project.md` + `preview_capsule.md` (v1 shape)
@@ -32,13 +32,35 @@ This is a plan, not canon. Canon for the five documents lives in
   SummaryLine, ProjectDetails, Materials, EntryPoints, Modules,
   Confirmed/Likely/Unknown Signals, TechnicalPassport, ProjectProfile
 
-**Missing:**
+**Missing at plan start:**
 
 - preview writers for direction, roadmap, canon
 - canonical promotion for direction, roadmap, canon
 - Capsule v2 schema (source_stage, 8 sections, overlay, regeneration)
 - UI surface for per-kind promotion and contributor authoring
 - 5/5-state awareness in project state / welcome surface / work packet
+
+## Current Checkpoint (as of 2026-04-23)
+
+**Present in code:**
+
+- `ProjectDocumentRuntimeService.WritePreviewDocs` produces
+  `preview_project.md`, `preview_direction.md`,
+  `preview_roadmap.md`, `preview_canon.md`, and
+  `preview_capsule.md`
+- S1-S5 preview writers are implemented:
+  project refinement, observed canon preview, direction extractor,
+  candidate-level roadmap preview, and capsule v2
+- import preview surface can read and display all 5 document kinds
+- canonical promotion still requires contributor action; preview
+  generation does not silently create canonical truth
+
+**Still missing / next:**
+
+- S6 per-kind promotion / reject / edit / author UI
+- Layer C decision and Layer D journal attribution for promotions
+- S7 production 5/5 state awareness through project state, welcome
+  surface, and Work Packet metadata
 
 ---
 

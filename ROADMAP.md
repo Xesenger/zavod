@@ -179,6 +179,32 @@ Goal:
 
 ---
 
+## Project Cartography
+
+Strengthen the scanner from a file inventory tool into an evidence-based project cartographer.
+
+Planned:
+
+- architecture map generation from real code structure
+- module and subsystem boundaries
+- entry points, runtime paths, and dependency edges
+- ownership and risk zones inferred from file layout, references, and history
+- confidence markers for Confirmed / Likely / Unknown architecture facts
+
+Rules:
+
+- the scanner describes observed structure, not imagined intent
+- uncertain architecture must remain marked as uncertain
+- the map must help a new developer orient quickly without reading every line of code
+
+Goal:
+
+- shorten project onboarding
+- give agents and humans a shared navigation layer
+- make architecture drift visible as the code changes
+
+---
+
 ## Internal Editing Surface
 
 Provide a minimal built-in editor to maintain system awareness.
@@ -207,6 +233,9 @@ Planned:
 - file watchers  
 - detection of external edits  
 - project invalidation and refresh  
+- scanner as the external synchronization boundary
+- stale markers for project truth, capsule, and staged work when disk state moves
+- separation of ZAVOD-authored changes from outside edits
 - safe resync flow  
 
 Goal:
@@ -252,6 +281,53 @@ Goal:
 - prevent accidental damage  
 - enable safe experimentation  
 - support external agents and contractors  
+
+---
+
+## Revision Loop Control
+
+Prevent Worker / QC cycles from becoming unbounded loops.
+
+Planned:
+
+- maximum revision attempts per task
+- repeated-rationale detection when QC keeps rejecting for the same reason
+- no-op revision detection when Worker returns no meaningful file changes
+- escalation to the user when the system cannot make progress honestly
+- preserved diagnostics for abandoned or blocked loops
+
+Goal:
+
+- fail clearly instead of cycling forever
+- keep QC authoritative without making it a trap
+- turn repeated failure into evidence for scanner, prompts, or Sage
+
+---
+
+## Sage Memory of System Doubt
+
+Expand Sage from advisory observations toward a local memory of system uncertainty.
+
+Decisions record what was decided. Execution history records how the system moved. Sage records what the system was unsure about.
+
+Planned:
+
+- missed-context and near-miss records
+- repeated attention failures across tasks
+- uncertainty signals that correlate with later revisions, rejects, or rework
+- links from observations to the relevant decision, execution attempt, or QC event
+
+Rules:
+
+- Sage observes; QC adjudicates
+- Sage must not become hidden authority or prompt pollution
+- uncertainty records are local diagnostic memory, not canonical project truth
+
+Goal:
+
+- make "why did the system hesitate?" answerable after the fact
+- improve future prompts, scanner signals, and review heuristics from real doubt
+- preserve the reasoning black-box around decisions without rewriting the decision itself
 
 ---
 
@@ -321,8 +397,8 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving |
-| Preview → Canonical pipeline | Functional | Stage-based truth pipeline active, still evolving |
+| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving; future scanner work should build an evidence-based architecture map and external sync boundary |
+| Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind canonical promotion / authoring and 5/5 state awareness are still upcoming |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
 | Acceptance / Apply Boundary | Functional | SHA256 hash-guarded atomic apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
@@ -339,7 +415,7 @@ It is a factual snapshot, not a claim of completeness.
 | LLM orchestration (OpenRouter) | Functional | Lead / Worker / QC runtimes with typed contracts; per-call lab telemetry (`.zavod/lab/<UTC>-<role>-<taskId>/{request,response,parsed,meta}.json`); `max_tokens` plumbed through to upstream |
 | Worker execution pipeline | Functional | Worker emits typed `edits` (write_full / insert_after with unique anchors); anchor discipline + revision feedback contract in prompt; output schema enforces real deliverable over plan-only responses |
 | Staging sandbox & apply pipeline | Functional | `.zavod.local/staging/<taskId>/attempt-<N>/` isolated sandbox for Worker edits with `manifest.json`; SHA256 hash-guarded atomic apply on user Accept; quarantine (not delete) on abandon preserves staged artefacts under `_abandoned/<taskId>-<utc>/` |
-| Execution verification pipeline | Partial | SHA256 origin-hash guard and staging manifest provide drift detection; mechanical verification layer (build / lint / test via TypedToolContracts) is planned (Slice 2.1b / 2.2) |
+| Execution verification pipeline | Partial | SHA256 origin-hash guard and staging manifest provide drift detection; mechanical verification layer (build / lint / test via TypedToolContracts) and explicit revision loop breakers are planned |
 | Autonomous runtime planning | Not yet | No model-driven planning layer yet |
 
 **Operational invariants (learned rules, enforced in pipeline):**
@@ -382,12 +458,12 @@ It is a factual snapshot, not a claim of completeness.
 - Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → hash-guarded apply on user Accept → commit recorded
 - Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, atomic copy to project on Accept, quarantine on abandon
 - Advisory layer runs in two coexisting modes: S0 (keyword-scored) still informs Lead/Worker framing; S1–S5a typed Sage pipeline emits `SageObservation` records (semantic_gap, attention_miss) into sage_only JSONL with zero prompt pollution. Field-verified on real tasks: `attention_miss` caught a missing-file reference ~1ms before Worker LLM dispatch, independently corroborated by Worker's own rationale
-- Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, and in-UI Sage surface are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)
+- Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, in-UI Sage surface, and richer "system doubt" memory are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)
 - Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
-- External changes detected via scan/baseline/acceptance; realtime file watching not implemented
+- External changes detected via scan/baseline/acceptance; realtime file watching and scanner-driven stale invalidation are not implemented
 
 ZAVOD at this stage can be described as:
 
 → a structured and working system foundation with a closed execution loop
 → end-to-end code delivery works against real project files, with typed Sage advisory already observing the pipeline (fail-open, sage-only, zero prompt pollution)
-→ not yet a complete end-user product; immediate direction is making 5/5 canonical document production (Project / Direction / Roadmap / Canon / Capsule) a product capability; longer-term: middle-truth correlation layer, mechanical verification, guided user flow
+→ not yet a complete end-user product; immediate direction is finishing 5/5 preview review, per-kind preview-to-canonical promotion, and runtime 5/5 state awareness; longer-term: architecture maps, Sage uncertainty memory, middle-truth correlation layer, mechanical verification, guided user flow

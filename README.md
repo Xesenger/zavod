@@ -44,7 +44,7 @@ The system derives and maintains documentation based on this interpretation.
 
 3. Documentation (System-derived)
 The system derives project documentation from evidence and interpretation across five canonical kinds: Project, Direction, Roadmap, Canon, Capsule.
-Documents flow through stages (ImportPreview → PreviewDocs → CanonicalDocs). Making 5/5 canonical production a dependable product capability is the next direction — today not every document reaches CanonicalDocs automatically.
+Documents flow through stages (ImportPreview → PreviewDocs → CanonicalDocs). Import can produce 5/5 preview docs; turning those previews into canonical project truth remains a contributor-owned promotion / authoring flow.
 
 4. Role-based work
 Lead - understands intent and builds a plan
@@ -141,7 +141,7 @@ ZAVOD is a **prototype and ongoing research**, not a finished product.
 ### What exists
 
 * Scanner and Importer for evidence-based project grounding
-* Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs
+* Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs, with 5/5 preview generation for Project / Direction / Roadmap / Canon / Capsule
 * Role system: Lead, Worker, QC — all live via typed LLM contracts
 * End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 hash-guarded apply on user Accept
 * Revision loop carries forward structured feedback: prior QC rationale, user revision intake, staging skip reasons
@@ -151,7 +151,7 @@ ZAVOD is a **prototype and ongoing research**, not a finished product.
 
 ### What is incomplete
 
-* Producing all five canonical documents (Project / Direction / Roadmap / Canon / Capsule) is not yet a product capability — derivation exists, but reaching 5/5 consistently is the next direction
+* 5/5 canonical creation is not yet product-complete: per-kind promote / reject / author actions, Layer C decisions, Layer D events, and runtime 5/5 state awareness are still next work
 * Mechanical verification (build / lint / test) via typed tool contracts is deferred; current drift detection is SHA256 origin-hash + staging manifest
 * No internal editor or realtime file watchers — external edits surface only on scan/baseline
 * No in-UI Sage surface yet; observations live in `.zavod/sage/observations.jsonl` for manual inspection
