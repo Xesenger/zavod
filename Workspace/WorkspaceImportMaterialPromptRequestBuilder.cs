@@ -138,6 +138,8 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         builder.AppendLine("Use only paths from the packet above.");
         builder.AppendLine("Treat README and other narrative documents as evidence sources, not as authoritative project explanations on their own.");
         builder.AppendLine("Treat technical_passport as a transitional UX summary derived from cold evidence, not as authoritative scanner truth.");
+        builder.AppendLine("Treat topology as the scanner's cold shape-of-folder evidence. If topology is Container, Ambiguous, Mixed, Decompilation, Legacy, ReleaseBundle, or MaterialOnly, do not invent a single primary project or main entry beyond the evidence shown.");
+        builder.AppendLine("Preserve topology safe_import_mode in your uncertainty and avoid project-purpose claims that contradict topology zones.");
         builder.AppendLine("Treat deprecated comparison payloads as compatibility-only context, not as primary evidence.");
         builder.AppendLine("Prefer a concrete project portrait over generic wording.");
         builder.AppendLine("When evidence is rich, prefer four to eight DETAIL lines instead of stopping at one generic technical sentence.");
@@ -196,6 +198,9 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         builder.AppendLine($"  source_roots: {JoinOrNone(pack.ProjectProfile.SourceRoots)}");
         builder.AppendLine($"  build_roots: {JoinOrNone(pack.ProjectProfile.BuildRoots)}");
         builder.AppendLine($"  anomalies: {JoinOrNone(pack.ProjectProfile.StructuralAnomalies)}");
+        builder.AppendLine($"topology: kind={pack.Topology.Kind}; safe_import_mode={pack.Topology.SafeImportMode}; active_source={JoinOrNone(pack.Topology.LikelyActiveSourceRoots)}; release_output={JoinOrNone(pack.Topology.ReleaseOutputZones)}; ignored_noise={JoinOrNone(pack.Topology.IgnoredNoiseZones)}");
+        builder.AppendLine($"topology_uncertainty: {JoinOrNone(pack.Topology.UncertaintyReasons)}");
+        builder.AppendLine($"topology_zones: {JoinOrNone(pack.Topology.ObservedZones.Take(12).Select(static zone => $"{zone.Root} ({zone.Role}, files={zone.FileCount}, {zone.Confidence})"))}");
         builder.AppendLine($"importer_adapter_summary: {BuildImporterAdapterSummary(pack)}");
         builder.AppendLine($"raw_observation_count: {pack.RawObservations.Count}");
         builder.AppendLine($"derived_pattern_count: {pack.DerivedPatterns.Count}");

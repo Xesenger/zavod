@@ -36,11 +36,13 @@ It is a working environment where:
 
 ## How it works
 
-1. Project Import (Scanner)
-Reads files, structure, dependencies → produces cold, evidence-based data
+1. Project Import (Scanner v2 Evidence Cartographer)
+Builds cold evidence from files, manifests, entry points, topology, run profiles, uncertainty, and scan budgets.
+Produces cold evidence data rather than project-purpose claims.
 
 2. Interpretation (Importer)
-Explains what the project might be → explicitly marks confidence (Confirmed / Likely / Unknown)
+Preserves scanner topology boundaries while explaining what the project might be.
+Explicitly marks confidence (Confirmed / Likely / Unknown) and keeps preview docs below canonical truth until reviewed.
 The system derives and maintains documentation based on this interpretation.
 
 3. Documentation (System-derived)
@@ -146,7 +148,8 @@ limits.
 
 ### What exists
 
-* Scanner and Importer for evidence-based project grounding
+* Scanner v2 MVP evidence cartographer: structural inventory, manifests, symbols, edges, entrypoints, project units, run profiles, topology, budgets, uncertainty, and cold scan summaries
+* Importer alignment with scanner topology for MaterialOnly, Container / MultipleIndependentProjects, MixedSourceRelease, Decompilation, Legacy, Ambiguous, and ReleaseBundle modes
 * Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs, with 5/5 preview generation for Project / Direction / Roadmap / Canon / Capsule
 * Projects Home truth-doc status block for the five canonical document kinds
 * Per-document preview promotion into canonical docs, with Layer C decision records and Layer D journal events
@@ -165,8 +168,10 @@ limits.
 * No internal editor or realtime file watchers — external edits surface only on scan/baseline
 * No in-UI Sage surface yet; observations live in `.zavod.local/sage/observations.jsonl` for manual inspection
 * Pattern memory, deterministic Sage rules, and middle-truth correlation layer are deferred until real use justifies them
-* Importer may over-interpret or produce inaccurate explanations
-* Large monorepos can still expose scanner/importer ranking gaps: root README product identity, Cargo default members, and main entry points are not always weighted strongly enough yet
+* Scanner v2 is an MVP review candidate, not a production-grade full architecture map
+* Ambiguous layouts can still expose wording gaps, especially around "main entry" versus candidate entry surfaces
+* Decompilation and legacy repositories can still produce broad active-root candidates that need review
+* Canonical promotion has not yet been re-verified end-to-end after the Scanner v2 topology/importer alignment work
 
 ### Important note
 

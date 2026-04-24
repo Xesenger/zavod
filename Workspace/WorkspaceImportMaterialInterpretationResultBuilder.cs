@@ -27,15 +27,15 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
             packet.WorkspaceRoot,
             packet.ImportKind,
             packet.SourceRoots,
-            interpretationMode == ProjectInterpretationMode.SingleProject ? Array.Empty<string>() : BuildContainerDetails(interpretationMode),
+            interpretationMode == ProjectInterpretationMode.SingleProject ? Array.Empty<string>() : BuildBoundedTopologyDetails(interpretationMode),
             Array.Empty<string>(),
             Array.Empty<string>(),
             interpretationMode == ProjectInterpretationMode.SingleProject
                 ? Array.Empty<string>()
-                : BuildContainerConfidenceSlices(interpretationMode, packet.EvidencePack).Unknown,
+                : BuildBoundedTopologyConfidenceSlices(interpretationMode, packet.EvidencePack).Unknown,
             interpretationMode == ProjectInterpretationMode.SingleProject
                 ? Array.Empty<string>()
-                : BuildContainerStageSignals(packet.EvidencePack),
+                : BuildBoundedTopologyStageSignals(interpretationMode, packet.EvidencePack),
             Array.Empty<string>(),
             Array.Empty<string>(),
             Array.Empty<string>(),
@@ -51,18 +51,18 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
                     Array.Empty<ArchitectureDiagramGroup>(),
                     Array.Empty<string>(),
                     new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), ShowLegend: true))
-                : BuildContainerDiagramSpec(interpretationMode),
+                : BuildBoundedTopologyDiagramSpec(interpretationMode),
             materials,
             interpretationMode == ProjectInterpretationMode.SingleProject
                 ? BuildImporterOwnedSummary(packet, Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(), Array.Empty<WorkspaceImportMaterialModuleInterpretation>(), Array.Empty<string>(), materials.Length)
-                : BuildContainerSummary(interpretationMode))
+                : BuildBoundedTopologySummary(interpretationMode))
         {
             InterpretationMode = interpretationMode
         };
 
         if (interpretationMode != ProjectInterpretationMode.SingleProject)
         {
-            var confidenceSlices = BuildContainerConfidenceSlices(interpretationMode, packet.EvidencePack);
+            var confidenceSlices = BuildBoundedTopologyConfidenceSlices(interpretationMode, packet.EvidencePack);
             result = result with
             {
                 ConfirmedSignals = confidenceSlices.Confirmed,
@@ -96,7 +96,7 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
                 return new WorkspaceMaterialPreviewInterpretation(
                     material.RelativePath,
                     material.Kind,
-                    item.Summary.Trim(),
+                    SanitizeMaterialSummary(item.Summary),
                     item.PossibleUsefulness,
                     item.TemporalStatus,
                     item.StatusNote.Trim(),
@@ -130,22 +130,22 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         var effectiveConflicts = NormalizeNarrativeLines(packet.EvidencePack, response.Conflicts, effectiveModules, effectiveEntryPoints);
         var effectiveStageSignals = NormalizeStageSignals(packet.EvidencePack, response.StageSignals, effectiveModules, effectiveEntryPoints);
 
-        if (interpretationMode != ProjectInterpretationMode.SingleProject)
+        if (RequiresBoundedTopologyProjection(interpretationMode))
         {
-            effectiveDetails = BuildContainerDetails(interpretationMode);
+            effectiveDetails = BuildBoundedTopologyDetails(interpretationMode);
             effectiveLayers = Array.Empty<WorkspaceImportMaterialLayerInterpretation>();
             effectiveModules = Array.Empty<WorkspaceImportMaterialModuleInterpretation>();
-            effectiveEntryPoints = interpretationMode == ProjectInterpretationMode.MultipleIndependentProjects
+            effectiveEntryPoints = interpretationMode is ProjectInterpretationMode.MultipleIndependentProjects or ProjectInterpretationMode.MaterialOnly
                 ? Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>()
                 : effectiveEntryPoints.Take(3).ToArray();
-            effectiveDiagramSpec = BuildContainerDiagramSpec(interpretationMode);
-            confidenceSlices = BuildContainerConfidenceSlices(interpretationMode, packet.EvidencePack);
-            summary = BuildContainerSummary(interpretationMode);
+            effectiveDiagramSpec = BuildBoundedTopologyDiagramSpec(interpretationMode);
+            confidenceSlices = BuildBoundedTopologyConfidenceSlices(interpretationMode, packet.EvidencePack);
+            summary = BuildBoundedTopologySummary(interpretationMode);
             effectiveCurrentSignals = Array.Empty<string>();
             effectivePlannedSignals = Array.Empty<string>();
             effectivePossiblyStaleSignals = Array.Empty<string>();
             effectiveConflicts = Array.Empty<string>();
-            effectiveStageSignals = BuildContainerStageSignals(packet.EvidencePack);
+            effectiveStageSignals = BuildBoundedTopologyStageSignals(interpretationMode, packet.EvidencePack);
         }
 
         return new WorkspaceImportMaterialInterpretationResult(
@@ -191,7 +191,36 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
             return BuildCoarseSummary(packet, entryPoints, modules, materialCount);
         }
 
-        return $"{summary} truth=context_only.";
+        var projectionFacts = BuildProjectionFactSuffix(packet, entryPoints, modules);
+        return string.IsNullOrWhiteSpace(projectionFacts)
+            ? $"{summary} truth=context_only."
+            : $"{summary} {projectionFacts} truth=context_only.";
+    }
+
+    private static string BuildProjectionFactSuffix(
+        WorkspaceImportMaterialPreviewPacket packet,
+        IReadOnlyList<WorkspaceImportMaterialEntryPointInterpretation> entryPoints,
+        IReadOnlyList<WorkspaceImportMaterialModuleInterpretation> modules)
+    {
+        var parts = new List<string>();
+        if (packet.EvidencePack is not null)
+        {
+            parts.Add($"scannerEntryCandidatesTotal={packet.EvidencePack.Candidates.EntryPoints.Count}");
+            parts.Add($"scannerModuleCandidatesTotal={packet.EvidencePack.Candidates.ModuleCandidates.Count}");
+        }
+
+        if (entryPoints.Count > 0)
+        {
+            parts.Add($"displayedEntryCandidates={entryPoints.Count}");
+            parts.Add($"selectedMainEntry={entryPoints[0].RelativePath}");
+        }
+
+        if (modules.Count > 0)
+        {
+            parts.Add($"displayedModules={modules.Count}");
+        }
+
+        return parts.Count == 0 ? string.Empty : $"projection=({string.Join(", ", parts)}).";
     }
 
     private static ProjectInterpretationMode DetermineInterpretationMode(
@@ -202,6 +231,44 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         if (pack is null)
         {
             return ProjectInterpretationMode.SingleProject;
+        }
+
+        var topologyKind = pack.Topology.Kind;
+        if (topologyKind.Equals("Container", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.MultipleIndependentProjects;
+        }
+
+        if (topologyKind.Equals("MaterialOnly", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.MaterialOnly;
+        }
+
+        if (topologyKind.Equals("Mixed", StringComparison.OrdinalIgnoreCase))
+        {
+            return pack.Topology.ReleaseOutputZones.Count > 0
+                ? ProjectInterpretationMode.MixedSourceRelease
+                : ProjectInterpretationMode.Ambiguous;
+        }
+
+        if (topologyKind.Equals("Decompilation", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.Decompilation;
+        }
+
+        if (topologyKind.Equals("Legacy", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.Legacy;
+        }
+
+        if (topologyKind.Equals("Ambiguous", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.Ambiguous;
+        }
+
+        if (topologyKind.Equals("ReleaseBundle", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectInterpretationMode.ReleaseBundle;
         }
 
         var hasNestedGitProjects = HasStructuralAnomaly(pack, "NESTED_GIT_PROJECTS");
@@ -260,6 +327,31 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         return HasStageEvidence(pack)
             ? new[] { "Cold evidence does not confirm a single shared delivery stage yet." }
             : Array.Empty<string>();
+    }
+
+    private static string[] BuildBoundedTopologyStageSignals(ProjectInterpretationMode mode, WorkspaceEvidencePack? pack)
+    {
+        if (!HasStageEvidence(pack))
+        {
+            return Array.Empty<string>();
+        }
+
+        return mode switch
+        {
+            ProjectInterpretationMode.MaterialOnly => new[] { "Cold evidence does not confirm a source project delivery stage for material-only input." },
+            ProjectInterpretationMode.MixedSourceRelease => new[] { "Cold evidence does not confirm a single delivery stage across active source and release/output zones." },
+            ProjectInterpretationMode.Decompilation => new[] { "Cold evidence does not confirm a normal application delivery stage for decompilation topology." },
+            ProjectInterpretationMode.Legacy => new[] { "Cold evidence does not confirm a normal application delivery stage for legacy low-level topology." },
+            ProjectInterpretationMode.Ambiguous => new[] { "Cold evidence does not confirm a single delivery stage for ambiguous topology." },
+            ProjectInterpretationMode.ReleaseBundle => new[] { "Cold evidence does not confirm a source project delivery stage for release bundle topology." },
+            _ => BuildContainerStageSignals(pack)
+        };
+    }
+
+    private static bool RequiresBoundedTopologyProjection(ProjectInterpretationMode mode)
+    {
+        return mode != ProjectInterpretationMode.SingleProject &&
+               mode != ProjectInterpretationMode.Ambiguous;
     }
 
     private static (string[] Confirmed, string[] Likely, string[] Unknown) BuildFallbackConfidenceSlices(
@@ -340,6 +432,13 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         ProjectInterpretationMode mode,
         WorkspaceEvidencePack? pack)
     {
+        return BuildBoundedTopologyConfidenceSlices(mode, pack);
+    }
+
+    private static (string[] Confirmed, string[] Likely, string[] Unknown) BuildBoundedTopologyConfidenceSlices(
+        ProjectInterpretationMode mode,
+        WorkspaceEvidencePack? pack)
+    {
         if (mode == ProjectInterpretationMode.MultipleIndependentProjects)
         {
             return (
@@ -348,10 +447,33 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
                 new[] { "A single shared project architecture is not confirmed across the container." });
         }
 
-        return (
-            Array.Empty<string>(),
-            new[] { "Cold evidence suggests the scanned folder may contain multiple loosely related project roots." },
-            new[] { "A single shared project narrative is not confirmed yet." });
+        return mode switch
+        {
+            ProjectInterpretationMode.MaterialOnly => (
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                new[] { "Cold evidence did not confirm source project structure; imported content remains material-only." }),
+            ProjectInterpretationMode.MixedSourceRelease => (
+                Array.Empty<string>(),
+                new[] { "Cold evidence shows active source and release/output zones in the same scanned folder." },
+                new[] { "A single primary application identity is not confirmed across source and release/output zones." }),
+            ProjectInterpretationMode.Decompilation => (
+                Array.Empty<string>(),
+                new[] { "Cold evidence shows decompilation/reverse-engineering topology." },
+                new[] { "Normal application architecture and delivery assumptions are not confirmed." }),
+            ProjectInterpretationMode.Legacy => (
+                Array.Empty<string>(),
+                new[] { "Cold evidence shows legacy or low-level source topology." },
+                new[] { "Normal application architecture and delivery assumptions are not confirmed." }),
+            ProjectInterpretationMode.ReleaseBundle => (
+                Array.Empty<string>(),
+                new[] { "Cold evidence shows release/output payload without confirmed active source." },
+                new[] { "A source project identity is not confirmed for this import target." }),
+            _ => (
+                Array.Empty<string>(),
+                new[] { "Cold evidence suggests the scanned folder may contain multiple loosely related project roots." },
+                new[] { "A single shared project narrative is not confirmed yet." })
+        };
     }
 
     private static WorkspaceImportMaterialEntryPointInterpretation[] BuildFallbackEntryPoints(WorkspaceEvidencePack? pack)
@@ -362,7 +484,8 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         }
 
         return pack.Candidates.EntryPoints
-            .OrderByDescending(entry => ScoreEntryPoint(entry.RelativePath, entry.Role))
+            .OrderByDescending(static entry => entry.Score)
+            .ThenByDescending(static entry => entry.EvidenceMarker?.Confidence ?? WorkspaceEvidenceConfidenceLevel.Unknown)
             .ThenBy(static entry => entry.RelativePath.Count(static ch => ch == '\\' || ch == '/'))
             .ThenBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
             .Take(6)
@@ -408,21 +531,31 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         var normalized = entryPoints
             .Select(entry =>
             {
-                var confidence = entry.Confidence == WorkspaceEvidenceConfidenceLevel.Unknown
-                    ? ResolveConfidence(pack, "entry_point", entry.RelativePath)
-                    : entry.Confidence;
+                var scannerConfidence = ResolveConfidence(pack, "entry_point", entry.RelativePath);
+                var confidence = scannerConfidence == WorkspaceEvidenceConfidenceLevel.Unknown
+                    ? entry.Confidence
+                    : scannerConfidence;
                 return entry with { Confidence = confidence };
             })
-            .OrderByDescending(entry => ScoreEntryPoint(entry.RelativePath, entry.Role))
+            .Concat(BuildFallbackEntryPoints(pack))
+            .GroupBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => SelectEntryPointProjection(pack, group))
+            .OrderByDescending(entry => ScoreScannerEntryPoint(pack, entry))
             .ThenByDescending(static entry => entry.Confidence)
             .ThenBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var strongestScore = normalized.Length == 0 ? int.MinValue : ScoreEntryPoint(normalized[0].RelativePath, normalized[0].Role);
+        var strongestScore = normalized.Length == 0 ? int.MinValue : ScoreScannerEntryPoint(pack, normalized[0]);
+        var hasConfirmedScannerMain = pack.Candidates.EntryPoints.Any(IsExecutableOrCodeMainEntry);
         return normalized
             .Where(entry =>
             {
-                var score = ScoreEntryPoint(entry.RelativePath, entry.Role);
+                if (hasConfirmedScannerMain && !HasDirectScannerEntryEvidence(pack, entry))
+                {
+                    return false;
+                }
+
+                var score = ScoreScannerEntryPoint(pack, entry);
                 if (strongestScore >= 10 && score <= 0)
                 {
                     return false;
@@ -440,6 +573,57 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
             .ToArray();
     }
 
+    private static bool HasDirectScannerEntryEvidence(
+        WorkspaceEvidencePack pack,
+        WorkspaceImportMaterialEntryPointInterpretation entry)
+    {
+        return FindScannerEntryPoint(pack, entry.RelativePath) is not null;
+    }
+
+    private static bool IsExecutableOrCodeMainEntry(WorkspaceEvidenceEntryPoint entry)
+    {
+        if (entry.EvidenceMarker?.Confidence != WorkspaceEvidenceConfidenceLevel.Confirmed)
+        {
+            return false;
+        }
+
+        return IsExecutableOrCodeMainRole(entry.Role);
+    }
+
+    private static bool IsExecutableOrCodeMainRole(string role)
+    {
+        return role.Equals("main", StringComparison.OrdinalIgnoreCase) ||
+               role.Equals("entry", StringComparison.OrdinalIgnoreCase) ||
+               role.Equals("cli", StringComparison.OrdinalIgnoreCase) ||
+               role.Equals("service", StringComparison.OrdinalIgnoreCase) ||
+               role.Equals("bootstrap", StringComparison.OrdinalIgnoreCase) ||
+               role.Equals("ui", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static WorkspaceImportMaterialEntryPointInterpretation SelectEntryPointProjection(
+        WorkspaceEvidencePack pack,
+        IEnumerable<WorkspaceImportMaterialEntryPointInterpretation> entries)
+    {
+        var ordered = entries
+            .OrderByDescending(entry => ScoreScannerEntryPoint(pack, entry))
+            .ThenByDescending(static entry => entry.Confidence)
+            .ThenBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var selected = ordered[0];
+        var scannerEntry = FindScannerEntryPoint(pack, selected.RelativePath);
+        if (scannerEntry is null)
+        {
+            return selected;
+        }
+
+        return selected with
+        {
+            Role = scannerEntry.Role,
+            Note = scannerEntry.Note,
+            Confidence = ResolveConfidence(pack, "entry_point", scannerEntry.RelativePath)
+        };
+    }
+
     private static WorkspaceImportMaterialModuleInterpretation[] NormalizeModules(
         WorkspaceEvidencePack? pack,
         IReadOnlyList<WorkspaceImportMaterialModuleInterpretation> modules,
@@ -453,9 +637,10 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         return modules
             .Select(module =>
             {
-                var confidence = module.Confidence == WorkspaceEvidenceConfidenceLevel.Unknown
-                    ? ResolveConfidence(pack, "module", module.Name)
-                    : module.Confidence;
+                var scannerConfidence = ResolveConfidence(pack, "module", module.Name);
+                var confidence = scannerConfidence == WorkspaceEvidenceConfidenceLevel.Unknown
+                    ? module.Confidence
+                    : scannerConfidence;
                 return module with { Confidence = confidence };
             })
             .Where(module =>
@@ -657,11 +842,26 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
 
     private static ArchitectureDiagramSpec BuildContainerDiagramSpec(ProjectInterpretationMode mode)
     {
-        var notes = mode == ProjectInterpretationMode.MultipleIndependentProjects
-            ? new[] { "Unified architecture diagram suppressed because multiple independent project roots were detected." }
-            : new[] { "Unified architecture diagram suppressed because the scanned folder remains an ambiguous project container." };
+        return BuildBoundedTopologyDiagramSpec(mode);
+    }
+
+    private static ArchitectureDiagramSpec BuildBoundedTopologyDiagramSpec(ProjectInterpretationMode mode)
+    {
+        var notes = mode switch
+        {
+            ProjectInterpretationMode.MultipleIndependentProjects => new[] { "Unified architecture diagram suppressed because multiple independent project roots were detected." },
+            ProjectInterpretationMode.MaterialOnly => new[] { "Architecture diagram suppressed because the import target is material-only." },
+            ProjectInterpretationMode.MixedSourceRelease => new[] { "Architecture diagram suppressed because active source and release/output zones must remain separated." },
+            ProjectInterpretationMode.Decompilation => new[] { "Architecture diagram suppressed because decompilation topology should not be normalized into a standard application diagram." },
+            ProjectInterpretationMode.Legacy => new[] { "Architecture diagram suppressed because legacy low-level topology should not be normalized into a standard application diagram." },
+            ProjectInterpretationMode.ReleaseBundle => new[] { "Architecture diagram suppressed because release/output payload does not confirm active source architecture." },
+            _ => new[] { "Unified architecture diagram suppressed because the scanned folder remains ambiguous." }
+        };
+        var title = mode == ProjectInterpretationMode.MultipleIndependentProjects
+            ? "Project Container"
+            : $"Project {mode}";
         return new ArchitectureDiagramSpec(
-            "Project Container",
+            title,
             Array.Empty<ArchitectureDiagramNode>(),
             Array.Empty<ArchitectureDiagramEdge>(),
             Array.Empty<ArchitectureDiagramGroup>(),
@@ -834,7 +1034,8 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
 
         if (contentScore >= 3 || ContainsAny(normalizedPath, "ARCHITECTURE_MAP", "ARCHITECTURE", "Документация проекта", "Конституция проекта", "constitution", "design", "blueprint"))
         {
-            var summary = contentSummary.Length > 0 ? contentSummary : InferFallbackSummary(normalizedPath, preview);
+            var summary = SanitizeMaterialSummary(
+                contentSummary.Length > 0 ? contentSummary : InferFallbackSummary(normalizedPath, preview));
             return new WorkspaceMaterialPreviewInterpretation(
                 material.RelativePath,
                 material.Kind,
@@ -907,6 +1108,26 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         return score;
     }
 
+    private static string SanitizeMaterialSummary(string summary)
+    {
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            return string.Empty;
+        }
+
+        if (ContainsAny(summary, "architecture invariants", "architectural invariants", "инвариант", "Ð°Ñ€Ñ…Ð¸Ñ‚ÐµÐºÑ‚ÑƒÑ€Ð½Ñ‹Ð¼Ð¸ Ð¸Ð½Ð²Ð°Ñ€Ð¸Ð°Ð½Ñ‚Ð°Ð¼Ð¸"))
+        {
+            return "Context material with governance or architecture markers; contributor review required.";
+        }
+
+        if (ContainsAny(summary, "rules", "principles", "правил", "принцип", "Ð¿Ñ€Ð°Ð²Ð¸Ð»", "Ð¿Ñ€Ð¸Ð½Ñ†Ð¸Ð¿"))
+        {
+            return "Context material with governance/principle markers; contributor review required.";
+        }
+
+        return summary.Trim();
+    }
+
     private static string BuildContentDrivenSummary(string preview)
     {
         if (ContainsAny(preview, "конституц", "constitution", "principle", "инвариант", "truth"))
@@ -975,6 +1196,66 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         return "Project Architecture";
     }
 
+    private static string[] BuildBoundedTopologyDetails(ProjectInterpretationMode mode)
+    {
+        if (mode is ProjectInterpretationMode.MultipleIndependentProjects or ProjectInterpretationMode.AmbiguousContainer)
+        {
+            return BuildContainerDetails(mode);
+        }
+
+        return mode switch
+        {
+            ProjectInterpretationMode.MaterialOnly => new[]
+            {
+                "Scanned folder is material-only; source project structure is not confirmed.",
+                "Documents or notes are context materials, not project truth."
+            },
+            ProjectInterpretationMode.MixedSourceRelease => new[]
+            {
+                "Scanned folder contains both active source evidence and release/output zones.",
+                "Release/dist payloads must not be treated as active source truth."
+            },
+            ProjectInterpretationMode.Decompilation => new[]
+            {
+                "Scanned folder has decompilation/reverse-engineering topology.",
+                "Normal application architecture is not assumed."
+            },
+            ProjectInterpretationMode.Legacy => new[]
+            {
+                "Scanned folder has legacy or low-level source topology.",
+                "Normal application architecture is not assumed."
+            },
+            ProjectInterpretationMode.ReleaseBundle => new[]
+            {
+                "Scanned folder looks like release/output payload.",
+                "Active source project identity is not confirmed."
+            },
+            _ => new[]
+            {
+                "Scanned folder remains ambiguous.",
+                "Single project narrative is not confirmed by current cold evidence."
+            }
+        };
+    }
+
+    private static string BuildBoundedTopologySummary(ProjectInterpretationMode mode)
+    {
+        if (mode is ProjectInterpretationMode.MultipleIndependentProjects or ProjectInterpretationMode.AmbiguousContainer)
+        {
+            return BuildContainerSummary(mode);
+        }
+
+        return mode switch
+        {
+            ProjectInterpretationMode.MaterialOnly => "Folder is material-only. Source project structure and delivery plan are not confirmed. truth=context_only.",
+            ProjectInterpretationMode.MixedSourceRelease => "Folder mixes active source evidence with release/output zones. Release payloads are not active source truth. truth=context_only.",
+            ProjectInterpretationMode.Decompilation => "Folder has decompilation/reverse-engineering topology. Normal application architecture is not assumed. truth=context_only.",
+            ProjectInterpretationMode.Legacy => "Folder has legacy or low-level source topology. Normal application architecture is not assumed. truth=context_only.",
+            ProjectInterpretationMode.ReleaseBundle => "Folder looks like release/output payload. Active source project identity is not confirmed. truth=context_only.",
+            _ => "Folder remains ambiguous. Single project narrative is not confirmed by cold evidence. truth=context_only."
+        };
+    }
+
     private static string[] BuildContainerDetails(ProjectInterpretationMode mode)
     {
         return mode == ProjectInterpretationMode.MultipleIndependentProjects
@@ -1025,16 +1306,19 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
             parts.Add($"observations={packet.EvidencePack.RawObservations.Count}");
             parts.Add($"patterns={packet.EvidencePack.DerivedPatterns.Count}");
             parts.Add($"signals={packet.EvidencePack.SignalScores.Count}");
+            parts.Add($"scannerEntryCandidatesTotal={packet.EvidencePack.Candidates.EntryPoints.Count}");
+            parts.Add($"scannerModuleCandidatesTotal={packet.EvidencePack.Candidates.ModuleCandidates.Count}");
         }
 
         if (entryPoints.Count > 0)
         {
-            parts.Add($"entries={entryPoints.Count}");
+            parts.Add($"displayedEntryCandidates={entryPoints.Count}");
+            parts.Add($"selectedMainEntry={entryPoints[0].RelativePath}");
         }
 
         if (modules.Count > 0)
         {
-            parts.Add($"modules={modules.Count}");
+            parts.Add($"displayedModules={modules.Count}");
         }
 
         if (details.Count > 0)
@@ -1065,6 +1349,8 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
             parts.Add($"observations={pack.RawObservations.Count}");
             parts.Add($"patterns={pack.DerivedPatterns.Count}");
             parts.Add($"signals={pack.SignalScores.Count}");
+            parts.Add($"scannerEntryCandidatesTotal={pack.Candidates.EntryPoints.Count}");
+            parts.Add($"scannerModuleCandidatesTotal={pack.Candidates.ModuleCandidates.Count}");
         }
 
         if (pack is not null)
@@ -1095,30 +1381,28 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
 
         if (entryPoints.Count > 0)
         {
-            parts.Add($"entry candidates: {entryPoints.Count}");
+            parts.Add($"displayedEntryCandidates={entryPoints.Count}");
+            parts.Add($"selectedMainEntry={entryPoints[0].RelativePath}");
         }
 
         if (modules.Count > 0)
         {
-            parts.Add($"modules={modules.Count}");
-        }
-
-        if (entryPoints.Count > 0)
-        {
-            parts.Add($"entries={entryPoints.Count}");
-        }
-
-        if (entryPoints.Count > 0)
-        {
-            parts.Add($"entry candidates: {entryPoints.Count}");
-        }
-
-        if (modules.Count > 0)
-        {
-            parts.Add($"module candidates: {modules.Count}");
+            parts.Add($"displayedModules={modules.Count}");
         }
 
         return string.Join(", ", parts) + ", truth=context_only.";
+    }
+
+    private static int ScoreScannerEntryPoint(WorkspaceEvidencePack pack, WorkspaceImportMaterialEntryPointInterpretation entry)
+    {
+        var scannerEntry = FindScannerEntryPoint(pack, entry.RelativePath);
+        return scannerEntry?.Score ?? ScoreEntryPoint(entry.RelativePath, entry.Role);
+    }
+
+    private static WorkspaceEvidenceEntryPoint? FindScannerEntryPoint(WorkspaceEvidencePack pack, string relativePath)
+    {
+        return pack.Candidates.EntryPoints.FirstOrDefault(entry =>
+            string.Equals(entry.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase));
     }
 
     private static int ScoreEntryPoint(string relativePath, string role)
@@ -1638,6 +1922,25 @@ public static class WorkspaceImportMaterialInterpretationResultBuilder
         if (pack is null)
         {
             return WorkspaceEvidenceConfidenceLevel.Unknown;
+        }
+
+        if (string.Equals(targetKind, "entry_point", StringComparison.OrdinalIgnoreCase))
+        {
+            var entry = FindScannerEntryPoint(pack, targetId);
+            if (entry?.EvidenceMarker?.Confidence is { } confidence)
+            {
+                return confidence;
+            }
+        }
+
+        if (string.Equals(targetKind, "module", StringComparison.OrdinalIgnoreCase))
+        {
+            var module = pack.Candidates.ModuleCandidates.FirstOrDefault(item =>
+                string.Equals(item.Name, targetId, StringComparison.OrdinalIgnoreCase));
+            if (module?.EvidenceMarker?.Confidence is { } confidence)
+            {
+                return confidence;
+            }
         }
 
         return pack.ConfidenceAnnotations

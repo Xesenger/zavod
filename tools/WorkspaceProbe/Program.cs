@@ -63,6 +63,7 @@ if (runImportInterpret)
                 predicateRegistry = run.PreviewPacket.EvidencePack.PredicateRegistry,
                 scanBudget = run.PreviewPacket.EvidencePack.ScanBudget,
                 projectProfile = run.PreviewPacket.EvidencePack.ProjectProfile,
+                topology = run.PreviewPacket.EvidencePack.Topology,
                 rawObservations = run.PreviewPacket.EvidencePack.RawObservations,
                 derivedPatterns = run.PreviewPacket.EvidencePack.DerivedPatterns,
                 signalScores = run.PreviewPacket.EvidencePack.SignalScores,
@@ -159,6 +160,7 @@ else
         roots = state.Summary.SourceRoots,
         entries = state.Summary.EntryCandidates,
         anomalies = state.StructuralAnomalies.Select(a => new { a.Code, a.Message, a.Scope }).ToArray(),
+        topology = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>()).Topology,
         materials = scan.MaterialCandidates.Select(m => new
         {
             path = m.RelativePath,

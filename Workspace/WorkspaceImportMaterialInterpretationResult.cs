@@ -70,5 +70,11 @@ public enum ProjectInterpretationMode
 {
     SingleProject = 0,
     MultipleIndependentProjects = 1,
-    AmbiguousContainer = 2
+    AmbiguousContainer = 2,
+    MaterialOnly = 3,
+    MixedSourceRelease = 4,
+    Decompilation = 5,
+    Legacy = 6,
+    Ambiguous = 7,
+    ReleaseBundle = 8
 }

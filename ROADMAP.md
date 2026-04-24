@@ -185,12 +185,20 @@ Strengthen the scanner from a file inventory tool into an evidence-based project
 
 Planning reference: `docs/plans/scanner-v2-evidence-cartographer-v1.md`.
 
-Planned:
+MVP review candidate implemented:
 
-- architecture map generation from real code structure
-- module and subsystem boundaries
-- entry points, runtime paths, and dependency edges
-- Structural Project Index with files, manifests, symbols, edges, entrypoints, module candidates, uncertainty, and human summary projections
+- Structural Project Index with files, manifests, symbols, edges, entrypoints, module candidates, project units, run profiles, uncertainty, budget status, topology, and human summary projections
+- deterministic entry point ranking from manifest/code evidence
+- topology modes for SingleProject, Container / MultipleIndependentProjects, MaterialOnly, MixedSourceRelease, Decompilation, Legacy, Ambiguous, and ReleaseBundle
+- safe import mode wording carried from scanner topology into preview docs
+- importer alignment that suppresses single-project identity for container, material-only, decompilation, legacy, mixed, and ambiguous layouts
+- confidence and wording discipline: scanner evidence remains distinct from Importer interpretation
+
+Still planned:
+
+- production-grade architecture map generation from real code structure
+- stronger module and subsystem boundaries
+- deeper runtime paths and dependency edges
 - deterministic entry point ranking and task scope packs from evidence
 - ownership and risk zones inferred from file layout, references, and history
 - confidence markers for Confirmed / Likely / Unknown / Conflict architecture facts
@@ -452,7 +460,7 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving; scanner maps external source evidence and is not the `.zavod/` Truth watcher; future scanner work should build an evidence-based architecture map and external sync boundary |
+| Scanner / Import / Evidence | Functional (Scanner v2 MVP review candidate) | Scanner v2 maps external evidence through structural indexes, topology modes, run profiles, uncertainty, budget status, and safe import mode; Importer now preserves nonstandard topology boundaries. It is still not the `.zavod/` Truth watcher and not a production-grade full architecture map |
 | Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind promote and reject are wired with Layer C/D attribution; edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still upcoming |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
@@ -516,9 +524,18 @@ It is a factual snapshot, not a claim of completeness.
 - Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, in-UI Sage surface, and richer "system doubt" memory are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)
 - Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
 - External changes detected via scan/baseline/acceptance; realtime file watching and scanner-driven stale invalidation are not implemented
+- Scanner v2 MVP is verified on weird import targets for preview honesty, but known limitations remain: ambiguous main entry wording, broad active roots in decompilation/legacy layouts, and canonical promotion not yet re-verified after the topology alignment pass
 
 ZAVOD at this stage can be described as:
 
+Recommended next phase:
+
+- commit the scanner/importer checkpoint
+- verify canonical promotion against Scanner v2 artifacts in a separate pass
+- keep UI review and context builder / task-scope integration as separate follow-up layers
+
+Current system characterization:
+
 → a structured and working system foundation with a closed execution loop
 → end-to-end code delivery works against real project files, with typed Sage advisory already observing the pipeline (fail-open, sage-only, zero prompt pollution)
-→ not yet a complete end-user product; immediate direction is finishing edit-before-promote, author-from-scratch, runtime 5/5 state awareness, and scanner/importer ranking improvements found by alpha repo imports; longer-term: architecture maps, Sage uncertainty memory, middle-truth correlation layer, mechanical verification, guided user flow
+→ not yet a complete end-user product; immediate direction is committing the scanner/importer checkpoint, then verifying canonical promotion, UI review, and context builder / task-scope integration as separate passes; longer-term: production-grade architecture maps, Sage uncertainty memory, middle-truth correlation layer, mechanical verification, guided user flow

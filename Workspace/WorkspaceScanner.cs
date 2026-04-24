@@ -200,6 +200,8 @@ public static class WorkspaceScanner
         "pyproject.toml",
         "requirements.txt",
         "schema.prisma",
+        "setup.cfg",
+        "setup.py",
         "tsconfig.json",
         "vite.config.js",
         "vite.config.mjs",

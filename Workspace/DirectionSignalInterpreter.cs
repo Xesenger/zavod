@@ -36,7 +36,7 @@ public static class DirectionSignalInterpreter
         {
             candidates.Add(new DirectionCandidateSignal(
                 "Imported README/overview material may contain direction evidence; contributor must confirm or rewrite it.",
-                material.Confidence == WorkspaceEvidenceConfidenceLevel.Unknown ? WorkspaceEvidenceConfidenceLevel.Likely : material.Confidence,
+                material.Confidence,
                 $"material `{material.RelativePath}` [{material.Confidence}]"));
         }
 
@@ -44,7 +44,7 @@ public static class DirectionSignalInterpreter
         {
             candidates.Add(new DirectionCandidateSignal(
                 $"Observed entry surface may inform direction: `{entry.RelativePath}`.",
-                entry.Confidence == WorkspaceEvidenceConfidenceLevel.Unknown ? WorkspaceEvidenceConfidenceLevel.Likely : entry.Confidence,
+                entry.Confidence,
                 $"entry point `{entry.RelativePath}` [{entry.Confidence}]"));
         }
 
@@ -52,7 +52,7 @@ public static class DirectionSignalInterpreter
         {
             candidates.Add(new DirectionCandidateSignal(
                 $"Observed module surface may inform direction: `{module.Name}`.",
-                module.Confidence == WorkspaceEvidenceConfidenceLevel.Unknown ? WorkspaceEvidenceConfidenceLevel.Likely : module.Confidence,
+                module.Confidence,
                 $"module `{module.Name}` [{module.Confidence}]"));
         }
 

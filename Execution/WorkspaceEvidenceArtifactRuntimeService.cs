@@ -39,6 +39,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var modulesMapPath = Path.Combine(directory, "modules.map.json");
         var projectUnitsIndexPath = Path.Combine(directory, "project_units.index.json");
         var runProfilesIndexPath = Path.Combine(directory, "runprofiles.index.json");
+        var topologyIndexPath = Path.Combine(directory, "topology.index.json");
         var predicateRegistryPath = Path.Combine(directory, "predicate_registry.json");
         var scanBudgetPath = Path.Combine(directory, "scan_budget.json");
         var uncertaintyReportPath = Path.Combine(directory, "uncertainty_report.json");
@@ -118,6 +119,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         File.WriteAllText(modulesMapPath, JsonSerializer.Serialize(pack?.Candidates?.ModuleCandidates ?? Array.Empty<WorkspaceEvidenceModule>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(projectUnitsIndexPath, JsonSerializer.Serialize(pack?.Candidates?.ProjectUnits ?? Array.Empty<WorkspaceEvidenceProjectUnit>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(runProfilesIndexPath, JsonSerializer.Serialize(pack?.Candidates?.RunProfiles ?? Array.Empty<WorkspaceEvidenceRunProfile>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(topologyIndexPath, JsonSerializer.Serialize(pack?.Topology, JsonOptions), Encoding.UTF8);
         File.WriteAllText(predicateRegistryPath, JsonSerializer.Serialize(pack?.PredicateRegistry ?? Array.Empty<WorkspaceEvidencePredicate>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(scanBudgetPath, JsonSerializer.Serialize(pack?.ScanBudget, JsonOptions), Encoding.UTF8);
         File.WriteAllText(uncertaintyReportPath, JsonSerializer.Serialize(BuildUncertaintyReport(runResult), JsonOptions), Encoding.UTF8);
@@ -176,6 +178,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             modulesMapPath,
             projectUnitsIndexPath,
             runProfilesIndexPath,
+            topologyIndexPath,
             predicateRegistryPath,
             scanBudgetPath,
             uncertaintyReportPath,
@@ -245,6 +248,18 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         builder.AppendLine($"- asset_files: {profile.AssetFileCount}");
         builder.AppendLine($"- binary_files: {profile.BinaryFileCount}");
         builder.AppendLine($"- noise_files_ignored: {profile.IgnoredNoiseFileCount}");
+
+        builder.AppendLine();
+        builder.AppendLine("## Topology");
+        builder.AppendLine($"- kind: `{pack.Topology.Kind}`");
+        builder.AppendLine($"- safe_import_mode: `{pack.Topology.SafeImportMode}`");
+        builder.AppendLine($"- likely_active_source: {JoinOrNone(pack.Topology.LikelyActiveSourceRoots)}");
+        builder.AppendLine($"- release_output_zones: {JoinOrNone(pack.Topology.ReleaseOutputZones)}");
+        builder.AppendLine($"- ignored_noise_zones: {JoinOrNone(pack.Topology.IgnoredNoiseZones)}");
+        foreach (var zone in pack.Topology.ObservedZones.Take(10))
+        {
+            builder.AppendLine($"- zone `{zone.Root}`: {zone.Role}, files={zone.FileCount}, confidence={zone.Confidence}, evidence={JoinOrNone(zone.Evidence.Take(4))}");
+        }
 
         AppendSummaryList(
             builder,
@@ -343,6 +358,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             anomalies = pack.ProjectProfile.StructuralAnomalies,
             budget = pack.ScanBudget,
             budgetSkips = pack.ScanBudget?.Skips ?? Array.Empty<WorkspaceScanBudgetSkip>(),
+            topology = pack.Topology,
             rawObservations = pack.RawObservations
                 .Where(static observation =>
                     observation.Kind.Contains("budget", StringComparison.OrdinalIgnoreCase) ||
@@ -366,6 +382,16 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
                 yield return $"budget_skip: `{skip.RelativePath}` reason={skip.Reason}";
             }
         }
+
+        if (pack.Candidates.EntryPoints.Count == 0)
+        {
+            yield return "entrypoint_unknown: no manifest-backed or conventional entrypoint candidates were confirmed by scanner evidence.";
+        }
+
+        foreach (var reason in pack.Topology.UncertaintyReasons)
+        {
+            yield return $"topology_uncertainty: {reason}";
+        }
     }
 
     private static void AppendSummaryList(StringBuilder builder, string title, IEnumerable<string> lines)
@@ -383,6 +409,15 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         {
             builder.AppendLine($"- {item}");
         }
+    }
+
+    private static string JoinOrNone(IEnumerable<string> values)
+    {
+        var items = values
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return items.Length == 0 ? "none" : string.Join(", ", items);
     }
 
     private static string FormatMarker(WorkspaceEvidenceMarker? marker)

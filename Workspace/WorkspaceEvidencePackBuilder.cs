@@ -51,6 +51,7 @@ public static class WorkspaceEvidencePackBuilder
         var runProfiles = BuildRunProfiles(scanResult, projectUnits);
         var candidates = new WorkspaceEvidenceCandidates(entryPoints, modules, fileRoles, projectUnits, runProfiles);
         var signals = BuildSignals(scanResult, technicalEvidence, materials);
+        var topology = BuildTopology(scanResult, fileIndex, candidates, signals, patterns);
         var signalScores = BuildSignalScores(signals, patterns, observations, entryPoints, fileRoles);
         var confidenceAnnotations = BuildConfidenceAnnotations(signalScores, candidates, dependencyEdges, codeEdges, dependencySurface, materials);
 
@@ -74,6 +75,7 @@ public static class WorkspaceEvidencePackBuilder
                 state.Summary.SourceRoots,
                 state.Summary.BuildRoots,
                 state.StructuralAnomalies.Select(static anomaly => $"{anomaly.Code}: {anomaly.Message}").ToArray()),
+            topology,
             BuildTechnicalPassport(scanResult, technicalEvidence, materials),
             string.Empty,
             observations,
@@ -131,6 +133,7 @@ public static class WorkspaceEvidencePackBuilder
             draft.Manifests.Add(relativePath);
             draft.Evidence.Add(evidence);
             draft.Evidence.Add($"unit_zone:{ClassifyUnitZone(rootPath)}");
+            AddManifestUnitEvidence(workspaceRoot, relativePath, draft.Evidence);
             if (scannerConfig.IsPrimaryUnit(rootPath))
             {
                 draft.Evidence.Add("config_primary_unit");
@@ -164,6 +167,11 @@ public static class WorkspaceEvidencePackBuilder
 
             matched.EntryPoints.Add(entryPoint.RelativePath);
             matched.Evidence.Add($"entry:{entryPoint.RelativePath}");
+            if (entryPoint.EvidenceMarker?.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed)
+            {
+                matched.Evidence.Add("confirmed_entry_overlap");
+            }
+
             foreach (var entryEvidence in entryPoint.Evidence)
             {
                 matched.Evidence.Add($"entry_evidence:{entryEvidence}");
@@ -210,6 +218,10 @@ public static class WorkspaceEvidencePackBuilder
                 {
                     AddDotnetRunProfiles(profiles, unit, manifest);
                 }
+                else if (IsPythonManifest(fileName))
+                {
+                    AddPythonRunProfiles(profiles, scanResult.State.WorkspaceRoot, unit, manifest);
+                }
             }
         }
 
@@ -222,6 +234,417 @@ public static class WorkspaceEvidencePackBuilder
             .ThenBy(static profile => profile.Command, StringComparer.OrdinalIgnoreCase)
             .Take(48)
             .ToArray();
+    }
+
+    private static WorkspaceEvidenceTopology BuildTopology(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceFileIndexItem> fileIndex,
+        WorkspaceEvidenceCandidates candidates,
+        IReadOnlyList<WorkspaceEvidenceSignal> signals,
+        IReadOnlyList<WorkspaceEvidencePattern> patterns)
+    {
+        var zones = BuildTopologyZones(scanResult, fileIndex, candidates).ToArray();
+        var releaseZones = zones
+            .Where(static zone => zone.Role is "release-output" or "runtime-payload")
+            .Select(static zone => zone.Root)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static zone => zone, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var ignoredNoiseZones = zones
+            .Where(static zone => zone.Role is "ignored-noise" or "generated" or "vendor")
+            .Select(static zone => zone.Root)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static zone => zone, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var activeSourceRoots = BuildLikelyActiveSourceRoots(scanResult, candidates, zones);
+        var uncertaintyReasons = BuildTopologyUncertaintyReasons(scanResult, zones, activeSourceRoots).ToArray();
+        var topologyKind = ClassifyTopologyKind(scanResult, fileIndex, zones, candidates, signals, patterns, activeSourceRoots);
+        var safeImportMode = RecommendSafeImportMode(topologyKind, zones, uncertaintyReasons);
+        var confidence = topologyKind is "SingleProject" or "ReleaseBundle" or "MaterialOnly"
+            ? WorkspaceEvidenceConfidenceLevel.Confirmed
+            : WorkspaceEvidenceConfidenceLevel.Likely;
+
+        return new WorkspaceEvidenceTopology(
+            topologyKind,
+            safeImportMode,
+            zones,
+            activeSourceRoots,
+            releaseZones,
+            ignoredNoiseZones,
+            uncertaintyReasons,
+            EvidenceMarker(
+                "topology_classification",
+                scanResult.State.WorkspaceRoot,
+                $"topology:{topologyKind}; safe_import:{safeImportMode}",
+                confidence,
+                scanResult.BudgetReport?.IsPartial == true,
+                isBounded: false));
+    }
+
+    private static IEnumerable<WorkspaceEvidenceTopologyZone> BuildTopologyZones(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceFileIndexItem> fileIndex,
+        WorkspaceEvidenceCandidates candidates)
+    {
+        var zones = new List<WorkspaceEvidenceTopologyZone>();
+        foreach (var group in fileIndex.GroupBy(static item => TopologyRoot(item.RelativePath), StringComparer.OrdinalIgnoreCase))
+        {
+            var items = group.ToArray();
+            var role = ClassifyTopologyZoneRole(group.Key, items, candidates);
+            var evidence = BuildTopologyZoneEvidence(group.Key, role, items, candidates);
+            var confidence = role is "active-source" or "release-output" or "runtime-payload" or "generated" or "vendor"
+                ? WorkspaceEvidenceConfidenceLevel.Confirmed
+                : WorkspaceEvidenceConfidenceLevel.Likely;
+            zones.Add(new WorkspaceEvidenceTopologyZone(
+                group.Key,
+                role,
+                items.Length,
+                evidence,
+                confidence,
+                EvidenceMarker(
+                    "topology_zone",
+                    group.Key,
+                    string.Join("; ", evidence.Take(4)),
+                    confidence,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
+        }
+
+        foreach (var ignoredRoot in scanResult.State.Summary.IgnoredNoiseRoots)
+        {
+            if (zones.Any(zone => string.Equals(zone.Root, ignoredRoot, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var role = IsReleaseOutputRoot(ignoredRoot)
+                ? "release-output"
+                : "ignored-noise";
+            var evidence = role == "release-output"
+                ? new[] { "scanner_ignored_release_output_root", "release_output_root_name" }
+                : new[] { "scanner_ignored_noise_root" };
+
+            zones.Add(new WorkspaceEvidenceTopologyZone(
+                ignoredRoot,
+                role,
+                0,
+                evidence,
+                WorkspaceEvidenceConfidenceLevel.Confirmed,
+                EvidenceMarker(
+                    "topology_zone",
+                    ignoredRoot,
+                    string.Join("; ", evidence),
+                    WorkspaceEvidenceConfidenceLevel.Confirmed,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: true)));
+        }
+
+        return zones
+            .OrderBy(static zone => TopologyZoneRank(zone.Role))
+            .ThenByDescending(static zone => zone.FileCount)
+            .ThenBy(static zone => zone.Root, StringComparer.OrdinalIgnoreCase)
+            .Take(32);
+    }
+
+    private static string ClassifyTopologyZoneRole(
+        string root,
+        IReadOnlyList<WorkspaceEvidenceFileIndexItem> items,
+        WorkspaceEvidenceCandidates candidates)
+    {
+        if (items.Any(static item => item.Zone == "generated") || IsGeneratedRoot(root))
+        {
+            return "generated";
+        }
+
+        if (items.Any(static item => item.Zone == "vendor") || IsVendorRoot(root))
+        {
+            return "vendor";
+        }
+
+        if (IsReleaseOutputRoot(root))
+        {
+            return "release-output";
+        }
+
+        if (items.Any(static item => item.Zone == "binary") && !items.Any(IsSourceOrBuildIndexItem))
+        {
+            return "runtime-payload";
+        }
+
+        if (candidates.ProjectUnits.Any(unit => string.Equals(unit.RootPath, root, StringComparison.OrdinalIgnoreCase)) ||
+            items.Any(IsSourceOrBuildIndexItem))
+        {
+            return "active-source";
+        }
+
+        if (items.All(static item => item.Zone == "document" || item.Zone == "material"))
+        {
+            return "documentation";
+        }
+
+        if (items.Any(static item => item.Zone == "asset"))
+        {
+            return "asset-payload";
+        }
+
+        return "context";
+    }
+
+    private static IReadOnlyList<string> BuildTopologyZoneEvidence(
+        string root,
+        string role,
+        IReadOnlyList<WorkspaceEvidenceFileIndexItem> items,
+        WorkspaceEvidenceCandidates candidates)
+    {
+        var evidence = new List<string>
+        {
+            $"topology_zone:{role}",
+            $"file_count:{items.Count}"
+        };
+        foreach (var zone in items.Select(static item => item.Zone).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(static zone => zone, StringComparer.OrdinalIgnoreCase).Take(4))
+        {
+            evidence.Add($"file_zone:{zone}");
+        }
+
+        var matchingUnit = candidates.ProjectUnits.FirstOrDefault(unit => string.Equals(unit.RootPath, root, StringComparison.OrdinalIgnoreCase));
+        if (matchingUnit is not null)
+        {
+            evidence.Add($"project_unit:{matchingUnit.Id}");
+        }
+
+        if (IsReleaseOutputRoot(root))
+        {
+            evidence.Add("release_output_root_name");
+        }
+
+        if (IsVendorRoot(root))
+        {
+            evidence.Add("vendor_root_name");
+        }
+
+        if (IsGeneratedRoot(root))
+        {
+            evidence.Add("generated_root_name");
+        }
+
+        return evidence.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static IReadOnlyList<string> BuildLikelyActiveSourceRoots(
+        WorkspaceScanResult scanResult,
+        WorkspaceEvidenceCandidates candidates,
+        IReadOnlyList<WorkspaceEvidenceTopologyZone> zones)
+    {
+        var roots = candidates.ProjectUnits
+            .Where(static unit => unit.Confidence != WorkspaceEvidenceConfidenceLevel.Unknown)
+            .Where(static unit => !IsVendorRoot(unit.RootPath) && !IsGeneratedRoot(unit.RootPath) && !IsReleaseOutputRoot(unit.RootPath))
+            .Select(static unit => unit.RootPath)
+            .Concat(scanResult.State.Summary.SourceRoots.Where(root => zones.Any(zone =>
+                string.Equals(zone.Root, root, StringComparison.OrdinalIgnoreCase) &&
+                zone.Role == "active-source")))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static root => root == "." ? 0 : 1)
+            .ThenBy(static root => root, StringComparer.OrdinalIgnoreCase)
+            .Take(12)
+            .ToArray();
+
+        var hasNestedActiveSourceRoot = roots.Any(static root => root != ".");
+        var rootZoneHasDirectSource = zones.Any(static zone =>
+            zone.Root == "." &&
+            zone.Evidence.Any(static evidence => string.Equals(evidence, "file_zone:source", StringComparison.OrdinalIgnoreCase)));
+        if (hasNestedActiveSourceRoot && !rootZoneHasDirectSource)
+        {
+            roots = roots
+                .Where(static root => root != ".")
+                .ToArray();
+        }
+
+        return roots;
+    }
+
+    private static IEnumerable<string> BuildTopologyUncertaintyReasons(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceTopologyZone> zones,
+        IReadOnlyList<string> activeSourceRoots)
+    {
+        foreach (var anomaly in scanResult.State.StructuralAnomalies)
+        {
+            yield return $"{anomaly.Code}: {anomaly.Message}";
+        }
+
+        if (activeSourceRoots.Count == 0 && scanResult.State.Summary.SourceFileCount > 0)
+        {
+            yield return "SOURCE_WITHOUT_ACTIVE_UNIT: source files are present, but no active project unit was confirmed.";
+        }
+
+        if (activeSourceRoots.Count > 1)
+        {
+            yield return $"MULTIPLE_ACTIVE_SOURCE_ROOTS: {string.Join(", ", activeSourceRoots)}";
+        }
+
+        if (zones.Any(static zone => zone.Role == "release-output") && activeSourceRoots.Count > 0)
+        {
+            yield return "SOURCE_AND_RELEASE_OUTPUT: active source and release/output zones coexist.";
+        }
+
+        if (scanResult.BudgetReport?.IsPartial == true)
+        {
+            yield return "PARTIAL_SCAN: topology may be incomplete because scanner budget was exhausted or files were skipped.";
+        }
+    }
+
+    private static string ClassifyTopologyKind(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceFileIndexItem> fileIndex,
+        IReadOnlyList<WorkspaceEvidenceTopologyZone> zones,
+        WorkspaceEvidenceCandidates candidates,
+        IReadOnlyList<WorkspaceEvidenceSignal> signals,
+        IReadOnlyList<WorkspaceEvidencePattern> patterns,
+        IReadOnlyList<string> activeSourceRoots)
+    {
+        if (scanResult.State.ImportKind == WorkspaceImportKind.Empty)
+        {
+            return "Empty";
+        }
+
+        if (scanResult.State.StructuralAnomalies.Any(static anomaly => anomaly.Code == "NESTED_GIT_PROJECTS") ||
+            (candidates.ProjectUnits.Count(unit => unit.RootPath != ".") >= 2 && !candidates.ProjectUnits.Any(static unit => unit.RootPath == ".")))
+        {
+            return "Container";
+        }
+
+        var hasLowLevelSource = fileIndex.Any(static item =>
+            string.Equals(item.Extension, ".asm", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.Extension, ".s", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.Extension, ".inc", StringComparison.OrdinalIgnoreCase));
+        var hasReversePathZone = zones.Any(static zone =>
+            zone.Root.Contains("decomp", StringComparison.OrdinalIgnoreCase) ||
+            zone.Root.Contains("disasm", StringComparison.OrdinalIgnoreCase));
+        if ((signals.Any(static signal => signal.Category == "origin" && signal.Code == "reverse") && hasLowLevelSource) ||
+            hasReversePathZone)
+        {
+            return "Decompilation";
+        }
+
+        if (hasLowLevelSource)
+        {
+            return "Legacy";
+        }
+
+        if (activeSourceRoots.Count == 0 &&
+            zones.Any(static zone => zone.Role is "release-output" or "runtime-payload") &&
+            !zones.Any(static zone => zone.Role == "active-source"))
+        {
+            return "ReleaseBundle";
+        }
+
+        if (scanResult.State.ImportKind == WorkspaceImportKind.NonSourceImport ||
+            (scanResult.State.Summary.SourceFileCount == 0 &&
+             !zones.Any(static zone => zone.Role == "active-source")))
+        {
+            return "MaterialOnly";
+        }
+
+        if (activeSourceRoots.Count > 1)
+        {
+            return "Ambiguous";
+        }
+
+        if (scanResult.State.ImportKind == WorkspaceImportKind.MixedImport ||
+            zones.Count(static zone => zone.Role is "release-output" or "runtime-payload" or "asset-payload") > 0)
+        {
+            return "Mixed";
+        }
+
+        return "SingleProject";
+    }
+
+    private static string RecommendSafeImportMode(
+        string topologyKind,
+        IReadOnlyList<WorkspaceEvidenceTopologyZone> zones,
+        IReadOnlyList<string> uncertaintyReasons)
+    {
+        return topologyKind switch
+        {
+            "Container" => "container-review: require user-selected active root before treating one project as primary",
+            "Ambiguous" => "ambiguous-review: keep competing roots visible and avoid single-main claims",
+            "Decompilation" => "decompilation-safe-import: preserve source/assets/tooling zones and avoid normal app assumptions",
+            "Legacy" => "legacy-low-level-source-review: preserve low-level source/tooling zones and avoid normal app assumptions",
+            "ReleaseBundle" => "release-bundle-review: treat binaries/dist payloads as materials unless source is selected",
+            "MaterialOnly" => "material-only-review: treat documents/context as materials, not as source project truth",
+            "Mixed" when zones.Any(static zone => zone.Role == "release-output") => "mixed-source-release: keep active source and release/output zones separated",
+            "Mixed" => "mixed-safe-import: keep source, payload, and context zones separated",
+            "Empty" => "no-import: no relevant evidence found",
+            _ when uncertaintyReasons.Count > 0 => "standard-source-import-with-uncertainty",
+            _ => "standard-source-import"
+        };
+    }
+
+    private static string TopologyRoot(string relativePath)
+    {
+        var normalized = relativePath.Replace('/', '\\').Trim('\\');
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return ".";
+        }
+
+        var separatorIndex = normalized.IndexOf('\\');
+        return separatorIndex < 0 ? "." : normalized[..separatorIndex];
+    }
+
+    private static bool IsSourceOrBuildIndexItem(WorkspaceEvidenceFileIndexItem item)
+    {
+        return item.Zone is "source" or "build";
+    }
+
+    private static bool IsReleaseOutputRoot(string root)
+    {
+        var normalized = root.Replace('/', '\\').Trim('\\');
+        return normalized.Equals("dist", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("dist-module", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("build", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("out", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("release", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("releases", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("publish", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("target", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsVendorRoot(string root)
+    {
+        var normalized = root.Replace('/', '\\').Trim('\\');
+        return normalized.Equals("vendor", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("third_party", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("vendor\\", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("third_party\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGeneratedRoot(string root)
+    {
+        var normalized = root.Replace('/', '\\').Trim('\\');
+        return normalized.Equals("generated", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("gen", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("autogen", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("codegen", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("generated\\", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("autogen\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int TopologyZoneRank(string role)
+    {
+        return role switch
+        {
+            "active-source" => 0,
+            "release-output" => 1,
+            "runtime-payload" => 2,
+            "generated" => 3,
+            "vendor" => 4,
+            "ignored-noise" => 5,
+            "asset-payload" => 6,
+            "documentation" => 7,
+            _ => 8
+        };
     }
 
     private static WorkspaceScanRun BuildScanRun(WorkspaceScanResult scanResult)
@@ -455,10 +878,11 @@ public static class WorkspaceEvidencePackBuilder
         AddPatternIf(
             relevantFiles.Any(static path =>
                 path.EndsWith(".asm", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".s", StringComparison.OrdinalIgnoreCase) ||
                 path.Contains("\\dbg\\", StringComparison.OrdinalIgnoreCase) ||
                 path.Contains("\\analysis\\", StringComparison.OrdinalIgnoreCase) ||
                 path.Contains("disasm", StringComparison.OrdinalIgnoreCase)) ||
-            CountMatchingMarkers(combinedText, "debugger", "breakpoint", "opcode", "disassembly", "hook", "memory") >= 3,
+            CountMatchingMarkers(combinedText, "debugger", "breakpoint", "opcode", "disassembly", "decompilation", "decompiled", "hook", "memory") >= 3,
             patterns,
             "analysis_tooling_pattern",
             "Analysis/debug tooling markers are visible in bounded structural evidence.",
@@ -548,8 +972,18 @@ public static class WorkspaceEvidencePackBuilder
     private static WorkspaceEvidenceEntryPoint[] BuildEntryPoints(WorkspaceScanResult scanResult)
     {
         var cargoDefaultMembers = BuildCargoDefaultMemberRoots(scanResult);
-        return scanResult.State.Summary.EntryCandidates
-            .Select(path => BuildEntryPoint(scanResult, path, cargoDefaultMembers))
+        var manifestHints = BuildManifestEntryHints(scanResult)
+            .GroupBy(static hint => hint.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var candidatePaths = scanResult.State.Summary.EntryCandidates
+            .Concat(manifestHints.Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        return candidatePaths
+            .Select(path => BuildEntryPoint(
+                scanResult,
+                path,
+                cargoDefaultMembers,
+                manifestHints.TryGetValue(path, out var hints) ? hints : Array.Empty<ManifestEntryHint>()))
             .OrderByDescending(static entry => entry.Score)
             .ThenBy(static entry => entry.RelativePath.Count(static ch => ch == '\\' || ch == '/'))
             .ThenBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
@@ -559,12 +993,23 @@ public static class WorkspaceEvidencePackBuilder
     private static WorkspaceEvidenceEntryPoint BuildEntryPoint(
         WorkspaceScanResult scanResult,
         string relativePath,
-        IReadOnlyCollection<string> cargoDefaultMembers)
+        IReadOnlyCollection<string> cargoDefaultMembers,
+        IReadOnlyList<ManifestEntryHint> manifestHints)
     {
-        var role = ClassifyEntryRole(relativePath);
-        var evidence = BuildEntryEvidence(scanResult, relativePath, role, cargoDefaultMembers);
+        var classifiedRole = ClassifyEntryRole(relativePath);
+        var role = !string.Equals(classifiedRole, "entry", StringComparison.OrdinalIgnoreCase) || manifestHints.Count == 0
+            ? classifiedRole
+            : manifestHints
+                .Select(static hint => hint.Role)
+                .FirstOrDefault(static hintRole => !string.IsNullOrWhiteSpace(hintRole)) ?? classifiedRole;
+        var evidence = BuildEntryEvidence(scanResult, relativePath, role, cargoDefaultMembers)
+            .Concat(manifestHints.SelectMany(static hint => hint.Evidence))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static item => item, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var score = ScoreEntryCandidate(relativePath, role, evidence);
         var confidence = evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase)
+            || manifestHints.Any(static hint => hint.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed)
             ? WorkspaceEvidenceConfidenceLevel.Confirmed
             : WorkspaceEvidenceConfidenceLevel.Likely;
         return new WorkspaceEvidenceEntryPoint(
@@ -646,6 +1091,29 @@ public static class WorkspaceEvidencePackBuilder
                     isBounded: false)));
         }
 
+        foreach (var pythonPackageRoot in BuildPythonPackageRoots(scanResult).Take(8))
+        {
+            var name = NormalizeModuleName(Path.GetFileName(pythonPackageRoot));
+            if (string.IsNullOrWhiteSpace(name) ||
+                candidates.Any(candidate => string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            candidates.Add(new WorkspaceEvidenceModule(
+                name,
+                "python-package",
+                InferLayerNameForModule(pythonPackageRoot, observedLayers),
+                $"Observed Python package root '{pythonPackageRoot}' via __init__.py.",
+                EvidenceMarker(
+                    "module_candidate",
+                    pythonPackageRoot,
+                    $"Observed Python package root '{pythonPackageRoot}' via __init__.py.",
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
+        }
+
         foreach (var entryPoint in entryPoints.Take(6))
         {
             var name = NormalizeModuleName(Path.GetFileNameWithoutExtension(entryPoint.RelativePath));
@@ -698,7 +1166,8 @@ public static class WorkspaceEvidencePackBuilder
 
         public WorkspaceEvidenceProjectUnit ToProjectUnit()
         {
-            var confidence = Manifests.Count > 0 && EntryPoints.Count > 0
+            var confidence = Manifests.Count > 0 &&
+                             Evidence.Contains("confirmed_entry_overlap", StringComparer.OrdinalIgnoreCase)
                 ? WorkspaceEvidenceConfidenceLevel.Confirmed
                 : WorkspaceEvidenceConfidenceLevel.Likely;
             var id = RootPath == "." ? "unit-root" : $"unit-{SanitizeUnitId(RootPath)}";
@@ -720,6 +1189,12 @@ public static class WorkspaceEvidencePackBuilder
                     isBounded: false));
         }
     }
+
+    private sealed record ManifestEntryHint(
+        string RelativePath,
+        string Role,
+        WorkspaceEvidenceConfidenceLevel Confidence,
+        IReadOnlyList<string> Evidence);
 
     private static void AddCargoRunProfiles(
         ICollection<WorkspaceEvidenceRunProfile> profiles,
@@ -786,6 +1261,39 @@ public static class WorkspaceEvidencePackBuilder
         catch (UnauthorizedAccessException)
         {
             return;
+        }
+    }
+
+    private static void AddPythonRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        string workspaceRoot,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var fullPath = Path.Combine(workspaceRoot, manifest);
+        var fileName = Path.GetFileName(manifest);
+        foreach (var script in ExtractPythonConsoleScripts(workspaceRoot, manifest))
+        {
+            AddRunProfile(
+                profiles,
+                unit,
+                "run",
+                script.Name,
+                manifest,
+                WorkspaceEvidenceConfidenceLevel.Confirmed,
+                UnitProfileEvidence(unit, manifest).Concat(new[] { $"python_console_script:{script.Name}", $"python_target:{script.Target}" }).ToArray());
+        }
+
+        if (File.Exists(fullPath) && ManifestHasPytestConfig(fullPath, fileName))
+        {
+            AddRunProfile(
+                profiles,
+                unit,
+                "test",
+                "pytest",
+                manifest,
+                WorkspaceEvidenceConfidenceLevel.Confirmed,
+                UnitProfileEvidence(unit, manifest).Concat(new[] { "pytest_config" }).ToArray());
         }
     }
 
@@ -1537,6 +2045,8 @@ public static class WorkspaceEvidencePackBuilder
             "Cargo.toml" => "rust-cargo",
             "package.json" => "node-package",
             "pyproject.toml" => "python-project",
+            "setup.cfg" => "python-project",
+            "setup.py" => "python-project",
             "go.mod" => "go-module",
             "CMakeLists.txt" => "cmake-project",
             _ when extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) => "dotnet-project",
@@ -1572,6 +2082,22 @@ public static class WorkspaceEvidencePackBuilder
         draft.IsPartial = isPartial;
         unitsByRoot[rootPath] = draft;
         return draft;
+    }
+
+    private static IReadOnlyList<string> BuildPythonPackageRoots(WorkspaceScanResult scanResult)
+    {
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        return scanResult.RelevantFiles
+            .Select(path => Path.GetRelativePath(workspaceRoot, path).Replace('/', '\\'))
+            .Where(static path => path.EndsWith("__init__.py", StringComparison.OrdinalIgnoreCase))
+            .Select(static path => Path.GetDirectoryName(path)?.Replace('/', '\\') ?? string.Empty)
+            .Where(static path => !string.IsNullOrWhiteSpace(path))
+            .Where(static path => !ContainsAny(path, "\\tests\\", "\\test\\", "\\examples\\", "\\samples\\", "\\vendor\\", "\\third_party\\"))
+            .Where(static path => !StartsWithAnyRootSegment(path, "tests", "test", "examples", "samples", "vendor", "third_party"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static path => path.Count(static ch => ch is '\\' or '/'))
+            .ThenBy(static path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static string ClassifyUnitZone(string rootPath)
@@ -2140,8 +2666,8 @@ public static class WorkspaceEvidencePackBuilder
             yield return "modding";
         }
 
-        if (ContainsAny(joinedPaths, "reverse", "disasm", "\\dbg\\", "\\analysis\\") ||
-            CountMatchingMarkers(combinedText, "debugger", "breakpoint", "opcode", "disassembly", "memory", "emulator", "assembler") >= 3)
+        if (ContainsAny(joinedPaths, "\\reverse\\", "\\reversing\\", "\\disasm\\", "\\disassembly\\", "\\dbg\\", "\\analysis\\") ||
+            CountMatchingMarkers(combinedText, "debugger", "breakpoint", "opcode", "disassembly", "decompilation", "decompiled", "memory", "emulator", "assembler") >= 3)
         {
             yield return "reverse";
         }
@@ -2254,6 +2780,528 @@ public static class WorkspaceEvidencePackBuilder
             .ToArray();
     }
 
+    private static IReadOnlyList<ManifestEntryHint> BuildManifestEntryHints(WorkspaceScanResult scanResult)
+    {
+        var hints = new List<ManifestEntryHint>();
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        var relevant = scanResult.RelevantFiles
+            .Select(path => Path.GetRelativePath(workspaceRoot, path).Replace('/', '\\'))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in scanResult.RelevantFiles)
+        {
+            var relativePath = Path.GetRelativePath(workspaceRoot, file).Replace('/', '\\');
+            var fileName = Path.GetFileName(relativePath);
+            if (string.Equals(fileName, "package.json", StringComparison.OrdinalIgnoreCase))
+            {
+                hints.AddRange(BuildPackageJsonEntryHints(workspaceRoot, relativePath, relevant));
+            }
+            else if (IsPythonManifest(fileName))
+            {
+                hints.AddRange(BuildPythonManifestEntryHints(workspaceRoot, relativePath, relevant));
+            }
+        }
+
+        return hints
+            .GroupBy(static hint => $"{hint.RelativePath}|{hint.Role}|{string.Join("|", hint.Evidence)}", StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .ToArray();
+    }
+
+    private static IEnumerable<ManifestEntryHint> BuildPackageJsonEntryHints(
+        string workspaceRoot,
+        string manifest,
+        IReadOnlySet<string> relevant)
+    {
+        var fullPath = Path.Combine(workspaceRoot, manifest);
+        if (!File.Exists(fullPath))
+        {
+            yield break;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(File.ReadAllText(fullPath, Encoding.UTF8));
+        }
+        catch (JsonException)
+        {
+            yield break;
+        }
+        catch (IOException)
+        {
+            yield break;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        using (document)
+        {
+            if (document.RootElement.TryGetProperty("bin", out var bin))
+            {
+                foreach (var value in ExtractPackageJsonPathValues(bin))
+                {
+                    if (TryResolveManifestReferencedPath(workspaceRoot, manifest, value, relevant, out var entryPath))
+                    {
+                        yield return new ManifestEntryHint(
+                            entryPath,
+                            "cli",
+                            WorkspaceEvidenceConfidenceLevel.Confirmed,
+                            new[] { $"manifest:{manifest}", "package_bin", $"package_bin_path:{value}" });
+                    }
+                }
+            }
+
+            foreach (var property in new[] { "main", "module" })
+            {
+                if (document.RootElement.TryGetProperty(property, out var element) &&
+                    element.ValueKind == JsonValueKind.String &&
+                    TryResolveManifestReferencedPath(workspaceRoot, manifest, element.GetString(), relevant, out var entryPath))
+                {
+                    yield return new ManifestEntryHint(
+                        entryPath,
+                        "package-surface",
+                        WorkspaceEvidenceConfidenceLevel.Likely,
+                        new[] { $"manifest:{manifest}", $"package_{property}_hint", $"package_{property}_path:{element.GetString()}" });
+                }
+            }
+
+            if (document.RootElement.TryGetProperty("exports", out var exports))
+            {
+                foreach (var value in ExtractPackageJsonPathValues(exports))
+                {
+                    if (TryResolveManifestReferencedPath(workspaceRoot, manifest, value, relevant, out var entryPath))
+                    {
+                        yield return new ManifestEntryHint(
+                            entryPath,
+                            "package-surface",
+                            WorkspaceEvidenceConfidenceLevel.Likely,
+                            new[] { $"manifest:{manifest}", "package_exports_hint", $"package_exports_path:{value}" });
+                    }
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> ExtractPackageJsonPathValues(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var value = element.GetString();
+            if (LooksLikeManifestPath(value))
+            {
+                yield return value!;
+            }
+
+            yield break;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            yield break;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            foreach (var value in ExtractPackageJsonPathValues(property.Value))
+            {
+                yield return value;
+            }
+        }
+    }
+
+    private static IEnumerable<ManifestEntryHint> BuildPythonManifestEntryHints(
+        string workspaceRoot,
+        string manifest,
+        IReadOnlySet<string> relevant)
+    {
+        foreach (var script in ExtractPythonConsoleScripts(workspaceRoot, manifest))
+        {
+            if (TryResolvePythonTargetPath(workspaceRoot, manifest, script.Target, relevant, out var entryPath))
+            {
+                yield return new ManifestEntryHint(
+                    entryPath,
+                    "cli",
+                    WorkspaceEvidenceConfidenceLevel.Confirmed,
+                    new[] { $"manifest:{manifest}", $"python_console_script:{script.Name}", $"python_target:{script.Target}" });
+            }
+        }
+    }
+
+    private static void AddManifestUnitEvidence(string workspaceRoot, string manifest, ISet<string> evidence)
+    {
+        var fullPath = Path.Combine(workspaceRoot, manifest);
+        if (!File.Exists(fullPath))
+        {
+            return;
+        }
+
+        var fileName = Path.GetFileName(manifest);
+        if (string.Equals(fileName, "package.json", StringComparison.OrdinalIgnoreCase))
+        {
+            AddPackageJsonUnitEvidence(fullPath, evidence);
+        }
+        else if (IsPythonManifest(fileName))
+        {
+            foreach (var script in ExtractPythonConsoleScripts(workspaceRoot, manifest).Take(12))
+            {
+                evidence.Add($"python_console_script:{script.Name}");
+            }
+
+            if (ManifestHasPytestConfig(fullPath, fileName))
+            {
+                evidence.Add("pytest_config");
+            }
+        }
+    }
+
+    private static void AddPackageJsonUnitEvidence(string fullPath, ISet<string> evidence)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(fullPath, Encoding.UTF8));
+            if (document.RootElement.TryGetProperty("scripts", out var scripts) &&
+                scripts.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var script in scripts.EnumerateObject())
+                {
+                    var kind = ClassifyPackageScript(script.Name);
+                    if (!string.IsNullOrWhiteSpace(kind))
+                    {
+                        evidence.Add($"package_script:{script.Name}");
+                    }
+                }
+            }
+
+            foreach (var property in new[] { "main", "module", "exports", "bin" })
+            {
+                if (document.RootElement.TryGetProperty(property, out _))
+                {
+                    evidence.Add($"package_{property}_hint");
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+        catch (IOException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+    }
+
+    private static bool LooksLikeManifestPath(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.StartsWith(".", StringComparison.Ordinal) ||
+               trimmed.StartsWith("/", StringComparison.Ordinal) ||
+               trimmed.Contains('/', StringComparison.Ordinal) ||
+               trimmed.Contains('\\', StringComparison.Ordinal);
+    }
+
+    private static bool TryResolveManifestReferencedPath(
+        string workspaceRoot,
+        string manifest,
+        string? reference,
+        IReadOnlySet<string> relevant,
+        out string relativePath)
+    {
+        relativePath = string.Empty;
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            return false;
+        }
+
+        var trimmed = reference.Trim().Trim('"', '\'');
+        if (trimmed.Length == 0 || trimmed == ".")
+        {
+            return false;
+        }
+
+        trimmed = trimmed.TrimStart('.', '/', '\\');
+        var manifestRoot = Path.GetDirectoryName(manifest)?.Replace('/', '\\') ?? string.Empty;
+        var candidates = new List<string>();
+        AddManifestPathCandidate(candidates, manifestRoot, trimmed);
+        if (Path.GetExtension(trimmed).Length == 0)
+        {
+            foreach (var extension in new[] { ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".py" })
+            {
+                AddManifestPathCandidate(candidates, manifestRoot, trimmed + extension);
+            }
+
+            foreach (var extension in new[] { ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx" })
+            {
+                AddManifestPathCandidate(candidates, manifestRoot, Path.Combine(trimmed, "index" + extension));
+            }
+        }
+
+        foreach (var candidate in candidates)
+        {
+            if (relevant.Contains(candidate))
+            {
+                relativePath = candidate;
+                return true;
+            }
+
+            var fullPath = Path.Combine(workspaceRoot, candidate);
+            if (File.Exists(fullPath))
+            {
+                relativePath = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AddManifestPathCandidate(ICollection<string> candidates, string manifestRoot, string reference)
+    {
+        var normalized = reference.Replace('/', '\\').Trim('\\');
+        var candidate = string.IsNullOrWhiteSpace(manifestRoot) || manifestRoot == "."
+            ? normalized
+            : Path.Combine(manifestRoot, normalized).Replace('/', '\\');
+        if (!string.IsNullOrWhiteSpace(candidate))
+        {
+            candidates.Add(candidate);
+        }
+    }
+
+    private static IReadOnlyList<(string Name, string Target)> ExtractPythonConsoleScripts(string workspaceRoot, string manifest)
+    {
+        var fullPath = Path.Combine(workspaceRoot, manifest);
+        if (!File.Exists(fullPath))
+        {
+            return Array.Empty<(string Name, string Target)>();
+        }
+
+        var fileName = Path.GetFileName(manifest);
+        var lines = ReadBoundedLines(fullPath, 240).ToArray();
+        if (string.Equals(fileName, "pyproject.toml", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExtractPyprojectScripts(lines);
+        }
+
+        if (string.Equals(fileName, "setup.cfg", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExtractSetupCfgConsoleScripts(lines);
+        }
+
+        if (string.Equals(fileName, "setup.py", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExtractSetupPyConsoleScripts(lines);
+        }
+
+        return Array.Empty<(string Name, string Target)>();
+    }
+
+    private static IReadOnlyList<(string Name, string Target)> ExtractPyprojectScripts(IEnumerable<string> lines)
+    {
+        var scripts = new List<(string Name, string Target)>();
+        var inProjectScripts = false;
+        foreach (var rawLine in lines)
+        {
+            var line = StripInlineComment(rawLine).Trim();
+            if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
+            {
+                inProjectScripts = string.Equals(line, "[project.scripts]", StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+
+            if (inProjectScripts && TryParseNameValue(line, out var name, out var target) && target.Contains(':', StringComparison.Ordinal))
+            {
+                scripts.Add((name, target));
+            }
+        }
+
+        return scripts
+            .DistinctBy(static script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<(string Name, string Target)> ExtractSetupCfgConsoleScripts(IEnumerable<string> lines)
+    {
+        var scripts = new List<(string Name, string Target)>();
+        var inEntryPoints = false;
+        var inConsoleScripts = false;
+        foreach (var rawLine in lines)
+        {
+            var line = StripInlineComment(rawLine).Trim();
+            if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
+            {
+                inEntryPoints = string.Equals(line, "[options.entry_points]", StringComparison.OrdinalIgnoreCase);
+                inConsoleScripts = false;
+                continue;
+            }
+
+            if (!inEntryPoints)
+            {
+                continue;
+            }
+
+            if (line.StartsWith("console_scripts", StringComparison.OrdinalIgnoreCase))
+            {
+                inConsoleScripts = true;
+                if (line.Contains('=', StringComparison.Ordinal) &&
+                    TryParseNameValue(line, out var name, out var target) &&
+                    !string.Equals(name, "console_scripts", StringComparison.OrdinalIgnoreCase) &&
+                    target.Contains(':', StringComparison.Ordinal))
+                {
+                    scripts.Add((name, target));
+                }
+
+                continue;
+            }
+
+            if (inConsoleScripts && TryParseNameValue(line, out var scriptName, out var scriptTarget) && scriptTarget.Contains(':', StringComparison.Ordinal))
+            {
+                scripts.Add((scriptName, scriptTarget));
+            }
+        }
+
+        return scripts
+            .DistinctBy(static script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<(string Name, string Target)> ExtractSetupPyConsoleScripts(IEnumerable<string> lines)
+    {
+        var scripts = new List<(string Name, string Target)>();
+        var text = string.Join("\n", lines);
+        if (!text.Contains("console_scripts", StringComparison.OrdinalIgnoreCase))
+        {
+            return scripts;
+        }
+
+        foreach (var value in ExtractQuotedStrings(text))
+        {
+            if (TryParseNameValue(value, out var name, out var target) && target.Contains(':', StringComparison.Ordinal))
+            {
+                scripts.Add((name, target));
+            }
+        }
+
+        return scripts
+            .DistinctBy(static script => script.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IEnumerable<string> ExtractQuotedStrings(string text)
+    {
+        for (var index = 0; index < text.Length; index++)
+        {
+            var quote = text[index];
+            if (quote is not ('"' or '\''))
+            {
+                continue;
+            }
+
+            var start = index + 1;
+            var end = text.IndexOf(quote, start);
+            if (end <= start)
+            {
+                continue;
+            }
+
+            yield return text[start..end];
+            index = end;
+        }
+    }
+
+    private static bool TryParseNameValue(string line, out string name, out string value)
+    {
+        name = string.Empty;
+        value = string.Empty;
+        var separatorIndex = line.IndexOf('=', StringComparison.Ordinal);
+        if (separatorIndex <= 0 || separatorIndex >= line.Length - 1)
+        {
+            return false;
+        }
+
+        name = line[..separatorIndex].Trim().Trim('"', '\'');
+        value = line[(separatorIndex + 1)..].Trim().Trim(',', '"', '\'');
+        return !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static string StripInlineComment(string line)
+    {
+        var commentIndex = line.IndexOf('#', StringComparison.Ordinal);
+        return commentIndex >= 0 ? line[..commentIndex] : line;
+    }
+
+    private static bool TryResolvePythonTargetPath(
+        string workspaceRoot,
+        string manifest,
+        string target,
+        IReadOnlySet<string> relevant,
+        out string relativePath)
+    {
+        relativePath = string.Empty;
+        var module = target.Split(':', 2)[0].Trim();
+        if (string.IsNullOrWhiteSpace(module))
+        {
+            return false;
+        }
+
+        var modulePath = module.Replace('.', '\\');
+        var manifestRoot = Path.GetDirectoryName(manifest)?.Replace('/', '\\') ?? string.Empty;
+        var candidates = new List<string>();
+        AddManifestPathCandidate(candidates, manifestRoot, modulePath + ".py");
+        AddManifestPathCandidate(candidates, manifestRoot, Path.Combine(modulePath, "__init__.py"));
+        AddManifestPathCandidate(candidates, manifestRoot, Path.Combine("src", modulePath + ".py"));
+        AddManifestPathCandidate(candidates, manifestRoot, Path.Combine("src", modulePath, "__init__.py"));
+
+        foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (relevant.Contains(candidate))
+            {
+                relativePath = candidate;
+                return true;
+            }
+
+            if (File.Exists(Path.Combine(workspaceRoot, candidate)))
+            {
+                relativePath = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ManifestHasPytestConfig(string fullPath, string fileName)
+    {
+        var lines = ReadBoundedLines(fullPath, 240).Select(static line => line.Trim()).ToArray();
+        if (string.Equals(fileName, "pyproject.toml", StringComparison.OrdinalIgnoreCase))
+        {
+            return lines.Any(static line => line.Equals("[tool.pytest.ini_options]", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (string.Equals(fileName, "setup.cfg", StringComparison.OrdinalIgnoreCase))
+        {
+            return lines.Any(static line => line.Equals("[tool:pytest]", StringComparison.OrdinalIgnoreCase) ||
+                                            line.Equals("[pytest]", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (string.Equals(fileName, "setup.py", StringComparison.OrdinalIgnoreCase))
+        {
+            return lines.Any(static line => line.Contains("pytest", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
+    }
+
     private static IReadOnlyList<string> BuildEntryEvidence(
         WorkspaceScanResult scanResult,
         string relativePath,
@@ -2303,6 +3351,17 @@ public static class WorkspaceEvidencePackBuilder
         if (evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase))
         {
             score += 50;
+        }
+
+        if (evidence.Any(static item => item.StartsWith("package_bin", StringComparison.OrdinalIgnoreCase) ||
+                                        item.StartsWith("python_console_script:", StringComparison.OrdinalIgnoreCase)))
+        {
+            score += 50;
+        }
+
+        if (evidence.Any(static item => item is "package_main_hint" or "package_module_hint" or "package_exports_hint"))
+        {
+            score += 10;
         }
 
         if (string.Equals(Path.GetFileNameWithoutExtension(normalized), "main", StringComparison.OrdinalIgnoreCase) ||
@@ -3162,8 +4221,17 @@ public static class WorkspaceEvidencePackBuilder
                string.Equals(fileName, "CMakeLists.txt", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "requirements.txt", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "pyproject.toml", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.cfg", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.py", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "Cargo.toml", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "go.mod", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPythonManifest(string fileName)
+    {
+        return string.Equals(fileName, "pyproject.toml", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.cfg", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.py", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<string> ReadBoundedLines(string path, int maxLines)
@@ -3838,6 +4906,9 @@ public static class WorkspaceEvidencePackBuilder
                string.Equals(fileName, "Cargo.toml", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "go.mod", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "package.json", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "pyproject.toml", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.cfg", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "setup.py", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "Dockerfile", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(fileName, "Makefile", StringComparison.OrdinalIgnoreCase) ||
                fileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) ||

@@ -122,6 +122,18 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence pack maps project units honestly", WorkspaceEvidencePackMapsProjectUnitsHonestly),
     ("Workspace evidence pack applies scanner config unit overrides honestly", WorkspaceEvidencePackAppliesScannerConfigUnitOverridesHonestly),
     ("Workspace evidence pack maps run profiles honestly", WorkspaceEvidencePackMapsRunProfilesHonestly),
+    ("Workspace evidence pack detects package json entry and run profiles honestly", WorkspaceEvidencePackDetectsPackageJsonEntryAndRunProfilesHonestly),
+    ("Workspace evidence pack detects python pyproject entries honestly", WorkspaceEvidencePackDetectsPythonPyprojectEntriesHonestly),
+    ("Workspace evidence pack does not promote readme narrative to entrypoint honestly", WorkspaceEvidencePackDoesNotPromoteReadmeNarrativeToEntrypointHonestly),
+    ("Workspace evidence pack classifies source plus release topology honestly", WorkspaceEvidencePackClassifiesSourcePlusReleaseTopologyHonestly),
+    ("Workspace evidence pack does not split root manifest from conventional source root honestly", WorkspaceEvidencePackDoesNotSplitRootManifestFromConventionalSourceRootHonestly),
+    ("Workspace evidence pack classifies material only topology honestly", WorkspaceEvidencePackClassifiesMaterialOnlyTopologyHonestly),
+    ("Workspace evidence pack keeps ignored dist visible as release output honestly", WorkspaceEvidencePackKeepsIgnoredDistVisibleAsReleaseOutputHonestly),
+    ("Workspace evidence pack classifies low level source as legacy topology honestly", WorkspaceEvidencePackClassifiesLowLevelSourceAsLegacyTopologyHonestly),
+    ("Workspace evidence pack classifies decompilation topology honestly", WorkspaceEvidencePackClassifiesDecompilationTopologyHonestly),
+    ("Workspace evidence pack does not overclaim reverse topology from reference wording honestly", WorkspaceEvidencePackDoesNotOverclaimReverseTopologyFromReferenceWordingHonestly),
+    ("Workspace evidence pack classifies unrelated roots as container topology honestly", WorkspaceEvidencePackClassifiesUnrelatedRootsAsContainerTopologyHonestly),
+    ("Workspace evidence pack keeps container boundary stronger than nested decomp evidence honestly", WorkspaceEvidencePackKeepsContainerBoundaryStrongerThanNestedDecompEvidenceHonestly),
     ("Workspace evidence pack requires repeated structural support for runtime and platforms honestly", WorkspaceEvidencePackRequiresRepeatedStructuralSupportForRuntimeAndPlatformsHonestly),
     ("Workspace evidence pack keeps behavior and origin bounded on noisy mixed repo honestly", WorkspaceEvidencePackKeepsBehaviorAndOriginBoundedOnNoisyMixedRepoHonestly),
     ("Workspace evidence pack keeps service runtime bounded for test server roots honestly", WorkspaceEvidencePackKeepsServiceRuntimeBoundedForTestServerRootsHonestly),
@@ -140,6 +152,10 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence pack keeps binary hints bounded honestly", WorkspaceEvidencePackKeepsBinaryHintsBoundedHonestly),
     ("Workspace evidence pack keeps technical passport options bounded honestly", WorkspaceEvidencePackKeepsTechnicalPassportOptionsBoundedHonestly),
     ("Workspace import material interpretation builds fallback confidence slices honestly", WorkspaceImportMaterialInterpretationBuildsFallbackConfidenceSlicesHonestly),
+    ("Workspace import material interpretation preserves scanner top entry honestly", WorkspaceImportMaterialInterpretationPreservesScannerTopEntryHonestly),
+    ("Workspace import material interpretation preserves scanner module confidence honestly", WorkspaceImportMaterialInterpretationPreservesScannerModuleConfidenceHonestly),
+    ("Workspace import preview labels package surface without main entry claim honestly", WorkspaceImportPreviewLabelsPackageSurfaceWithoutMainEntryClaimHonestly),
+    ("Workspace import preview suppresses unsupported extra entries beside confirmed main honestly", WorkspaceImportPreviewSuppressesUnsupportedExtraEntriesBesideConfirmedMainHonestly),
     ("Workspace import material interpretation suppresses generic modules from weak cold evidence honestly", WorkspaceImportMaterialInterpretationSuppressesGenericModulesFromWeakColdEvidenceHonestly),
     ("Workspace import material interpretation degrades unsupported broad summary honestly", WorkspaceImportMaterialInterpretationDegradesUnsupportedBroadSummaryHonestly),
     ("Workspace import material interpretation filters unsupported narrative details honestly", WorkspaceImportMaterialInterpretationFiltersUnsupportedNarrativeDetailsHonestly),
@@ -187,6 +203,7 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence artifact runtime writes preview html from canonical docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlFromCanonicalDocsHonestly),
     ("Workspace evidence artifact runtime writes preview docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly),
     ("Project document runtime writes bounded container project preview honestly", ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly),
+    ("Project document runtime preserves nonstandard topology in project preview honestly", ProjectDocumentRuntimePreservesNonstandardTopologyInProjectPreviewHonestly),
     ("Project document runtime keeps project preview identity stable on reimport honestly", ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHonestly),
     ("Project document runtime writes observed canon preview honestly", ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly),
     ("Project document runtime writes candidate direction preview honestly", ProjectDocumentRuntimeWritesCandidateDirectionPreviewHonestly),
@@ -9764,7 +9781,8 @@ static void WorkspaceImportMaterialInterpretationInfersStrongContentAnchorsHones
         var material = result.Materials.Single(item => string.Equals(item.RelativePath, documentName, StringComparison.OrdinalIgnoreCase));
 
         AssertEqual(WorkspaceMaterialContextUsefulness.High, material.PossibleUsefulness, "Content-rich architecture document should not fall to Unknown only because its file name is generic.");
-        AssertContains(material.Summary, "инвариант", "Fallback summary should reflect content-derived project signals.");
+        AssertContains(material.Summary, "Context material", "Fallback summary should stay neutral while reflecting content-derived project signals.");
+        AssertFalse(material.Summary.Contains("инвариант", StringComparison.OrdinalIgnoreCase), "Fallback summary must not claim architecture invariants from material markers.");
     }
     finally
     {
@@ -10417,13 +10435,8 @@ static void WorkspaceEvidencePackMapsProjectUnitsHonestly()
             unitList.FindIndex(unit => string.Equals(unit.RootPath, Path.Combine("tools", "helper"), StringComparison.OrdinalIgnoreCase)),
             "Library/package units should rank ahead of helper tool units when both are present.");
 
-        var packet = new WorkspaceImportMaterialPreviewPacket(
-            scan.State.WorkspaceRoot,
-            scan.State.ImportKind,
-            scan.State.Summary.SourceRoots,
-            Array.Empty<WorkspaceTechnicalPreviewInput>(),
-            Array.Empty<WorkspaceMaterialPreviewInput>(),
-            pack);
+        var basePacket = WorkspaceImportMaterialPreviewPacketBuilder.Build(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
+        var packet = basePacket with { EvidencePack = pack };
         var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(packet).UserPrompt;
         AssertContains(prompt, $"project_units: {Path.Combine("bin", "spiced")} (rust-cargo, zone=application", "Importer prompt should expose unit zone evidence for weaker model grounding.");
         AssertContains(prompt, "evidence=cargo_default_member", "Importer prompt should expose default-member evidence beside project units.");
@@ -10476,6 +10489,381 @@ static void WorkspaceEvidencePackMapsRunProfilesHonestly()
         AssertTrue(cargoRun.EvidenceMarker is not null, "Run profile should carry a structured scanner evidence marker.");
         AssertEqual("run_profile_candidate", cargoRun.EvidenceMarker!.EvidenceKind, "Run profile marker should expose evidence kind.");
         AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, cargoRun.EvidenceMarker.Confidence, "Confirmed run profile marker should come from manifest plus entrypoint overlap.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackDetectsPackageJsonEntryAndRunProfilesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """
+            {
+              "name": "demo",
+              "scripts": {
+                "dev": "vite",
+                "start": "node src/cli.js",
+                "build": "vite build",
+                "test": "vitest"
+              },
+              "main": "./src/index.js",
+              "module": "./src/index.ts",
+              "exports": {
+                ".": "./src/index.js"
+              },
+              "bin": {
+                "demo": "./src/cli.js"
+              }
+            }
+            """);
+        File.WriteAllText(Path.Combine(root, "src", "cli.js"), "console.log('cli');");
+        File.WriteAllText(Path.Combine(root, "src", "index.js"), "export const value = 1;");
+        File.WriteAllText(Path.Combine(root, "src", "index.ts"), "export const value = 1;");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "run" && profile.Command == "npm run dev" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "package.json dev script should become a confirmed run profile.");
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "run" && profile.Command == "npm run start" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "package.json start script should become a confirmed run profile.");
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "build" && profile.Command == "npm run build" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "package.json build script should become a confirmed run profile.");
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "test" && profile.Command == "npm run test" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "package.json test script should become a confirmed run profile.");
+
+        var cliEntry = pack.Candidates.EntryPoints.FirstOrDefault(entry => string.Equals(entry.RelativePath, Path.Combine("src", "cli.js"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(cliEntry is not null, "package.json bin should expose an executable entrypoint candidate.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, cliEntry!.EvidenceMarker!.Confidence, "package.json bin is direct executable manifest evidence and may be confirmed.");
+        AssertTrue(cliEntry.Evidence.Contains("package_bin", StringComparer.OrdinalIgnoreCase), "package.json bin evidence should be preserved on entrypoint candidate.");
+
+        var indexEntry = pack.Candidates.EntryPoints.FirstOrDefault(entry => string.Equals(entry.RelativePath, Path.Combine("src", "index.js"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(indexEntry is not null, "package.json main/exports should expose a package surface candidate.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Likely, indexEntry!.EvidenceMarker!.Confidence, "package.json main/exports are package-surface hints, not confirmed runtime main entries.");
+        AssertTrue(indexEntry.Evidence.Contains("package_main_hint", StringComparer.OrdinalIgnoreCase), "package.json main evidence should remain visible as a hint.");
+
+        var manifestIndexEvidence = pack.Candidates.ProjectUnits
+            .SelectMany(unit => unit.Evidence)
+            .ToArray();
+        AssertTrue(manifestIndexEvidence.Contains("package_script:dev", StringComparer.OrdinalIgnoreCase), "Manifest evidence should expose selected package scripts for manifests.index.json.");
+        AssertTrue(manifestIndexEvidence.Contains("package_bin_hint", StringComparer.OrdinalIgnoreCase), "Manifest evidence should expose package bin hints for manifests.index.json.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackDetectsPythonPyprojectEntriesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src", "sqlfluff", "cli"));
+        File.WriteAllText(Path.Combine(root, "pyproject.toml"), """
+            [project]
+            name = "sqlfluff"
+
+            [project.scripts]
+            sqlfluff = "sqlfluff.cli.commands:cli"
+
+            [tool.pytest.ini_options]
+            testpaths = ["test"]
+            """);
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "__init__.py"), "");
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "cli", "__init__.py"), "");
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "cli", "commands.py"), "def cli():\n    pass\n");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        var cliEntry = pack.Candidates.EntryPoints.FirstOrDefault(entry => string.Equals(entry.RelativePath, Path.Combine("src", "sqlfluff", "cli", "commands.py"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(cliEntry is not null, "pyproject project.scripts should expose the console target as an entrypoint candidate.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, cliEntry!.EvidenceMarker!.Confidence, "project.scripts is direct executable manifest evidence and may be confirmed.");
+        AssertTrue(cliEntry.Evidence.Contains("python_console_script:sqlfluff", StringComparer.OrdinalIgnoreCase), "Python console-script evidence should be preserved on entrypoint candidate.");
+
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "run" && profile.Command == "sqlfluff" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "Python console script should become a confirmed run profile.");
+        AssertTrue(pack.Candidates.RunProfiles.Any(profile => profile.Kind == "test" && profile.Command == "pytest" && profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "pyproject pytest config should become a confirmed test run profile.");
+
+        var packageModule = pack.Candidates.ModuleCandidates.FirstOrDefault(module => string.Equals(module.Name, "Sqlfluff", StringComparison.OrdinalIgnoreCase));
+        AssertTrue(packageModule is not null, "Python source package root should remain visible as a likely module candidate.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Likely, packageModule!.EvidenceMarker!.Confidence, "Python package root is module evidence, not a confirmed main entry.");
+        AssertFalse(pack.Candidates.EntryPoints.Any(entry => string.Equals(entry.RelativePath, Path.Combine("src", "sqlfluff", "__init__.py"), StringComparison.OrdinalIgnoreCase) && entry.EvidenceMarker?.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "Python package root must not become a confirmed main entry.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackDoesNotPromoteReadmeNarrativeToEntrypointHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{ \"name\": \"demo\" }");
+        File.WriteAllText(Path.Combine(root, "src", "app.ts"), "export function run() {}");
+        File.WriteAllText(Path.Combine(root, "README.md"), "# Demo\n\nRun src/app.ts as the application entry.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertFalse(pack.Candidates.EntryPoints.Any(entry => entry.EvidenceMarker?.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed), "README narrative alone must not promote an entrypoint to confirmed.");
+        AssertFalse(pack.Candidates.EntryPoints.Any(entry => string.Equals(entry.RelativePath, Path.Combine("src", "app.ts"), StringComparison.OrdinalIgnoreCase)), "README-mentioned files should not become scanner entrypoints without manifest or conventional entry evidence.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackClassifiesSourcePlusReleaseTopologyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "release"));
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\tcc src/main.c -o release/demo");
+        File.WriteAllText(Path.Combine(root, "src", "main.c"), "int main() { return 0; }");
+        File.WriteAllText(Path.Combine(root, "release", "demo.exe"), "MZ");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("Mixed", pack.Topology.Kind, "Source plus release payload should remain a mixed topology, not a single clean app claim.");
+        AssertTrue(pack.Topology.LikelyActiveSourceRoots.Any(), "Source plus release topology should still expose a likely active source root.");
+        AssertTrue(pack.Topology.ReleaseOutputZones.Contains("release"), "Release folder with binary payload should be exposed as release/output zone.");
+        AssertContains(pack.Topology.SafeImportMode, "mixed-source-release", "Safe import mode should keep source and release output separated.");
+        AssertTrue(pack.Topology.UncertaintyReasons.Any(reason => reason.Contains("SOURCE_AND_RELEASE_OUTPUT", StringComparison.OrdinalIgnoreCase)), "Topology should explain source/release coexistence as uncertainty.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackDoesNotSplitRootManifestFromConventionalSourceRootHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{ \"name\": \"demo\", \"scripts\": { \"build\": \"vite build\" } }");
+        File.WriteAllText(Path.Combine(root, "src", "main.ts"), "export function run() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("SingleProject", pack.Topology.Kind, "Root manifest plus conventional nested source should remain one project shape, not competing roots.");
+        AssertFalse(pack.Topology.LikelyActiveSourceRoots.Contains("."), "Manifest-only root should not compete with nested source as a separate active source root.");
+        AssertTrue(pack.Topology.LikelyActiveSourceRoots.Contains("src"), "Nested source root should remain visible as likely active source.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackClassifiesMaterialOnlyTopologyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "notes"));
+        File.WriteAllText(Path.Combine(root, "notes", "README.md"), "random notes");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("MaterialOnly", pack.Topology.Kind, "Documentation-only folders should not be presented as a standard source project topology.");
+        AssertContains(pack.Topology.SafeImportMode, "material-only-review", "Material-only topology should keep documents as context materials.");
+        AssertEqual(0, pack.Topology.LikelyActiveSourceRoots.Count, "Material-only topology should not invent active source roots.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackKeepsIgnoredDistVisibleAsReleaseOutputHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "dist"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{ \"name\": \"demo\", \"scripts\": { \"build\": \"vite build\" } }");
+        File.WriteAllText(Path.Combine(root, "src", "main.ts"), "export function run() {}");
+        File.WriteAllText(Path.Combine(root, "dist", "bundle.js"), "console.log('built');");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("Mixed", pack.Topology.Kind, "Source plus ignored dist output should remain mixed source/release evidence.");
+        AssertTrue(pack.Topology.ReleaseOutputZones.Contains("dist"), "Ignored dist output should still be exposed as release output, not hidden as generic noise.");
+        AssertContains(pack.Topology.SafeImportMode, "mixed-source-release", "Safe import mode should keep ignored release output separated from source.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackClassifiesLowLevelSourceAsLegacyTopologyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\trgbasm -o main.o main.asm");
+        File.WriteAllText(Path.Combine(root, "main.asm"), "SECTION \"start\", ROM0\nnop");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("Legacy", pack.Topology.Kind, "Low-level assembly source without direct reverse evidence should be treated as legacy topology, not a normal app.");
+        AssertContains(pack.Topology.SafeImportMode, "legacy-low-level-source-review", "Legacy topology should avoid normal application assumptions.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackClassifiesDecompilationTopologyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "disasm"));
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\tcc src/main.c");
+        File.WriteAllText(Path.Combine(root, "disasm", "boot.s"), "nop");
+        File.WriteAllText(Path.Combine(root, "src", "main.c"), "int main() { return 0; }");
+        File.WriteAllText(Path.Combine(root, "README.md"), "Game decompilation with disassembly, emulator, opcode, and memory labels.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(
+            scan,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            new[]
+            {
+                new WorkspaceMaterialPreviewInput(
+                    "README.md",
+                    WorkspaceMaterialKind.TextDocument,
+                    "root readme",
+                    "Game decompilation with disassembly, emulator, opcode, and memory labels.",
+                    WasTruncated: false)
+            });
+
+        AssertEqual("Decompilation", pack.Topology.Kind, "Reverse/decompilation evidence should select decompilation topology instead of normal single project.");
+        AssertContains(pack.Topology.SafeImportMode, "decompilation-safe-import", "Safe import mode should avoid normal application assumptions for decompilation layouts.");
+        AssertTrue(pack.Topology.ObservedZones.Any(zone => string.Equals(zone.Root, "disasm", StringComparison.OrdinalIgnoreCase) && zone.Role == "active-source"), "Disassembly source zone should remain visible as active source evidence.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackDoesNotOverclaimReverseTopologyFromReferenceWordingHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "docs", "reference"));
+        File.WriteAllText(Path.Combine(root, "pyproject.toml"), "[project]\nname = \"plain\"");
+        File.WriteAllText(Path.Combine(root, "src", "plain.py"), "def lint(): pass");
+        File.WriteAllText(Path.Combine(root, "docs", "reference", "release-notes.md"), "Reverse chronological release notes and reference docs.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(
+            scan,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            new[]
+            {
+                new WorkspaceMaterialPreviewInput(
+                    Path.Combine("docs", "reference", "release-notes.md"),
+                    WorkspaceMaterialKind.TextDocument,
+                    "reference docs",
+                    "Reverse chronological release notes and reference docs.",
+                    WasTruncated: false)
+            });
+
+        AssertFalse(string.Equals(pack.Topology.Kind, "Decompilation", StringComparison.OrdinalIgnoreCase), "Reference/release wording alone must not classify the topology as decompilation.");
+        AssertFalse(pack.Signals.Any(signal => signal.Category == "origin" && signal.Code == "reverse"), "Reverse origin signal requires direct low-level/reversing evidence, not generic wording.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackClassifiesUnrelatedRootsAsContainerTopologyHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "alpha", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "gamma", "src", "gamma"));
+        File.WriteAllText(Path.Combine(root, "alpha", "package.json"), "{ \"name\": \"alpha\", \"scripts\": { \"build\": \"vite build\" } }");
+        File.WriteAllText(Path.Combine(root, "alpha", "src", "main.ts"), "export {};");
+        File.WriteAllText(Path.Combine(root, "beta", "Cargo.toml"), "[package]\nname = \"beta\"");
+        File.WriteAllText(Path.Combine(root, "beta", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "gamma", "pyproject.toml"), "[project]\nname = \"gamma\"");
+        File.WriteAllText(Path.Combine(root, "gamma", "src", "gamma", "__init__.py"), "");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual("Container", pack.Topology.Kind, "Three unrelated manifest roots should be treated as container topology, not forced into one project.");
+        AssertContains(pack.Topology.SafeImportMode, "container-review", "Container topology should require user-selected active root before primary-project claims.");
+        AssertTrue(pack.Topology.LikelyActiveSourceRoots.Count >= 3, "Container topology should keep multiple active roots visible.");
+        AssertTrue(pack.Topology.UncertaintyReasons.Any(reason => reason.Contains("MULTIPLE_ACTIVE_SOURCE_ROOTS", StringComparison.OrdinalIgnoreCase)), "Container topology should explain competing active roots.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackKeepsContainerBoundaryStrongerThanNestedDecompEvidenceHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "alpha", "disasm"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "gamma", "src"));
+        File.WriteAllText(Path.Combine(root, "alpha", "Makefile"), "all:\n\tcc disasm/boot.s");
+        File.WriteAllText(Path.Combine(root, "alpha", "package.json"), "{ \"name\": \"alpha-tooling\", \"scripts\": { \"build\": \"make\" } }");
+        File.WriteAllText(Path.Combine(root, "alpha", "disasm", "boot.s"), "nop");
+        File.WriteAllText(Path.Combine(root, "alpha", "README.md"), "Game decompilation with disassembly, emulator, opcode, and memory labels.");
+        File.WriteAllText(Path.Combine(root, "beta", "package.json"), "{ \"name\": \"beta\", \"scripts\": { \"build\": \"vite build\" } }");
+        File.WriteAllText(Path.Combine(root, "beta", "src", "main.ts"), "export {};");
+        File.WriteAllText(Path.Combine(root, "gamma", "Cargo.toml"), "[package]\nname = \"gamma\"");
+        File.WriteAllText(Path.Combine(root, "gamma", "src", "main.rs"), "fn main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(
+            scan,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            new[]
+            {
+                new WorkspaceMaterialPreviewInput(
+                    Path.Combine("alpha", "README.md"),
+                    WorkspaceMaterialKind.TextDocument,
+                    "nested decomp readme",
+                    "Game decompilation with disassembly, emulator, opcode, and memory labels.",
+                    WasTruncated: false)
+            });
+
+        AssertEqual("Container", pack.Topology.Kind, "A folder with multiple unrelated project roots should stay container even when one nested root has decompilation evidence.");
+        AssertContains(pack.Topology.SafeImportMode, "container-review", "Container boundary should require root selection before nested topology claims.");
     }
     finally
     {
@@ -11133,13 +11521,8 @@ static void WorkspaceEvidencePackRanksCargoDefaultMemberEntriesHonestly()
             pack.Candidates.EntryPoints[0].Score > pack.Candidates.EntryPoints.First(entry => string.Equals(entry.RelativePath, toolPath, StringComparison.OrdinalIgnoreCase)).Score,
             "Default-member score should beat non-default tool entry score deterministically.");
 
-        var packet = new WorkspaceImportMaterialPreviewPacket(
-            scan.State.WorkspaceRoot,
-            scan.State.ImportKind,
-            scan.State.Summary.SourceRoots,
-            Array.Empty<WorkspaceTechnicalPreviewInput>(),
-            Array.Empty<WorkspaceMaterialPreviewInput>(),
-            pack);
+        var basePacket = WorkspaceImportMaterialPreviewPacketBuilder.Build(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
+        var packet = basePacket with { EvidencePack = pack };
         var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(packet).UserPrompt;
         AssertContains(prompt, $"{spicedPath} (entry, score=", "Importer prompt should expose ranked entrypoint paths.");
         AssertContains(prompt, "marker=entrypoint_candidate/Confirmed/partial=False/bounded=False", "Importer prompt should expose entrypoint evidence marker discipline.");
@@ -11147,6 +11530,269 @@ static void WorkspaceEvidencePackRanksCargoDefaultMemberEntriesHonestly()
         AssertContains(prompt, "conventional_entry_location", "Importer prompt should expose conventional entrypoint evidence.");
         AssertContains(prompt, $"{toolPath} (entry, score=", "Importer prompt should preserve secondary tool entrypoint candidates.");
         AssertContains(prompt, "secondary_or_workflow_location", "Importer prompt should expose secondary/support entrypoint evidence.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceImportMaterialInterpretationPreservesScannerTopEntryHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "bin", "spiced", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "bin", "spice", "src"));
+
+        File.WriteAllText(
+            Path.Combine(root, "Cargo.toml"),
+            "[workspace]\ndefault-members = [\"bin/spiced\"]\nmembers = [\"bin/spiced\", \"bin/spice\"]\n");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "Cargo.toml"), "[package]\nname = \"spiced\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "bin", "spice", "Cargo.toml"), "[package]\nname = \"spice\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "bin", "spice", "src", "main.rs"), "fn main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var packet = new WorkspaceImportMaterialPreviewPacket(
+            scan.State.WorkspaceRoot,
+            scan.State.ImportKind,
+            scan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            pack);
+        var response = new WorkspaceImportMaterialPromptResponse(
+            "SUMMARY unsupported",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+            Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+            new[] { new WorkspaceImportMaterialEntryPointInterpretation(Path.Combine("bin", "spice", "src", "main.rs"), "entry", "Model-selected secondary entry.", WorkspaceEvidenceConfidenceLevel.Likely) },
+            new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+            Array.Empty<WorkspaceImportMaterialPromptResponseItem>());
+
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(packet, response);
+        var spicedPath = Path.Combine("bin", "spiced", "src", "main.rs");
+        var spicePath = Path.Combine("bin", "spice", "src", "main.rs");
+
+        AssertEqual(spicedPath, interpretation.EntryPoints[0].RelativePath, "Importer must not prefer a Likely secondary entry over the scanner Confirmed top entry.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, interpretation.EntryPoints[0].Confidence, "Scanner Confirmed entry confidence must survive importer normalization.");
+        AssertTrue(interpretation.SummaryLine.Contains("scannerEntryCandidatesTotal=", StringComparison.Ordinal), "Summary must expose scanner candidate total separately.");
+        AssertTrue(interpretation.SummaryLine.Contains("displayedEntryCandidates=", StringComparison.Ordinal), "Summary must expose displayed entry subset separately.");
+        AssertTrue(interpretation.SummaryLine.Contains($"selectedMainEntry={spicedPath}", StringComparison.Ordinal), "Summary must name the selected main entry explicitly.");
+        AssertFalse(interpretation.SummaryLine.Contains("entry candidates: 1", StringComparison.OrdinalIgnoreCase), "Summary must not describe selected subset as total entry candidates.");
+
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var artifacts = new ProjectDocumentRuntimeService().WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, $"Main Entry: `{spicedPath}` [Confirmed]", "Preview project must show scanner top entry as main entry.");
+        AssertFalse(previewProjectText.Contains($"Main Entry: `{spicePath}` [Likely]", StringComparison.OrdinalIgnoreCase), "Preview project must not promote the Likely secondary entry to main entry.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "project.md")), "Preview writer must not promote canonical project truth during import.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceImportMaterialInterpretationPreservesScannerModuleConfidenceHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "crates", "cayenne", "src"));
+        File.WriteAllText(Path.Combine(root, "Cargo.toml"), "[workspace]\nmembers = [\"crates/cayenne\"]\n");
+        File.WriteAllText(Path.Combine(root, "crates", "cayenne", "Cargo.toml"), "[package]\nname = \"cayenne\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "crates", "cayenne", "src", "lib.rs"), "pub fn table() {}");
+        File.WriteAllText(Path.Combine(root, "README.md"), "Workspace overview.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var basePack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var scannerModule = new WorkspaceEvidenceModule(
+            "Cayenne",
+            "subsystem-cluster",
+            "crates",
+            "Observed Cayenne module from scanner candidate map.",
+            new WorkspaceEvidenceMarker(
+                "module_candidate",
+                Path.Combine("crates", "cayenne"),
+                "Observed Cayenne module from scanner candidate map.",
+                WorkspaceEvidenceConfidenceLevel.Likely,
+                IsPartial: false,
+                IsBounded: false));
+        var pack = basePack with
+        {
+            Candidates = basePack.Candidates with
+            {
+                ModuleCandidates = new[] { scannerModule }
+            }
+        };
+        var basePacket = WorkspaceImportMaterialPreviewPacketBuilder.Build(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
+        var packet = basePacket with { EvidencePack = pack };
+        var response = new WorkspaceImportMaterialPromptResponse(
+            "SUMMARY unsupported",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+            new[] { new WorkspaceImportMaterialModuleInterpretation("Cayenne", "subsystem-cluster", "Model saw Cayenne.", WorkspaceEvidenceConfidenceLevel.Unknown) },
+            Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(),
+            new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+            Array.Empty<WorkspaceImportMaterialPromptResponseItem>());
+
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(packet, response);
+        var module = interpretation.Modules.Single(item => string.Equals(item.Name, "Cayenne", StringComparison.OrdinalIgnoreCase));
+
+        AssertEqual(scannerModule.EvidenceMarker!.Confidence, module.Confidence, "Importer module confidence must come from scanner module evidence.");
+
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var direction = DirectionSignalInterpreter.Interpret(run);
+        var cayenneDirection = direction.Candidates.Single(candidate => candidate.Text.Contains("Cayenne", StringComparison.OrdinalIgnoreCase));
+
+        AssertEqual(module.Confidence, cayenneDirection.Confidence, "Direction projection must not upgrade or downgrade module confidence.");
+        AssertContains(cayenneDirection.Evidence, $"module `Cayenne` [{module.Confidence}]", "Direction evidence text must show the same module confidence.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceImportPreviewLabelsPackageSurfaceWithoutMainEntryClaimHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "packages", "starlight"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{ \"name\": \"root\" }");
+        File.WriteAllText(Path.Combine(root, "packages", "starlight", "package.json"), """
+            {
+              "name": "@demo/starlight",
+              "exports": {
+                ".": "./index.ts"
+              }
+            }
+            """);
+        File.WriteAllText(Path.Combine(root, "packages", "starlight", "index.ts"), "export const starlight = true;");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var basePacket = WorkspaceImportMaterialPreviewPacketBuilder.Build(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, basePacket.TechnicalEvidence, basePacket.Materials);
+        var packet = basePacket with { EvidencePack = pack };
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "SUMMARY unsupported",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(),
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var artifacts = new ProjectDocumentRuntimeService().WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, "Confirmed main entry: Unknown", "Package exports without executable evidence should keep confirmed main unknown.");
+        AssertContains(previewProjectText, $"Selected package surface: `{Path.Combine("packages", "starlight", "index.ts")}` [Likely]", "Package surface should be labelled as package surface, not main entry.");
+        AssertFalse(previewProjectText.Contains($"Main Entry: `{Path.Combine("packages", "starlight", "index.ts")}`", StringComparison.OrdinalIgnoreCase), "Likely package surface must not be displayed as Main Entry.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceImportPreviewSuppressesUnsupportedExtraEntriesBesideConfirmedMainHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src", "sqlfluff", "cli"));
+        File.WriteAllText(Path.Combine(root, "pyproject.toml"), """
+            [project]
+            name = "sqlfluff"
+
+            [project.scripts]
+            sqlfluff = "sqlfluff.cli.commands:cli"
+            """);
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "__init__.py"), "");
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "cli", "__init__.py"), "");
+        File.WriteAllText(Path.Combine(root, "src", "sqlfluff", "cli", "commands.py"), "def cli():\n    pass\n");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var basePacket = WorkspaceImportMaterialPreviewPacketBuilder.Build(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, basePacket.TechnicalEvidence, basePacket.Materials);
+        var packet = basePacket with { EvidencePack = pack };
+        var response = new WorkspaceImportMaterialPromptResponse(
+            "SUMMARY unsupported",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+            Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+            new[] { new WorkspaceImportMaterialEntryPointInterpretation("sqlfluffcli.py", "cli", "Model guessed a helper CLI.", WorkspaceEvidenceConfidenceLevel.Unknown) },
+            new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+            Array.Empty<WorkspaceImportMaterialPromptResponseItem>());
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(packet, response);
+        var confirmedPath = Path.Combine("src", "sqlfluff", "cli", "commands.py");
+
+        AssertEqual(1, interpretation.EntryPoints.Count, "Unsupported importer extra entry should not compete beside scanner confirmed main.");
+        AssertEqual(confirmedPath, interpretation.EntryPoints[0].RelativePath, "Scanner confirmed console script should remain selected main entry.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, interpretation.EntryPoints[0].Confidence, "Confirmed console entry confidence should be preserved.");
+        AssertFalse(interpretation.EntryPoints.Any(entry => string.Equals(entry.RelativePath, "sqlfluffcli.py", StringComparison.OrdinalIgnoreCase)), "Importer guessed unknown entry should be suppressed from entrypoint projections.");
+
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var artifacts = new ProjectDocumentRuntimeService().WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, $"Main Entry: `{confirmedPath}` [Confirmed]", "Preview should keep confirmed console entry as Main Entry.");
+        AssertFalse(previewProjectText.Contains("sqlfluffcli.py", StringComparison.OrdinalIgnoreCase), "Unsupported unknown extra entry should not appear as a competing preview entry.");
     }
     finally
     {
@@ -12557,15 +13203,16 @@ MATERIAL: spec.pdf | Medium | Specification overview for imported constraints.
         AssertContains(run.PromptRequest.UserPrompt, "preparation_status: Prepared", "Interpreter prompt must expose preparation status.");
         AssertContains(run.ExecutionRequest.SystemPrompt, "Import Materials Interpreter", "Interpreter runtime must use stable import prompt.");
         AssertEqual("notes.txt", run.Interpretation.Materials[0].RelativePath, "Interpreter result should remain bound to packet ordering.");
-        AssertEqual(1, run.Interpretation.ProjectDetails.Count, "Interpreter runtime should preserve parsed project details.");
-        AssertEqual(1, run.Interpretation.CurrentSignals.Count, "Interpreter runtime should preserve parsed current signals.");
-        AssertEqual(1, run.Interpretation.Layers.Count, "Interpreter runtime should preserve parsed layers.");
-        AssertEqual(1, run.Interpretation.EntryPoints.Count, "Interpreter runtime should preserve parsed entry points.");
-        AssertEqual(1, run.Interpretation.DiagramSpec.Nodes.Count, "Interpreter runtime should preserve parsed diagram nodes.");
+        AssertEqual(ProjectInterpretationMode.MaterialOnly, run.Interpretation.InterpretationMode, "Material-only import should align interpretation mode with scanner topology.");
+        AssertTrue(run.Interpretation.ProjectDetails.Count >= 1, "Interpreter runtime should preserve bounded material-only project details.");
+        AssertEqual(0, run.Interpretation.CurrentSignals.Count, "Material-only import should not preserve current source/app signals.");
+        AssertEqual(0, run.Interpretation.Layers.Count, "Material-only import should not preserve source/app layers.");
+        AssertEqual(0, run.Interpretation.EntryPoints.Count, "Material-only import should not preserve source/app entry points.");
+        AssertEqual(0, run.Interpretation.DiagramSpec.Nodes.Count, "Material-only import should not preserve source/app diagram nodes.");
         AssertTrue(run.ArtifactBundle is not null, "Interpreter runtime should emit evidence bundle artifacts on successful import.");
         AssertTrue(File.Exists(run.ArtifactBundle!.ProjectReportPath), "Interpreter runtime should write project report artifact.");
         AssertTrue(File.Exists(run.ArtifactBundle.ArchitectureMapPath), "Interpreter runtime should render architecture PNG artifact.");
-        AssertContains(run.Interpretation.ProjectDetails[0], "architectural docs", "Interpreter runtime should keep concrete parsed project detail text.");
+        AssertContains(run.Interpretation.ProjectDetails[0], "material-only", "Interpreter runtime should keep material-only boundary wording.");
         AssertEqual(WorkspaceMaterialContextUsefulness.High, run.Interpretation.Materials[0].PossibleUsefulness, "Interpreter result should preserve parsed usefulness.");
         AssertContains(run.SummaryLine, "truth=context_only", "Interpreter runtime summary must preserve context-only contract.");
         AssertTrue(openRouter.LastRequest is not null, "Fake OpenRouter client should observe the runtime-built request.");
@@ -13219,7 +13866,7 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlForSingleProjectHon
         AssertContains(previewText, "Stage: Preview Docs", "Preview should expose the active preview-doc stage.");
         AssertContains(previewText, "Source: preview docs (preview_project.md)", "Preview should show the selected document source explicitly.");
         AssertContains(previewText, "project_report.md", "Preview should link to the markdown report artifact.");
-        AssertContains(previewText, "SingleProject", "Preview header should expose importer-owned interpretation mode.");
+        AssertContains(previewText, "Ambiguous", "Preview header should expose importer-owned interpretation mode.");
         AssertContains(previewText, "Project (Preview)", "Preview should render the richer preview project doc.");
         AssertContains(previewText, "Companion Document", "Preview should render the companion capsule section when available.");
         AssertContains(previewText, "Structure / Map", "Preview should render the richer structure block.");
@@ -13330,7 +13977,7 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForAmbiguous
         var bundle = service.WriteBundle(run);
         var previewText = File.ReadAllText(bundle.PreviewPath);
 
-        AssertContains(previewText, "AmbiguousContainer", "Preview should expose ambiguous container mode.");
+        AssertContains(previewText, "Ambiguous", "Preview should expose ambiguous review mode.");
         AssertContains(previewText, "Stage: Preview Docs", "Ambiguous container preview should still disclose preview-doc stage.");
         AssertContains(previewText, "Unified architecture is not assumed", "Ambiguous container preview should still show a warning.");
     }
@@ -13473,7 +14120,7 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly()
         AssertContains(previewRoadmapText, "# Roadmap (Preview)", "Preview roadmap should expose candidate-document heading.");
         AssertContains(previewRoadmapText, "## Unknown / not-yet-established", "Preview roadmap should expose Unknown section when git history is unavailable.");
         AssertContains(previewCanonText, "# Canon (Preview)", "Preview canon should expose candidate-document heading.");
-        AssertContains(previewCanonText, "## Observed technical invariants", "Preview canon should expose observed invariants section.");
+        AssertContains(previewCanonText, "## Observed technical signals", "Preview canon should expose observed technical signals section.");
         AssertContains(previewCanonText, "## Contributor-authored rules", "Preview canon should expose empty contributor-owned section.");
         AssertContains(previewCanonText, "## Unknown / not-yet-established", "Preview canon should expose explicit gap section.");
     }
@@ -13537,11 +14184,63 @@ static void ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly()
         var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
 
         AssertContains(previewProjectText, "Interpretation Mode: `MultipleIndependentProjects`", "Container project preview should expose interpretation mode.");
+        AssertContains(previewProjectText, "Scanner Topology: `Container`", "Container project preview should preserve scanner topology.");
+        AssertContains(previewProjectText, "Safe Import Mode: `container-review", "Container project preview should preserve safe import mode.");
         AssertContains(previewProjectText, "Unified architecture across the whole folder is not confirmed.", "Container project preview must avoid unified architecture claims.");
         AssertContains(previewProjectText, "Unified module map is suppressed for this container.", "Container project preview should suppress unified module projection.");
-        AssertContains(previewProjectText, "Container/mixed evidence remains too coarse for a strong unified truth claim.", "Container project preview should keep readiness unknown/coarse.");
+        AssertContains(previewProjectText, "evidence remains too coarse for a strong unified truth claim", "Container project preview should keep readiness unknown/coarse.");
         AssertFalse(previewProjectText.Contains("A unified platform architecture spans both repos", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated summary wording.");
         AssertFalse(previewProjectText.Contains("shared runtime and service layers", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated shared-runtime wording.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimePreservesNonstandardTopologyInProjectPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\trgbasm -o main.o main.asm");
+        File.WriteAllText(Path.Combine(root, "main.asm"), "SECTION \"start\", ROM0\nnop");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Normal application summary should stay preview-only.",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation("main.asm", "main", "assembly entry candidate") },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        var artifacts = documentRuntime.WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, "Scanner Topology: `Legacy`", "Preview project should preserve nonstandard scanner topology.");
+        AssertContains(previewProjectText, "Safe Import Mode: `legacy-low-level-source-review", "Preview project should preserve safe import mode.");
+        AssertContains(previewProjectText, "normal single-application assumptions are not confirmed", "Nonstandard topology should block normal app assumptions.");
+        AssertContains(previewProjectText, "Candidate entry surface: `main.asm`", "Likely nonstandard entry should not be labeled as Main Entry.");
+        AssertFalse(previewProjectText.Contains("- Current preview looks bounded enough", StringComparison.OrdinalIgnoreCase), "Nonstandard topology should not look promotion-ready by default.");
     }
     finally
     {
@@ -13650,7 +14349,7 @@ static void ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly()
 
         AssertContains(previewCanonText, "# Canon (Preview)", "Preview canon should expose candidate-document heading.");
         AssertContains(previewCanonText, "This document is not canonical truth yet.", "Preview canon should keep non-truth disclaimer.");
-        AssertContains(previewCanonText, "## Observed technical invariants", "Preview canon must have observed invariants section.");
+        AssertContains(previewCanonText, "## Observed technical signals", "Preview canon must have observed technical signals section.");
         AssertContains(previewCanonText, "Evidence Boundary: Derived from TechnicalPassport", "Preview canon should name its bounded data source.");
         AssertContains(previewCanonText, "Observed Entry Points", "Preview canon should preserve observed entry-point evidence.");
         AssertContains(previewCanonText, "## Contributor-authored rules", "Preview canon must keep contributor-authored section separate.");

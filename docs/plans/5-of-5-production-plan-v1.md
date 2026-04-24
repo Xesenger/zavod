@@ -121,7 +121,7 @@ consumed today).
 
 ---
 
-## S2 — canon.md (observed technical invariants only)
+## S2 — canon.md (observed technical signals only)
 
 **Current:** no writer exists.
 
@@ -136,7 +136,7 @@ Interpretation.
 
 **Acceptance — THREE EXPLICIT SECTIONS:**
 
-1. **Observed technical invariants** — Confirmed confidence.
+1. **Observed technical signals** — Confirmed confidence.
    Examples: `C# 13`, `.NET 8`, `WinUI 3`, `x64`, build commands
    from build system evidence. Derived from TechnicalPassport.
 2. **Contributor-authored rules** — empty on auto-preview. Placeholder
@@ -425,7 +425,7 @@ runtime wires those files to the model.
 *(Updated as slices land. Do not delete completed entries.)*
 
 - [x] S1 project.md v2 refinement
-- [x] S2 canon.md (observed technical invariants only)
+- [x] S2 canon.md (observed technical signals only)
 - [x] S3 direction.md (extractor + preview writer)
 - [x] S4 roadmap.md (git reader + preview writer, candidate-level only)
 - [x] S5 capsule.md v2 upgrade

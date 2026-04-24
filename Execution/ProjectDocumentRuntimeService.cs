@@ -409,6 +409,11 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         var projectName = string.IsNullOrWhiteSpace(title) ? "ZAVOD Imported Project" : title;
         var projectId = BuildProjectId(projectName);
         var interpretationMode = interpretation.InterpretationMode;
+        var topology = pack?.Topology;
+        var topologyKind = topology?.Kind ?? "Unknown";
+        var safeImportMode = topology?.SafeImportMode ?? "Unknown";
+        var isStandardSingleProjectTopology = IsStandardSingleProjectTopology(topologyKind);
+        var isNonStandardTopology = !isStandardSingleProjectTopology && !string.Equals(topologyKind, "Unknown", StringComparison.OrdinalIgnoreCase);
         var topMaterials = materials
             .Where(static material => material.PossibleUsefulness != WorkspaceMaterialContextUsefulness.Unknown || !string.IsNullOrWhiteSpace(material.Summary))
             .Take(5)
@@ -429,6 +434,8 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         builder.AppendLine($"- Workspace Root: `{workspaceRoot}`");
         builder.AppendLine($"- Import Kind: `{interpretation.ImportKind}`");
         builder.AppendLine($"- Interpretation Mode: `{interpretationMode}`");
+        builder.AppendLine($"- Scanner Topology: `{topologyKind}`");
+        builder.AppendLine($"- Safe Import Mode: `{safeImportMode}`");
         builder.AppendLine($"- Health: `{pack?.ProjectProfile.Health.ToString() ?? "Unknown"}`");
         builder.AppendLine($"- Truth Status: `Preview only / not canonical yet`");
         builder.AppendLine();
@@ -447,15 +454,39 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
 
         AppendInline(builder, "Build Roots", pack?.ProjectProfile.BuildRoots);
         AppendInline(builder, "Structural Anomalies", pack?.ProjectProfile.StructuralAnomalies);
+        if (topology is not null)
+        {
+            AppendInline(builder, "Topology Uncertainty", topology.UncertaintyReasons);
+            AppendInline(builder, "Release / Output Zones", topology.ReleaseOutputZones);
+            AppendInline(builder, "Ignored / Noise Zones", topology.IgnoredNoiseZones);
+        }
+
         if (interpretationMode == ProjectInterpretationMode.SingleProject)
         {
-            builder.AppendLine("- Container Status: Single project interpretation.");
+            if (isStandardSingleProjectTopology)
+            {
+                builder.AppendLine("- Topology Status: Single project interpretation.");
+            }
+            else
+            {
+                builder.AppendLine($"- Topology Status: `{topologyKind}`; normal single-application assumptions are not confirmed.");
+                builder.AppendLine("- Safe mode must remain visible until a contributor selects or confirms the active project shape.");
+            }
         }
         else
         {
-            builder.AppendLine($"- Container Status: `{interpretationMode}`.");
-            builder.AppendLine("- Unified architecture across the whole folder is not confirmed.");
-            builder.AppendLine("- Any technical signals below describe observed folder evidence, not a shared project architecture.");
+            builder.AppendLine($"- Interpretation Status: `{interpretationMode}`.");
+            if (isNonStandardTopology)
+            {
+                builder.AppendLine($"- Topology Status: `{topologyKind}`; normal single-application assumptions are not confirmed.");
+                builder.AppendLine("- Unified architecture across the whole folder is not confirmed.");
+                builder.AppendLine("- Safe mode must remain visible until a contributor selects or confirms the active project shape.");
+            }
+            else
+            {
+                builder.AppendLine("- Unified architecture across the whole folder is not confirmed.");
+                builder.AppendLine("- Any technical signals below describe observed folder evidence, not a shared project architecture.");
+            }
         }
         builder.AppendLine();
 
@@ -476,7 +507,17 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         if (entryPoints.Count > 0)
         {
             var primary = entryPoints[0];
-            builder.AppendLine($"- Main Entry: `{primary.RelativePath}` [{primary.Confidence}]");
+            var confirmedMain = entryPoints.FirstOrDefault(IsConfirmedExecutableOrCodeMainEntry);
+            if (confirmedMain is null)
+            {
+                builder.AppendLine("- Confirmed main entry: Unknown");
+            }
+
+            builder.AppendLine(IsPackageSurfaceEntry(primary)
+                ? $"- Selected package surface: `{primary.RelativePath}` [{primary.Confidence}]"
+                : ShouldUseCandidateEntrySurface(topologyKind, primary)
+                    ? $"- Candidate entry surface: `{primary.RelativePath}` [{primary.Confidence}]"
+                : $"- Main Entry: `{primary.RelativePath}` [{primary.Confidence}]");
             if (entryPoints.Count > 1)
             {
                 builder.AppendLine($"- Likely Entries: {string.Join(", ", entryPoints.Skip(1).Take(3).Select(entry => $"`{entry.RelativePath}` [{entry.Confidence}]"))}");
@@ -484,7 +525,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
         else
         {
-            builder.AppendLine("- Main Entry: Unknown");
+            builder.AppendLine("- Confirmed main entry: Unknown");
         }
 
         if (interpretationMode == ProjectInterpretationMode.SingleProject && modules.Count > 0)
@@ -574,12 +615,15 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
 
         builder.AppendLine("## Canonical readiness");
         builder.AppendLine();
-        AppendSectionConfidence(builder, interpretationMode == ProjectInterpretationMode.SingleProject ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "Promotion is a contributor act; preview evidence alone is not truth.");
+        var readinessConfidence = interpretationMode == ProjectInterpretationMode.SingleProject && isStandardSingleProjectTopology
+            ? WorkspaceEvidenceConfidenceLevel.Likely
+            : WorkspaceEvidenceConfidenceLevel.Unknown;
+        AppendSectionConfidence(builder, readinessConfidence, "Promotion is a contributor act; preview evidence alone is not truth.");
         builder.AppendLine("- First confirm target: `project.md`");
         builder.AppendLine("- Derived companion after confirm: `capsule.md`");
-        builder.AppendLine(interpretationMode == ProjectInterpretationMode.SingleProject
+        builder.AppendLine(interpretationMode == ProjectInterpretationMode.SingleProject && isStandardSingleProjectTopology
             ? "- Current preview looks bounded enough for explicit confirm, but it is still not truth until confirmed."
-            : "- Container/mixed evidence remains too coarse for a strong unified truth claim.");
+            : $"- `{topologyKind}` evidence remains too coarse for a strong unified truth claim without contributor review.");
 
         return builder.ToString().TrimEnd();
     }
@@ -728,10 +772,10 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         builder.AppendLine("It contains observed technical facts only; contributor-authored rules remain empty.");
         builder.AppendLine();
 
-        builder.AppendLine("## Observed technical invariants");
+        builder.AppendLine("## Observed technical signals");
         builder.AppendLine();
         builder.AppendLine("- Confidence: `Confirmed for listed scanner/importer observations`");
-        builder.AppendLine("- Evidence Boundary: Derived from TechnicalPassport, interpreted modules, and interpreted entry points only.");
+        builder.AppendLine("- Evidence Boundary: Derived from TechnicalPassport, interpreted modules, and interpreted entry points only; these are not canon rules.");
         AppendObservedCanonValues(builder, "Observed Languages", passport?.ObservedLanguages);
         AppendObservedCanonValues(builder, "Frameworks", passport?.Frameworks);
         AppendObservedCanonValues(builder, "Build Systems", passport?.BuildSystems);
@@ -766,7 +810,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             modules.Count == 0 &&
             entryPoints.Count == 0)
         {
-            builder.AppendLine("- No technical invariants are confirmed by the current import evidence.");
+            builder.AppendLine("- No technical signals are confirmed by the current import evidence.");
         }
         builder.AppendLine();
 
@@ -1429,6 +1473,45 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
     {
         builder.AppendLine($"- Confidence: `{confidence}`");
         builder.AppendLine($"- Evidence Boundary: {note}");
+    }
+
+    private static bool IsPackageSurfaceEntry(WorkspaceImportMaterialEntryPointInterpretation entry)
+    {
+        return entry.Role.Equals("package-surface", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStandardSingleProjectTopology(string topologyKind)
+    {
+        return string.Equals(topologyKind, "SingleProject", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldUseCandidateEntrySurface(string topologyKind, WorkspaceImportMaterialEntryPointInterpretation entry)
+    {
+        if (topologyKind.Equals("Decompilation", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("Legacy", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("MaterialOnly", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("ReleaseBundle", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return topologyKind.Equals("Mixed", StringComparison.OrdinalIgnoreCase) &&
+               entry.Confidence != WorkspaceEvidenceConfidenceLevel.Confirmed;
+    }
+
+    private static bool IsConfirmedExecutableOrCodeMainEntry(WorkspaceImportMaterialEntryPointInterpretation entry)
+    {
+        if (entry.Confidence != WorkspaceEvidenceConfidenceLevel.Confirmed)
+        {
+            return false;
+        }
+
+        return entry.Role.Equals("main", StringComparison.OrdinalIgnoreCase) ||
+               entry.Role.Equals("entry", StringComparison.OrdinalIgnoreCase) ||
+               entry.Role.Equals("cli", StringComparison.OrdinalIgnoreCase) ||
+               entry.Role.Equals("service", StringComparison.OrdinalIgnoreCase) ||
+               entry.Role.Equals("bootstrap", StringComparison.OrdinalIgnoreCase) ||
+               entry.Role.Equals("ui", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HasAnyValues(params IReadOnlyList<string>?[] values)

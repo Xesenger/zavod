@@ -34,6 +34,7 @@ public static class WorkspaceEvidencePredicateRegistry
     public const string ReportsScanBudget = "reports_scan_budget";
     public const string DeclaresProjectUnit = "declares_project_unit";
     public const string DeclaresRunProfile = "declares_run_profile";
+    public const string ClassifiesTopology = "classifies_topology";
     public const string DeclaresSymbol = "declares_symbol";
     public const string DeclaresCodeEdge = "declares_code_edge";
     public const string DeclaresDependency = "declares_dependency";
@@ -64,6 +65,7 @@ public static class WorkspaceEvidencePredicateRegistry
         Predicate(ReportsScanBudget, "scan_run", "budget_report", "file_inventory", "Confirmed when deterministic scan budget rules skip or limit evidence."),
         Predicate(DeclaresProjectUnit, "path", "project_unit", "manifest_index", "Likely from manifest root; confirmed with entrypoint overlap."),
         Predicate(DeclaresRunProfile, "manifest", "run_profile", "run_profile_index", "Confirmed for explicit scripts; likely for conventional manifest commands."),
+        Predicate(ClassifiesTopology, "workspace", "topology", "topology_classifier", "Likely deterministic topology classification from observed zones and uncertainty."),
         Predicate(DeclaresSymbol, "file", "symbol", "shallow_symbol_index", "Confirmed for shallow declarations/signatures extracted without semantic interpretation."),
         Predicate(DeclaresCodeEdge, "file", "file", "dependency_edges", "Resolution field distinguishes resolved, ambiguous, unresolved, lexical, or manifest evidence."),
         Predicate(DeclaresDependency, "manifest", "dependency", "manifest_index", "Confirmed for direct manifest dependency sections."),
@@ -145,6 +147,7 @@ public static class WorkspaceEvidencePredicateRegistry
             _ when evidence.StartsWith("project_unit:", StringComparison.OrdinalIgnoreCase) => DeclaresProjectUnit,
             _ when evidence.StartsWith("project_unit_entry:", StringComparison.OrdinalIgnoreCase) => DeclaresProjectUnit,
             _ when evidence.StartsWith("run_profile:", StringComparison.OrdinalIgnoreCase) => DeclaresRunProfile,
+            _ when evidence.StartsWith("topology:", StringComparison.OrdinalIgnoreCase) => ClassifiesTopology,
             _ when evidence.StartsWith("edge_from:", StringComparison.OrdinalIgnoreCase) => DeclaresCodeEdge,
             _ when evidence.StartsWith("edge_to:", StringComparison.OrdinalIgnoreCase) => DeclaresCodeEdge,
             _ when evidence.StartsWith("signature:", StringComparison.OrdinalIgnoreCase) => DeclaresSymbol,

@@ -7,6 +7,7 @@ public sealed record WorkspaceEvidencePack(
     IReadOnlyList<WorkspaceEvidencePredicate> PredicateRegistry,
     WorkspaceScanBudgetReport? ScanBudget,
     WorkspaceProjectProfile ProjectProfile,
+    WorkspaceEvidenceTopology Topology,
     // Transitional legacy field. Technical passport is a UX summary, not authoritative scanner truth.
     WorkspaceTechnicalPassport TechnicalPassport,
     // Transitional legacy field. Tree summary is no longer scanner-authored truth.
@@ -62,6 +63,24 @@ public sealed record WorkspaceProjectProfile(
     IReadOnlyList<string> SourceRoots,
     IReadOnlyList<string> BuildRoots,
     IReadOnlyList<string> StructuralAnomalies);
+
+public sealed record WorkspaceEvidenceTopology(
+    string Kind,
+    string SafeImportMode,
+    IReadOnlyList<WorkspaceEvidenceTopologyZone> ObservedZones,
+    IReadOnlyList<string> LikelyActiveSourceRoots,
+    IReadOnlyList<string> ReleaseOutputZones,
+    IReadOnlyList<string> IgnoredNoiseZones,
+    IReadOnlyList<string> UncertaintyReasons,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
+
+public sealed record WorkspaceEvidenceTopologyZone(
+    string Root,
+    string Role,
+    int FileCount,
+    IReadOnlyList<string> Evidence,
+    WorkspaceEvidenceConfidenceLevel Confidence,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceTechnicalPassport(
     IReadOnlyList<string> ObservedLanguages,
@@ -323,6 +342,7 @@ public sealed record WorkspaceEvidenceArtifactBundle(
     string ModulesMapPath,
     string ProjectUnitsIndexPath,
     string RunProfilesIndexPath,
+    string TopologyIndexPath,
     string PredicateRegistryPath,
     string ScanBudgetPath,
     string UncertaintyReportPath,
