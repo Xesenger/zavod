@@ -18,9 +18,9 @@ internal static class RootCauseTrace
 
         lock (Gate)
         {
-            var artifactsDirectory = Path.Combine(projectRoot, "artifacts");
-            Directory.CreateDirectory(artifactsDirectory);
-            _path = Path.Combine(artifactsDirectory, "root-cause-trace.log");
+            var logsDirectory = Path.Combine(projectRoot, ".zavod.local", "logs");
+            Directory.CreateDirectory(logsDirectory);
+            _path = Path.Combine(logsDirectory, "root-cause-trace.log");
             File.WriteAllText(_path, string.Empty);
 
             foreach (var line in Pending)

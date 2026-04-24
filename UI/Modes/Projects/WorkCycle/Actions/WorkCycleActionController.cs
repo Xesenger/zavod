@@ -650,15 +650,21 @@ internal sealed class WorkCycleActionController
             runtime = ExecutionRuntimeController.RequestQcReview(runtime);
             var qcPhaseState = StepPhaseMachine.MoveToQc(runningState);
 
-            var decision = qcLlmResult.Success && qcLlmResult.Parsed is not null
-                ? qcLlmResult.Parsed.Decision
-                : "ACCEPT"; // QC unavailable → advisory ACCEPT fallback
+            var parsedQcReply = qcLlmResult.Success ? qcLlmResult.Parsed : null;
+            var qcUnavailable = parsedQcReply is null;
+            var decision = "REVISE";
+            if (parsedQcReply is not null)
+            {
+                decision = parsedQcReply.Decision;
+            }
 
             switch (decision)
             {
                 case "REVISE":
                     {
-                        var rationale = qcLlmResult.Parsed?.Rationale ?? "QC requested revision.";
+                        var rationale = qcUnavailable
+                            ? BuildQcUnavailableRevisionRationale(qcLlmResult)
+                            : parsedQcReply?.Rationale ?? "QC requested revision.";
                         runtime = ExecutionRuntimeController.RejectQcReview(runtime, needsRevision: true, rationale);
                         runtime = ExecutionRuntimeController.RestartRevision(runtime);
                         // Phase chains through AcceptQc only to satisfy ReturnForRevision
@@ -1052,11 +1058,26 @@ internal sealed class WorkCycleActionController
         }
 
         var executionContext = LoadActiveExecutionContext(context.QueryState);
+        try
+        {
+            AcceptedResultApplyProcessor.ValidateCanApply(
+                executionContext.ProjectState,
+                executionContext.ShiftState,
+                executionContext.TaskState,
+                context.QueryState.ResumeSnapshot.RuntimeState);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await ProjectsAdapter.AddMessageAsync(
+                ConversationItemKind.Status,
+                AppText.Current.Get("role.qc"),
+                AppText.Current.Format("projects.message.accepted_result_apply_blocked", ex.Message),
+                metadata: BuildProjectConversationMetadata("result", executionContext.TaskState.TaskId));
+            return false;
+        }
 
         // Apply staged files from .zavod.local/staging/<taskId>/attempt-<latest>/
-        // into the project tree BEFORE state bookkeeping, so a file-system
-        // failure does not commit a phantom accepted result while nothing
-        // landed on disk.
+        // into the project tree only after read-only acceptance validation.
         var stagingOutcome = StagingApplier.Apply(context.QueryState.ProjectRoot, executionContext.TaskState.TaskId);
         if (stagingOutcome.AppliedFiles.Count > 0)
         {
@@ -1078,6 +1099,23 @@ internal sealed class WorkCycleActionController
                     "projects.message.staging_hash_drift",
                     string.Join("; ", stagingOutcome.HashMismatchWarnings)),
                 metadata: BuildProjectConversationMetadata("result", executionContext.TaskState.TaskId));
+        }
+
+        if (stagingOutcome.HashMismatchWarnings.Count > 0)
+        {
+            return false;
+        }
+
+        if (stagingOutcome.SkippedFiles.Count > 0)
+        {
+            await ProjectsAdapter.AddMessageAsync(
+                ConversationItemKind.Status,
+                AppText.Current.Get("role.worker"),
+                AppText.Current.Format(
+                    "projects.message.accepted_result_apply_blocked",
+                    $"Staging apply did not apply all files: {string.Join("; ", stagingOutcome.SkippedFiles)}"),
+                metadata: BuildProjectConversationMetadata("result", executionContext.TaskState.TaskId));
+            return false;
         }
 
         var applied = AcceptedResultApplyProcessor.Apply(
@@ -1492,6 +1530,12 @@ internal sealed class WorkCycleActionController
         }
 
         return AppText.Current.Format(key, body);
+    }
+
+    private static string BuildQcUnavailableRevisionRationale(QcAgentResult qcResult)
+    {
+        var diagnostic = qcResult.DiagnosticCode ?? "QC_UNAVAILABLE";
+        return $"QC was unavailable or unparseable ({diagnostic}); the result was not accepted and requires a revision or retry.";
     }
 
     private static string BuildWorkerLog(

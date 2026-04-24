@@ -108,7 +108,7 @@ starts a fresh stream on next observation. No system auto-prune.
 
 **Rationale for Local:** Sage observations are a per-machine
 runtime signal. Promotion of learned patterns from these raw
-observations to Truth (`.zavod/sage/learned_patterns.jsonl` or
+observations to Truth (`.zavod.local/sage/learned_patterns.jsonl` or
 similar) is a future slice requiring explicit human act.
 
 ### `.zavod.local/conversations/`

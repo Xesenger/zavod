@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using zavod.Execution;
 using zavod.Flow;
+using zavod.Orchestration;
 using zavod.Persistence;
 using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Text;
+using zavod.Welcoming;
 
 namespace zavod.UI.Modes.Projects.Bridge;
 
@@ -67,7 +70,31 @@ internal sealed class ProjectsWebSnapshotBuilder
         "projects.home.enterWork",
         "projects.home.scannerAnalysis",
         "projects.home.truthDocs",
+        "projects.home.nextActions",
+        "projects.home.missingTruth",
         "projects.home.userDocs",
+        "projects.welcome.action.review_preview_docs",
+        "projects.welcome.action.promote_preview_to_canonical",
+        "projects.welcome.action.author_canonical_doc",
+        "projects.welcome.action.start_work_cycle",
+        "projects.welcome.action.continue_work_cycle",
+        "projects.welcome.action.review_project_audit",
+        "projects.welcome.action.review_stale_sections",
+        "projects.welcome.action.import_retry",
+        "projects.welcome.action.reject_preview",
+        "projects.welcome.action.open_roadmap",
+        "projects.welcome.action.open_direction",
+        "projects.welcome.detail.review_preview_docs",
+        "projects.welcome.detail.promote_preview_to_canonical",
+        "projects.welcome.detail.author_canonical_doc",
+        "projects.welcome.detail.start_work_cycle",
+        "projects.welcome.detail.continue_work_cycle",
+        "projects.welcome.detail.review_project_audit",
+        "projects.welcome.detail.review_stale_sections",
+        "projects.welcome.detail.import_retry",
+        "projects.welcome.detail.reject_preview",
+        "projects.welcome.detail.open_roadmap",
+        "projects.welcome.detail.open_direction",
         "projects.report.label",
         "projects.report.open",
         "projects.report.modal.label",
@@ -229,6 +256,7 @@ internal sealed class ProjectsWebSnapshotBuilder
 
         var stats = ReadProjectStats(entry.RootPath);
         var snippets = ReadEvidenceSnippets(entry.RootPath);
+        var welcome = BuildWelcomePayload(entry.RootPath);
 
         return new ProjectsWebSelectedProject(
             Id: entry.Id,
@@ -241,7 +269,93 @@ internal sealed class ProjectsWebSnapshotBuilder
             Docs: stats.Docs,
             AnchorRows: BuildAnchorRows(snippets),
             DocumentRows: BuildDocumentRows(snippets),
-            CanonicalDocs: BuildCanonicalDocRows(entry.RootPath));
+            CanonicalDocs: BuildCanonicalDocRows(entry.RootPath),
+            WelcomeRule: welcome.Rule,
+            CanonicalDocCount: welcome.CanonicalCount,
+            PreviewDocCount: welcome.PreviewCount,
+            WelcomeActions: welcome.Actions,
+            MissingTruthWarnings: welcome.MissingTruthWarnings);
+    }
+
+    private sealed record WelcomePayload(
+        string Rule,
+        int CanonicalCount,
+        int PreviewCount,
+        IReadOnlyList<ProjectsWebWelcomeAction> Actions,
+        IReadOnlyList<string> MissingTruthWarnings);
+
+    private static WelcomePayload BuildWelcomePayload(string projectRoot)
+    {
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        var selection = documentRuntime.SelectSources(projectRoot);
+        var status = WorkPacketBuilder.BuildCanonicalDocsStatus(selection);
+        var preview = WorkPacketBuilder.BuildPreviewStatus(selection);
+        var state = TryLoadProjectState(projectRoot);
+        var actionSet = WelcomeSurfaceSelector.Select(new WelcomeStateInput(
+            selection,
+            HasActiveShift: state?.ActiveShiftId is not null,
+            HasActiveTask: state?.ActiveTaskId is not null,
+            HasStaleSections: false,
+            HasImportFailure: false));
+
+        return new WelcomePayload(
+            Rule: actionSet.PrimaryRule.ToString(),
+            CanonicalCount: status.CanonicalCount,
+            PreviewCount: preview?.PreviewKinds.Count ?? 0,
+            Actions: actionSet.Actions.Select(BuildWelcomeAction).ToArray(),
+            MissingTruthWarnings: WorkPacketBuilder.BuildMissingTruthWarnings(status));
+    }
+
+    private static ProjectState? TryLoadProjectState(string projectRoot)
+    {
+        try
+        {
+            return ProjectStateStorage.Load(projectRoot);
+        }
+        catch (ZavodPersistenceException)
+        {
+            return null;
+        }
+    }
+
+    private static ProjectsWebWelcomeAction BuildWelcomeAction(WelcomeAction action)
+    {
+        var key = GetWelcomeActionKey(action);
+        return new ProjectsWebWelcomeAction(
+            Action: key,
+            Label: AppText.Current.Get($"projects.welcome.action.{key}"),
+            Detail: AppText.Current.Get($"projects.welcome.detail.{key}"),
+            IsWired: IsWelcomeActionWired(action));
+    }
+
+    private static bool IsWelcomeActionWired(WelcomeAction action)
+    {
+        return action is WelcomeAction.ReviewPreviewDocs
+            or WelcomeAction.PromotePreviewToCanonical
+            or WelcomeAction.StartWorkCycle
+            or WelcomeAction.ContinueWorkCycle
+            or WelcomeAction.ReviewProjectAudit
+            or WelcomeAction.ImportRetry
+            or WelcomeAction.RejectPreview;
+    }
+
+    private static string GetWelcomeActionKey(WelcomeAction action)
+    {
+        return action switch
+        {
+            WelcomeAction.ReviewPreviewDocs => "review_preview_docs",
+            WelcomeAction.PromotePreviewToCanonical => "promote_preview_to_canonical",
+            WelcomeAction.AuthorCanonicalDoc => "author_canonical_doc",
+            WelcomeAction.StartWorkCycle => "start_work_cycle",
+            WelcomeAction.ContinueWorkCycle => "continue_work_cycle",
+            WelcomeAction.ReviewProjectAudit => "review_project_audit",
+            WelcomeAction.ReviewStaleSections => "review_stale_sections",
+            WelcomeAction.ImportRetry => "import_retry",
+            WelcomeAction.RejectPreview => "reject_preview",
+            WelcomeAction.OpenRoadmap => "open_roadmap",
+            WelcomeAction.OpenDirection => "open_direction",
+            _ => throw new InvalidOperationException($"Unhandled WelcomeAction: {action}.")
+        };
     }
 
     private static IReadOnlyList<ProjectsWebDocStatus> BuildCanonicalDocRows(string projectRoot)

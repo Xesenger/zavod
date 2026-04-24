@@ -10,5 +10,6 @@ public enum MaterialRuntimeStatus
     Encrypted,
     Corrupt,
     Unreadable,
+    SensitiveSkipped,
     Failed
 }

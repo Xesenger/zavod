@@ -23,6 +23,11 @@ const zavodProjectsBridge = (() => {
   const reportIframe = document.getElementById('report-iframe');
   const homeAnchorsSection = document.getElementById('home-anchors-section');
   const homeAnchorsEl = document.getElementById('home-anchors');
+  const homeWelcomeSection = document.getElementById('home-welcome-section');
+  const homeWelcomeStatus = document.getElementById('home-welcome-status');
+  const homeWelcomeActions = document.getElementById('home-welcome-actions');
+  const homeWelcomeWarnings = document.getElementById('home-welcome-warnings');
+  const homeWelcomeWarningList = document.getElementById('home-welcome-warning-list');
   const homeCanonDocsSection = document.getElementById('home-canon-docs-section');
   const homeCanonDocsEl = document.getElementById('home-canon-docs');
   const homeDocsSection = document.getElementById('home-docs-section');
@@ -225,10 +230,12 @@ const zavodProjectsBridge = (() => {
       if (modalProjName) modalProjName.textContent = p.name || '—';
 
       renderHomeAnchors(p.anchorRows);
+      renderWelcomeSurface(p);
       renderCanonicalDocs(p.canonicalDocs);
       renderHomeDocuments(p.documentRows);
     } else {
       renderHomeAnchors(null);
+      renderWelcomeSurface(null);
       renderCanonicalDocs(null);
       renderHomeDocuments(null);
     }
@@ -309,6 +316,80 @@ const zavodProjectsBridge = (() => {
   }
 
   // ── Home: scanner-analysis anchor rows ────────────────────────
+  function renderWelcomeSurface(project) {
+    if (!homeWelcomeSection || !homeWelcomeActions || !homeWelcomeStatus) return;
+    const actions = Array.isArray(project?.welcomeActions) ? project.welcomeActions : [];
+    const warnings = Array.isArray(project?.missingTruthWarnings) ? project.missingTruthWarnings : [];
+    homeWelcomeSection.hidden = !project || (actions.length === 0 && warnings.length === 0);
+    homeWelcomeActions.innerHTML = '';
+    homeWelcomeStatus.textContent = project
+      ? `${project.canonicalDocCount || 0}/5 canonical · ${project.previewDocCount || 0}/5 preview · ${project.welcomeRule || 'welcome'}`
+      : '';
+
+    actions.forEach((row) => {
+      if (!row) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'welcome-action';
+      if (row.isWired !== true) {
+        button.classList.add('unwired');
+        button.disabled = true;
+      }
+
+      const label = document.createElement('span');
+      label.className = 'welcome-action-label';
+      label.textContent = row.label || row.action || '';
+      const detail = document.createElement('span');
+      detail.className = 'welcome-action-detail';
+      detail.textContent = row.detail || '';
+      button.appendChild(label);
+      button.appendChild(detail);
+      button.addEventListener('click', () => runWelcomeAction(row.action));
+      homeWelcomeActions.appendChild(button);
+    });
+
+    if (homeWelcomeWarnings && homeWelcomeWarningList) {
+      homeWelcomeWarnings.hidden = warnings.length === 0;
+      homeWelcomeWarningList.innerHTML = '';
+      warnings.slice(0, 5).forEach((warning) => {
+        const item = document.createElement('div');
+        item.className = 'home-warning-row';
+        item.textContent = warning;
+        homeWelcomeWarningList.appendChild(item);
+      });
+    }
+  }
+
+  function runWelcomeAction(action) {
+    switch (action) {
+      case 'start_work_cycle':
+      case 'continue_work_cycle':
+        emit({ type: 'navigate_screen', payload: { screen: 'work-cycle' } });
+        if (!bridge) {
+          showScreen('work-cycle');
+          setTimeout(() => cinput && cinput.focus(), 80);
+        }
+        break;
+      case 'review_preview_docs':
+      case 'promote_preview_to_canonical':
+      case 'reject_preview':
+        homeCanonDocsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        break;
+      case 'review_project_audit':
+        if (reportCard && !reportCard.hidden) {
+          fallbackOpenReport();
+        } else {
+          homeAnchorsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        break;
+      case 'import_retry':
+        emit({ type: 'import_project', payload: {} });
+        break;
+      default:
+        break;
+    }
+  }
+
   function renderHomeAnchors(rows) {
     if (!homeAnchorsEl || !homeAnchorsSection) return;
     const list = Array.isArray(rows) ? rows : [];

@@ -31,7 +31,9 @@
 - язык документа не определяет его слой
 - язык документа не является признаком product truth
 - product truth определяется только расположением файла
-- `docs/zavod/canon/*` является единственным product truth layer
+- Product Canon lives under `docs/canon/*`
+- Managed Project Truth lives under `<managed repo>/.zavod/project/*`
+- Product Canon and Managed Project Truth must not be treated as the same layer
 
 ## Canons
 

@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -27,6 +28,7 @@ public sealed partial class ProjectsWebRendererView : UserControl
     private bool _navigationCompleted;
     private string? _pendingSnapshotJson;
     private Task? _initializationTask;
+    private readonly TaskCompletionSource _firstFrameReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public ProjectsWebRendererView()
     {
@@ -92,6 +94,30 @@ public sealed partial class ProjectsWebRendererView : UserControl
 
         await EnsureInitializedAsync();
         await FlushSnapshotAsync();
+    }
+
+    public async Task SavePreviewScreenshotAsync(string outputPath)
+    {
+        if (string.IsNullOrWhiteSpace(outputPath))
+        {
+            throw new ArgumentException("Screenshot output path is required.", nameof(outputPath));
+        }
+
+        await EnsureInitializedAsync();
+        await WaitForFirstFrameAsync(TimeSpan.FromSeconds(8));
+
+        var directory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        await using var fileStream = File.Create(outputPath);
+        using var randomAccessStream = fileStream.AsRandomAccessStream();
+        await ProjectsWebView.CoreWebView2!.CapturePreviewAsync(
+            CoreWebView2CapturePreviewImageFormat.Png,
+            randomAccessStream);
+        await randomAccessStream.FlushAsync();
     }
 
     private async void ProjectsWebRendererView_Loaded(object sender, RoutedEventArgs e)
@@ -208,6 +234,7 @@ public sealed partial class ProjectsWebRendererView : UserControl
         if (string.Equals(message.Type, "render_complete", StringComparison.Ordinal))
         {
             RootCauseTrace.Mark("projects_render_complete_received");
+            _firstFrameReady.TrySetResult();
             FirstFrameReady?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -230,5 +257,11 @@ public sealed partial class ProjectsWebRendererView : UserControl
         ProjectsWebView.CoreWebView2?.PostWebMessageAsJson(_pendingSnapshotJson);
         RootCauseTrace.Mark("projects_state_snapshot_posted");
         await Task.CompletedTask;
+    }
+
+    private async Task WaitForFirstFrameAsync(TimeSpan timeout)
+    {
+        var delay = Task.Delay(timeout);
+        await Task.WhenAny(_firstFrameReady.Task, delay);
     }
 }

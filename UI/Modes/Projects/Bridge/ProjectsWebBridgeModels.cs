@@ -23,7 +23,18 @@ public sealed record ProjectsWebSelectedProject(
     int Docs,
     IReadOnlyList<ProjectsWebHomeAnchor> AnchorRows,
     IReadOnlyList<ProjectsWebHomeDocument> DocumentRows,
-    IReadOnlyList<ProjectsWebDocStatus> CanonicalDocs);
+    IReadOnlyList<ProjectsWebDocStatus> CanonicalDocs,
+    string WelcomeRule,
+    int CanonicalDocCount,
+    int PreviewDocCount,
+    IReadOnlyList<ProjectsWebWelcomeAction> WelcomeActions,
+    IReadOnlyList<string> MissingTruthWarnings);
+
+public sealed record ProjectsWebWelcomeAction(
+    string Action,
+    string Label,
+    string Detail,
+    bool IsWired);
 
 public sealed record ProjectsWebHomeAnchor(
     string Tag,

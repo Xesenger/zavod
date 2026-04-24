@@ -30,6 +30,19 @@ public static class WorkspaceMaterialTextEqualizer
                 "unsupported-kind");
         }
 
+        var sensitiveReason = WorkspaceSensitiveFilePolicy.GetSensitiveReason(candidate.RelativePath);
+        if (!string.IsNullOrWhiteSpace(sensitiveReason))
+        {
+            return new WorkspaceMaterialTextExtract(
+                candidate.RelativePath,
+                candidate.Kind,
+                candidate.SelectionReason,
+                WorkspaceMaterialTextExtractStatus.SensitiveSkipped,
+                string.Empty,
+                false,
+                sensitiveReason);
+        }
+
         var fullPath = Path.Combine(workspaceRoot, candidate.RelativePath);
         if (!File.Exists(fullPath))
         {

@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace zavod.Workspace;
 
@@ -27,6 +29,7 @@ public static class WorkspaceEvidencePackBuilder
         ArgumentNullException.ThrowIfNull(materials);
 
         var state = scanResult.State;
+        var scannerConfig = WorkspaceScannerConfig.Load(state.WorkspaceRoot);
         var symbolHints = BuildSymbolHints(scanResult);
         var snippets = BuildSnippets(technicalEvidence, materials, symbolHints);
         var observations = BuildRawObservations(scanResult, technicalEvidence, materials);
@@ -42,13 +45,19 @@ public static class WorkspaceEvidencePackBuilder
             .ToArray();
         var dependencyEdges = BuildDependencyEdges(relativeRelevantFiles, observedLayers, modules, entryPoints, codeEdges, dependencySurface);
         var fileRoles = BuildFileRoles(scanResult);
+        var fileIndex = BuildFileIndex(scanResult, fileRoles, scannerConfig);
         var hotspots = BuildHotspots(scanResult, materials, dependencyEdges);
-        var candidates = new WorkspaceEvidenceCandidates(entryPoints, modules, fileRoles);
+        var projectUnits = BuildProjectUnits(scanResult, entryPoints, scannerConfig);
+        var runProfiles = BuildRunProfiles(scanResult, projectUnits);
+        var candidates = new WorkspaceEvidenceCandidates(entryPoints, modules, fileRoles, projectUnits, runProfiles);
         var signals = BuildSignals(scanResult, technicalEvidence, materials);
         var signalScores = BuildSignalScores(signals, patterns, observations, entryPoints, fileRoles);
         var confidenceAnnotations = BuildConfidenceAnnotations(signalScores, candidates, dependencyEdges, codeEdges, dependencySurface, materials);
 
         return new WorkspaceEvidencePack(
+            BuildScanRun(scanResult),
+            WorkspaceEvidencePredicateRegistry.All,
+            scanResult.BudgetReport,
             new WorkspaceProjectProfile(
                 state.WorkspaceRoot,
                 state.ImportKind,
@@ -61,6 +70,7 @@ public static class WorkspaceEvidencePackBuilder
                 state.Summary.DocumentFileCount,
                 state.Summary.AssetFileCount,
                 state.Summary.BinaryFileCount,
+                state.Summary.IgnoredNoiseFileCount,
                 state.Summary.SourceRoots,
                 state.Summary.BuildRoots,
                 state.StructuralAnomalies.Select(static anomaly => $"{anomaly.Code}: {anomaly.Message}").ToArray()),
@@ -69,6 +79,7 @@ public static class WorkspaceEvidencePackBuilder
             observations,
             patterns,
             signalScores,
+            fileIndex,
             candidates,
             codeEdges,
             signatureHints,
@@ -92,6 +103,174 @@ public static class WorkspaceEvidencePackBuilder
                 material.WasTruncated)).ToArray(),
             signals,
             snippets);
+    }
+
+    private static WorkspaceEvidenceProjectUnit[] BuildProjectUnits(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceEntryPoint> entryPoints,
+        WorkspaceScannerConfig scannerConfig)
+    {
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        var unitsByRoot = new Dictionary<string, UnitDraft>(StringComparer.OrdinalIgnoreCase);
+        var cargoDefaultMembers = BuildCargoDefaultMemberRoots(scanResult);
+
+        foreach (var file in scanResult.RelevantFiles)
+        {
+            var relativePath = Path.GetRelativePath(workspaceRoot, file).Replace('/', '\\');
+            if (!TryClassifyUnitManifest(relativePath, out var rootPath, out var kind, out var evidence))
+            {
+                continue;
+            }
+
+            if (IsUnsupportedUnitRoot(rootPath) || scannerConfig.IsIgnoredUnit(rootPath))
+            {
+                continue;
+            }
+
+            var draft = GetOrCreateUnit(unitsByRoot, rootPath, kind, scanResult.BudgetReport?.IsPartial == true);
+            draft.Manifests.Add(relativePath);
+            draft.Evidence.Add(evidence);
+            draft.Evidence.Add($"unit_zone:{ClassifyUnitZone(rootPath)}");
+            if (scannerConfig.IsPrimaryUnit(rootPath))
+            {
+                draft.Evidence.Add("config_primary_unit");
+                if (scannerConfig.ConfigPath is not null)
+                {
+                    draft.Evidence.Add($"config:{scannerConfig.ConfigPath}");
+                }
+            }
+
+            if (scannerConfig.IsVendorUnit(rootPath))
+            {
+                draft.Evidence.Add("config_vendor_zone");
+            }
+
+            if (cargoDefaultMembers.Any(member => string.Equals(member, rootPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                draft.Evidence.Add("cargo_default_member");
+            }
+        }
+
+        foreach (var entryPoint in entryPoints)
+        {
+            var matched = unitsByRoot.Values
+                .Where(unit => IsPathInsideUnit(entryPoint.RelativePath, unit.RootPath))
+                .OrderByDescending(unit => UnitRootDepth(unit.RootPath))
+                .FirstOrDefault();
+            if (matched is null)
+            {
+                continue;
+            }
+
+            matched.EntryPoints.Add(entryPoint.RelativePath);
+            matched.Evidence.Add($"entry:{entryPoint.RelativePath}");
+            foreach (var entryEvidence in entryPoint.Evidence)
+            {
+                matched.Evidence.Add($"entry_evidence:{entryEvidence}");
+            }
+        }
+
+        return unitsByRoot.Values
+            .Where(static unit => unit.Manifests.Count > 0)
+            .Select(static unit => unit.ToProjectUnit())
+            .OrderByDescending(static unit => UnitScore(unit))
+            .ThenBy(static unit => UnitRootDepth(unit.RootPath))
+            .ThenBy(static unit => unit.RootPath, StringComparer.OrdinalIgnoreCase)
+            .Take(24)
+            .ToArray();
+    }
+
+    private static WorkspaceEvidenceRunProfile[] BuildRunProfiles(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceProjectUnit> projectUnits)
+    {
+        var profiles = new List<WorkspaceEvidenceRunProfile>();
+        foreach (var unit in projectUnits)
+        {
+            foreach (var manifest in unit.Manifests)
+            {
+                var fileName = Path.GetFileName(manifest);
+                if (string.Equals(fileName, "Cargo.toml", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddCargoRunProfiles(profiles, unit, manifest);
+                }
+                else if (string.Equals(fileName, "package.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddPackageJsonRunProfiles(profiles, scanResult.State.WorkspaceRoot, unit, manifest);
+                }
+                else if (string.Equals(fileName, "go.mod", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddGoRunProfiles(profiles, unit, manifest);
+                }
+                else if (string.Equals(fileName, "CMakeLists.txt", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddCMakeRunProfiles(profiles, unit, manifest);
+                }
+                else if (Path.GetExtension(fileName).Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddDotnetRunProfiles(profiles, unit, manifest);
+                }
+            }
+        }
+
+        return profiles
+            .GroupBy(static profile => $"{profile.Kind}|{profile.Command}|{profile.WorkingDirectory}", StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .OrderByDescending(static profile => RunProfileScore(profile))
+            .ThenBy(static profile => profile.WorkingDirectory, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(static profile => profile.Kind, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(static profile => profile.Command, StringComparer.OrdinalIgnoreCase)
+            .Take(48)
+            .ToArray();
+    }
+
+    private static WorkspaceScanRun BuildScanRun(WorkspaceScanResult scanResult)
+    {
+        var state = scanResult.State;
+        var scanTime = state.LastScanAt.ToUniversalTime();
+        var scanStamp = scanTime.ToString("yyyy-MM-ddTHH-mm-ssZ", System.Globalization.CultureInfo.InvariantCulture);
+        return new WorkspaceScanRun(
+            $"SCAN-{scanStamp}",
+            ComputeScanFingerprint(scanResult),
+            "2.0.0-alpha",
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["file_inventory"] = "0.2.0",
+                ["manifest_index"] = "0.2.0",
+                ["shallow_symbols"] = "0.1.0",
+                ["dependency_edges"] = "0.1.0",
+                ["entrypoint_ranking"] = "0.2.0",
+                ["predicate_registry"] = "0.1.0",
+                ["scanner_config"] = "0.1.0",
+                ["run_profile_index"] = "0.1.0"
+            },
+            scanTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            scanTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            "full");
+    }
+
+    private static string ComputeScanFingerprint(WorkspaceScanResult scanResult)
+    {
+        var state = scanResult.State;
+        var lines = new List<string>
+        {
+            $"root={Path.GetFileName(state.WorkspaceRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))}",
+            $"import={state.ImportKind}",
+            $"health={state.Health}",
+            $"relevant={state.Summary.RelevantFileCount}",
+            $"source={state.Summary.SourceFileCount}",
+            $"build={state.Summary.BuildFileCount}"
+        };
+        lines.AddRange(scanResult.RelevantFiles
+            .Select(path => Path.GetRelativePath(state.WorkspaceRoot, path).Replace('/', '\\'))
+            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(static path => $"file={path}"));
+        lines.AddRange(state.StructuralAnomalies
+            .OrderBy(static anomaly => anomaly.Code, StringComparer.OrdinalIgnoreCase)
+            .Select(static anomaly => $"anomaly={anomaly.Code}:{anomaly.Scope}"));
+
+        var payload = string.Join("\n", lines);
+        return $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant()}";
     }
 
     private static (string RelativePath, string PreviewText)[] BuildPatternEligibleSnippets(
@@ -124,6 +303,11 @@ public static class WorkspaceEvidencePackBuilder
             observations.Add(new WorkspaceEvidenceObservation("file_found", file, file));
         }
 
+        foreach (var sensitiveFile in GetSensitiveRelativeFiles(scanResult).Take(24))
+        {
+            observations.Add(new WorkspaceEvidenceObservation("sensitive_file_detected", WorkspaceSensitiveFilePolicy.GetSensitiveReason(sensitiveFile), sensitiveFile));
+        }
+
         foreach (var root in scanResult.State.Summary.SourceRoots)
         {
             observations.Add(new WorkspaceEvidenceObservation("source_root_detected", root, root));
@@ -144,6 +328,15 @@ public static class WorkspaceEvidencePackBuilder
             observations.Add(new WorkspaceEvidenceObservation("structural_anomaly_detected", anomaly.Code, anomaly.Scope));
         }
 
+        if (scanResult.BudgetReport is { IsPartial: true } budgetReport)
+        {
+            observations.Add(new WorkspaceEvidenceObservation("scan_budget_degraded", "partial_scan", workspaceRoot));
+            foreach (var skip in budgetReport.Skips.Take(24))
+            {
+                observations.Add(new WorkspaceEvidenceObservation("scan_budget_skip_detected", skip.Reason, skip.RelativePath));
+            }
+        }
+
         foreach (var evidence in technicalEvidence.Take(24))
         {
             observations.Add(new WorkspaceEvidenceObservation("technical_preview_detected", evidence.Category, evidence.RelativePath));
@@ -161,10 +354,64 @@ public static class WorkspaceEvidencePackBuilder
             }
         }
 
-        return observations
+        return EnrichObservations(observations
             .GroupBy(static observation => $"{observation.Kind}|{observation.Value}|{observation.EvidencePath}", StringComparer.OrdinalIgnoreCase)
             .Select(static group => group.First())
+            .ToArray());
+    }
+
+    private static WorkspaceEvidenceObservation[] EnrichObservations(IReadOnlyList<WorkspaceEvidenceObservation> observations)
+    {
+        return observations
+            .Select((observation, index) =>
+            {
+                var predicate = WorkspaceEvidencePredicateRegistry.PredicateForObservationKind(observation.Kind);
+                var source = ResolveObservationSource(observation.Kind);
+                var extractorVersion = ResolveObservationExtractorVersion(source);
+                return observation with
+                {
+                    Id = BuildStableEvidenceId(observation, predicate, source),
+                    DisplayId = $"EV-{index + 1:00000}",
+                    Predicate = predicate,
+                    Source = source,
+                    ExtractorVersion = extractorVersion
+                };
+            })
             .ToArray();
+    }
+
+    private static string BuildStableEvidenceId(WorkspaceEvidenceObservation observation, string predicate, string source)
+    {
+        var subject = observation.EvidencePath ?? string.Empty;
+        var payload = string.Join(
+            "\n",
+            subject.Trim().Replace('/', '\\').ToLowerInvariant(),
+            predicate.Trim().ToLowerInvariant(),
+            observation.Value.Trim().ToLowerInvariant(),
+            source.Trim().ToLowerInvariant());
+        return $"EV-{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..12].ToLowerInvariant()}";
+    }
+
+    private static string ResolveObservationSource(string kind)
+    {
+        return kind switch
+        {
+            "file_found" or "source_root_detected" or "build_root_detected" or "entry_candidate_detected" or "structural_anomaly_detected" or "scan_budget_degraded" or "scan_budget_skip_detected" => "file_inventory",
+            "sensitive_file_detected" => "sensitive_file_policy",
+            "technical_preview_detected" or "material_preview_detected" or "document_kind_detected" => "material_runtime",
+            _ => "scanner"
+        };
+    }
+
+    private static string ResolveObservationExtractorVersion(string source)
+    {
+        return source switch
+        {
+            "file_inventory" => "0.2.0",
+            "sensitive_file_policy" => "0.1.0",
+            "material_runtime" => "0.1.0",
+            _ => "0.1.0"
+        };
     }
 
     private static WorkspaceEvidencePattern[] BuildDerivedPatterns(
@@ -300,9 +547,39 @@ public static class WorkspaceEvidencePackBuilder
 
     private static WorkspaceEvidenceEntryPoint[] BuildEntryPoints(WorkspaceScanResult scanResult)
     {
+        var cargoDefaultMembers = BuildCargoDefaultMemberRoots(scanResult);
         return scanResult.State.Summary.EntryCandidates
-            .Select(path => new WorkspaceEvidenceEntryPoint(path, ClassifyEntryRole(path), BuildEntryNote(path)))
+            .Select(path => BuildEntryPoint(scanResult, path, cargoDefaultMembers))
+            .OrderByDescending(static entry => entry.Score)
+            .ThenBy(static entry => entry.RelativePath.Count(static ch => ch == '\\' || ch == '/'))
+            .ThenBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private static WorkspaceEvidenceEntryPoint BuildEntryPoint(
+        WorkspaceScanResult scanResult,
+        string relativePath,
+        IReadOnlyCollection<string> cargoDefaultMembers)
+    {
+        var role = ClassifyEntryRole(relativePath);
+        var evidence = BuildEntryEvidence(scanResult, relativePath, role, cargoDefaultMembers);
+        var score = ScoreEntryCandidate(relativePath, role, evidence);
+        var confidence = evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase)
+            ? WorkspaceEvidenceConfidenceLevel.Confirmed
+            : WorkspaceEvidenceConfidenceLevel.Likely;
+        return new WorkspaceEvidenceEntryPoint(
+            relativePath,
+            role,
+            BuildEntryNote(relativePath, score, evidence),
+            score,
+            evidence,
+            EvidenceMarker(
+                "entrypoint_candidate",
+                relativePath,
+                string.Join("; ", evidence),
+                confidence,
+                scanResult.BudgetReport?.IsPartial == true,
+                isBounded: false));
     }
 
     private static WorkspaceEvidenceLayer[] BuildObservedLayers(WorkspaceScanResult scanResult)
@@ -359,7 +636,14 @@ public static class WorkspaceEvidencePackBuilder
                 NormalizeModuleName(bucket.Key),
                 InferModuleRole(bucket.Key),
                 layerName,
-                $"Observed {bucket.Value.Count} files clustered under '{bucket.Key}' from source root '{bucket.Value.SourceRoot}'."));
+                $"Observed {bucket.Value.Count} files clustered under '{bucket.Key}' from source root '{bucket.Value.SourceRoot}'.",
+                EvidenceMarker(
+                    "module_candidate",
+                    bucket.Key,
+                    $"Observed {bucket.Value.Count} files clustered under '{bucket.Key}' from source root '{bucket.Value.SourceRoot}'.",
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
         }
 
         foreach (var entryPoint in entryPoints.Take(6))
@@ -379,7 +663,14 @@ public static class WorkspaceEvidencePackBuilder
                 name,
                 "entry-surface",
                 InferLayerNameForModule(entryPoint.RelativePath, observedLayers),
-                $"Observed entry cluster anchored at '{entryPoint.RelativePath}'."));
+                $"Observed entry cluster anchored at '{entryPoint.RelativePath}'.",
+                EvidenceMarker(
+                    "module_candidate",
+                    entryPoint.RelativePath,
+                    $"Observed entry cluster anchored at '{entryPoint.RelativePath}'.",
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
         }
 
         return candidates
@@ -389,6 +680,208 @@ public static class WorkspaceEvidencePackBuilder
             .ThenBy(static module => module.Name, StringComparer.OrdinalIgnoreCase)
             .Take(10)
             .ToArray();
+    }
+
+    private sealed class UnitDraft(string rootPath, string kind)
+    {
+        public string RootPath { get; } = rootPath;
+
+        public string Kind { get; } = kind;
+
+        public bool IsPartial { get; set; }
+
+        public HashSet<string> Manifests { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public HashSet<string> EntryPoints { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public HashSet<string> Evidence { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public WorkspaceEvidenceProjectUnit ToProjectUnit()
+        {
+            var confidence = Manifests.Count > 0 && EntryPoints.Count > 0
+                ? WorkspaceEvidenceConfidenceLevel.Confirmed
+                : WorkspaceEvidenceConfidenceLevel.Likely;
+            var id = RootPath == "." ? "unit-root" : $"unit-{SanitizeUnitId(RootPath)}";
+            var evidence = Evidence.OrderBy(static item => item, StringComparer.OrdinalIgnoreCase).ToArray();
+            return new WorkspaceEvidenceProjectUnit(
+                id,
+                RootPath,
+                Kind,
+                Manifests.OrderBy(static path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+                EntryPoints.OrderBy(static path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+                confidence,
+                evidence,
+                EvidenceMarker(
+                    "project_unit_candidate",
+                    RootPath,
+                    string.Join("; ", evidence),
+                    confidence,
+                    IsPartial,
+                    isBounded: false));
+        }
+    }
+
+    private static void AddCargoRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var manifestArg = QuoteCommandArgument(manifest);
+        var evidence = UnitProfileEvidence(unit, manifest);
+        AddRunProfile(profiles, unit, "build", $"cargo build --manifest-path {manifestArg}", manifest, unit.Confidence, evidence);
+        AddRunProfile(profiles, unit, "test", $"cargo test --manifest-path {manifestArg}", manifest, unit.Confidence, evidence);
+        if (unit.EntryPoints.Count > 0)
+        {
+            AddRunProfile(profiles, unit, "run", $"cargo run --manifest-path {manifestArg}", manifest, WorkspaceEvidenceConfidenceLevel.Confirmed, evidence.Concat(new[] { "entrypoint_overlap" }).ToArray());
+        }
+    }
+
+    private static void AddPackageJsonRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        string workspaceRoot,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var fullPath = Path.Combine(workspaceRoot, manifest);
+        if (!File.Exists(fullPath))
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(fullPath, Encoding.UTF8));
+            if (!document.RootElement.TryGetProperty("scripts", out var scripts) ||
+                scripts.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            foreach (var script in scripts.EnumerateObject())
+            {
+                var kind = ClassifyPackageScript(script.Name);
+                if (string.IsNullOrWhiteSpace(kind))
+                {
+                    continue;
+                }
+
+                AddRunProfile(
+                    profiles,
+                    unit,
+                    kind,
+                    $"npm run {script.Name}",
+                    manifest,
+                    WorkspaceEvidenceConfidenceLevel.Confirmed,
+                    UnitProfileEvidence(unit, manifest).Concat(new[] { $"script:{script.Name}" }).ToArray());
+            }
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+        catch (IOException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+    }
+
+    private static void AddGoRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var evidence = UnitProfileEvidence(unit, manifest);
+        AddRunProfile(profiles, unit, "build", "go build ./...", manifest, unit.Confidence, evidence);
+        AddRunProfile(profiles, unit, "test", "go test ./...", manifest, unit.Confidence, evidence);
+    }
+
+    private static void AddCMakeRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var evidence = UnitProfileEvidence(unit, manifest);
+        AddRunProfile(profiles, unit, "configure", "cmake -S . -B build", manifest, unit.Confidence, evidence);
+        AddRunProfile(profiles, unit, "build", "cmake --build build", manifest, unit.Confidence, evidence);
+    }
+
+    private static void AddDotnetRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var projectArg = QuoteCommandArgument(manifest);
+        var evidence = UnitProfileEvidence(unit, manifest);
+        AddRunProfile(profiles, unit, "build", $"dotnet build {projectArg}", manifest, unit.Confidence, evidence);
+        if (ContainsAny(manifest, "test", "tests"))
+        {
+            AddRunProfile(profiles, unit, "test", $"dotnet test {projectArg}", manifest, WorkspaceEvidenceConfidenceLevel.Confirmed, evidence.Concat(new[] { "test_project_name" }).ToArray());
+        }
+    }
+
+    private static void AddRunProfile(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string kind,
+        string command,
+        string sourcePath,
+        WorkspaceEvidenceConfidenceLevel confidence,
+        IReadOnlyList<string> evidence)
+    {
+        profiles.Add(new WorkspaceEvidenceRunProfile(
+            $"profile-{SanitizeUnitId(unit.RootPath)}-{kind}-{profiles.Count + 1}",
+            kind,
+            command,
+            unit.RootPath,
+            sourcePath,
+            confidence,
+            evidence,
+            EvidenceMarker(
+                "run_profile_candidate",
+                sourcePath,
+                string.Join("; ", evidence),
+                confidence,
+                unit.EvidenceMarker?.IsPartial == true,
+                isBounded: false)));
+    }
+
+    private static IReadOnlyList<string> UnitProfileEvidence(WorkspaceEvidenceProjectUnit unit, string manifest)
+    {
+        return unit.Evidence
+            .Concat(new[] { $"manifest:{manifest}", $"unit:{unit.RootPath}" })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static item => item, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string ClassifyPackageScript(string scriptName)
+    {
+        var normalized = scriptName.Trim().ToLowerInvariant();
+        if (normalized is "build" or "compile")
+        {
+            return "build";
+        }
+
+        if (normalized is "start" or "dev" or "serve" || normalized.StartsWith("start:", StringComparison.Ordinal))
+        {
+            return "run";
+        }
+
+        if (normalized is "test" || normalized.StartsWith("test:", StringComparison.Ordinal))
+        {
+            return "test";
+        }
+
+        if (normalized is "lint" or "check" or "typecheck" || normalized.StartsWith("lint:", StringComparison.Ordinal))
+        {
+            return "check";
+        }
+
+        return string.Empty;
     }
 
     private static WorkspaceEvidenceDependencyEdge[] BuildDependencyEdges(
@@ -414,7 +907,15 @@ public static class WorkspaceEvidencePackBuilder
                     matchedModule.Name,
                     entryPoint.Role,
                     $"Entry candidate '{entryPoint.RelativePath}' overlaps with module candidate '{matchedModule.Name}'.",
-                    entryPoint.RelativePath));
+                    entryPoint.RelativePath,
+                    WorkspaceEvidenceEdgeResolution.Lexical,
+                    EvidenceMarker(
+                        "dependency_edge_candidate",
+                        entryPoint.RelativePath,
+                        $"Entry candidate '{entryPoint.RelativePath}' overlaps with module candidate '{matchedModule.Name}'.",
+                        WorkspaceEvidenceConfidenceLevel.Likely,
+                        entryPoint.EvidenceMarker?.IsPartial == true,
+                        isBounded: false)));
                 continue;
             }
 
@@ -427,7 +928,15 @@ public static class WorkspaceEvidencePackBuilder
                     matchedLayer.Name,
                     entryPoint.Role,
                     $"Entry candidate '{entryPoint.RelativePath}' overlaps with layer/root '{matchedLayer.Name}'.",
-                    entryPoint.RelativePath));
+                    entryPoint.RelativePath,
+                    WorkspaceEvidenceEdgeResolution.Lexical,
+                    EvidenceMarker(
+                        "dependency_edge_candidate",
+                        entryPoint.RelativePath,
+                        $"Entry candidate '{entryPoint.RelativePath}' overlaps with layer/root '{matchedLayer.Name}'.",
+                        WorkspaceEvidenceConfidenceLevel.Likely,
+                        entryPoint.EvidenceMarker?.IsPartial == true,
+                        isBounded: false)));
             }
         }
 
@@ -444,7 +953,15 @@ public static class WorkspaceEvidencePackBuilder
                 layer.Name,
                 module.Role,
                 $"Module candidate '{module.Name}' is grouped under layer/root '{layer.Name}'.",
-                layer.Root));
+                layer.Root,
+                WorkspaceEvidenceEdgeResolution.Lexical,
+                EvidenceMarker(
+                    "dependency_edge_candidate",
+                    layer.Root,
+                    $"Module candidate '{module.Name}' is grouped under layer/root '{layer.Name}'.",
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    module.EvidenceMarker?.IsPartial == true,
+                    isBounded: false)));
         }
 
         foreach (var codeEdge in codeEdges.Take(24))
@@ -454,7 +971,9 @@ public static class WorkspaceEvidencePackBuilder
                 codeEdge.ToPath,
                 codeEdge.Kind,
                 codeEdge.Reason,
-                codeEdge.FromPath));
+                codeEdge.FromPath,
+                codeEdge.Resolution,
+                codeEdge.EvidenceMarker));
         }
 
         foreach (var dependency in dependencySurface.Take(24))
@@ -464,11 +983,19 @@ public static class WorkspaceEvidencePackBuilder
                 dependency.Name,
                 dependency.Scope,
                 $"Dependency surface extracted from '{dependency.SourcePath}'.",
-                dependency.SourcePath));
+                dependency.SourcePath,
+                WorkspaceEvidenceEdgeResolution.Manifest,
+                EvidenceMarker(
+                    "manifest_dependency_edge",
+                    dependency.SourcePath,
+                    $"Dependency surface extracted from '{dependency.SourcePath}'.",
+                    WorkspaceEvidenceConfidenceLevel.Confirmed,
+                    isPartial: false,
+                    isBounded: false)));
         }
 
         return edges
-            .GroupBy(static edge => $"{edge.From}|{edge.To}|{edge.Label}", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(static edge => $"{edge.From}|{edge.To}|{edge.Label}|{edge.Resolution}", StringComparer.OrdinalIgnoreCase)
             .Select(static group => group.First())
             .OrderBy(static edge => edge.From, StringComparer.OrdinalIgnoreCase)
             .ThenBy(static edge => edge.To, StringComparer.OrdinalIgnoreCase)
@@ -490,7 +1017,18 @@ public static class WorkspaceEvidencePackBuilder
                 continue;
             }
 
-            roles.Add(new WorkspaceEvidenceFileRole(relativePath, role.Value.Role, role.Value.Confidence, role.Value.Reason));
+            roles.Add(new WorkspaceEvidenceFileRole(
+                relativePath,
+                role.Value.Role,
+                role.Value.Confidence,
+                role.Value.Reason,
+                EvidenceMarker(
+                    "file_role_candidate",
+                    relativePath,
+                    role.Value.Reason,
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
         }
 
         return roles
@@ -500,6 +1038,151 @@ public static class WorkspaceEvidencePackBuilder
             .ThenBy(static item => item.RelativePath, StringComparer.OrdinalIgnoreCase)
             .Take(32)
             .ToArray();
+    }
+
+    private static WorkspaceEvidenceFileIndexItem[] BuildFileIndex(
+        WorkspaceScanResult scanResult,
+        IReadOnlyList<WorkspaceEvidenceFileRole> fileRoles,
+        WorkspaceScannerConfig scannerConfig)
+    {
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        var roleByPath = fileRoles
+            .GroupBy(static role => role.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.OrderByDescending(static role => role.Confidence).First(), StringComparer.OrdinalIgnoreCase);
+        var materialByPath = scanResult.MaterialCandidates
+            .GroupBy(static material => material.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.First().Kind.ToString(), StringComparer.OrdinalIgnoreCase);
+
+        return scanResult.RelevantFiles
+            .Select(file =>
+            {
+                var relativePath = Path.GetRelativePath(workspaceRoot, file).Replace('/', '\\');
+                _ = roleByPath.TryGetValue(relativePath, out var role);
+                _ = materialByPath.TryGetValue(relativePath, out var materialKind);
+                return new WorkspaceEvidenceFileIndexItem(
+                    relativePath,
+                    Path.GetExtension(relativePath),
+                    TryGetFileSize(file),
+                    ClassifyFileIndexZone(relativePath, materialKind, scannerConfig),
+                    role?.Role ?? "unclassified",
+                    WorkspaceSensitiveFilePolicy.IsSensitivePath(relativePath),
+                    materialKind ?? string.Empty,
+                    BuildFileIndexEvidence(relativePath, role?.Role, materialKind, scannerConfig));
+            })
+            .OrderBy(static item => item.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .Take(5000)
+            .ToArray();
+    }
+
+    private static long TryGetFileSize(string file)
+    {
+        try
+        {
+            return new FileInfo(file).Length;
+        }
+        catch (IOException)
+        {
+            return -1;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return -1;
+        }
+    }
+
+    private static string ClassifyFileIndexZone(
+        string relativePath,
+        string? materialKind,
+        WorkspaceScannerConfig scannerConfig)
+    {
+        if (scannerConfig.IsGeneratedFile(relativePath))
+        {
+            return "generated";
+        }
+
+        if (scannerConfig.IsVendorUnit(relativePath))
+        {
+            return "vendor";
+        }
+
+        if (scannerConfig.IsIgnoredUnit(relativePath))
+        {
+            return "ignored";
+        }
+
+        if (!string.IsNullOrWhiteSpace(materialKind))
+        {
+            return "material";
+        }
+
+        var extension = Path.GetExtension(relativePath).ToLowerInvariant();
+        var fileName = Path.GetFileName(relativePath);
+        if (IsBuildLikePath(relativePath))
+        {
+            return "build";
+        }
+
+        if (IsConfigLikeFileName(fileName, extension))
+        {
+            return "config";
+        }
+
+        if (IsDocumentLikeExtension(extension))
+        {
+            return "document";
+        }
+
+        if (IsAssetLikeExtension(extension))
+        {
+            return "asset";
+        }
+
+        if (IsBinaryLikeExtension(extension))
+        {
+            return "binary";
+        }
+
+        return "source";
+    }
+
+    private static string BuildFileIndexEvidence(
+        string relativePath,
+        string? role,
+        string? materialKind,
+        WorkspaceScannerConfig scannerConfig)
+    {
+        var parts = new List<string> { "relevant_file" };
+        if (scannerConfig.IsGeneratedFile(relativePath))
+        {
+            parts.Add("config_generated_pattern");
+        }
+
+        if (scannerConfig.IsVendorUnit(relativePath))
+        {
+            parts.Add("config_vendor_zone");
+        }
+
+        if (scannerConfig.IsIgnoredUnit(relativePath))
+        {
+            parts.Add("config_ignore_zone");
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            parts.Add($"role:{role}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(materialKind))
+        {
+            parts.Add($"material:{materialKind}");
+        }
+
+        if (WorkspaceSensitiveFilePolicy.IsSensitivePath(relativePath))
+        {
+            parts.Add("sensitive_policy");
+        }
+
+        return string.Join("; ", parts);
     }
 
     private static WorkspaceEvidenceHotspot[] BuildHotspots(
@@ -518,7 +1201,17 @@ public static class WorkspaceEvidencePackBuilder
                 var info = new FileInfo(file);
                 if (info.Exists && info.Length >= 256 * 1024)
                 {
-                    hotspots.Add(new WorkspaceEvidenceHotspot("large_file", relativePath, $"Observed file size {info.Length} bytes."));
+                    hotspots.Add(new WorkspaceEvidenceHotspot(
+                        "large_file",
+                        relativePath,
+                        $"Observed file size {info.Length} bytes.",
+                        EvidenceMarker(
+                            "risk_zone",
+                            relativePath,
+                            $"Observed file size {info.Length} bytes.",
+                            WorkspaceEvidenceConfidenceLevel.Confirmed,
+                            scanResult.BudgetReport?.IsPartial == true,
+                            isBounded: false)));
                 }
             }
             catch (IOException)
@@ -535,19 +1228,49 @@ public static class WorkspaceEvidencePackBuilder
                      .GroupBy(static edge => edge.From, StringComparer.OrdinalIgnoreCase)
                      .Where(static group => group.Count() >= 3))
         {
-            hotspots.Add(new WorkspaceEvidenceHotspot("high_fanout_candidate", group.Key, $"Observed {group.Count()} coarse outgoing edges from '{group.Key}'."));
+            hotspots.Add(new WorkspaceEvidenceHotspot(
+                "high_fanout_candidate",
+                group.Key,
+                $"Observed {group.Count()} coarse outgoing edges from '{group.Key}'.",
+                EvidenceMarker(
+                    "risk_zone",
+                    group.Key,
+                    $"Observed {group.Count()} coarse outgoing edges from '{group.Key}'.",
+                    WorkspaceEvidenceConfidenceLevel.Likely,
+                    scanResult.BudgetReport?.IsPartial == true,
+                    isBounded: false)));
         }
 
         foreach (var anomaly in scanResult.State.StructuralAnomalies)
         {
             if (string.Equals(anomaly.Code, "NESTED_NON_SOURCE_PAYLOADS", StringComparison.OrdinalIgnoreCase))
             {
-                hotspots.Add(new WorkspaceEvidenceHotspot("nested_payload_boundary", anomaly.Scope ?? scanResult.State.WorkspaceRoot, anomaly.Message));
+                hotspots.Add(new WorkspaceEvidenceHotspot(
+                    "nested_payload_boundary",
+                    anomaly.Scope ?? scanResult.State.WorkspaceRoot,
+                    anomaly.Message,
+                    EvidenceMarker(
+                        "risk_zone",
+                        anomaly.Scope,
+                        anomaly.Message,
+                        WorkspaceEvidenceConfidenceLevel.Confirmed,
+                        scanResult.BudgetReport?.IsPartial == true,
+                        isBounded: false)));
             }
 
             if (string.Equals(anomaly.Code, "NESTED_GIT_PROJECTS", StringComparison.OrdinalIgnoreCase))
             {
-                hotspots.Add(new WorkspaceEvidenceHotspot("binary_source_mixed_layout", anomaly.Scope ?? scanResult.State.WorkspaceRoot, anomaly.Message));
+                hotspots.Add(new WorkspaceEvidenceHotspot(
+                    "binary_source_mixed_layout",
+                    anomaly.Scope ?? scanResult.State.WorkspaceRoot,
+                    anomaly.Message,
+                    EvidenceMarker(
+                        "risk_zone",
+                        anomaly.Scope,
+                        anomaly.Message,
+                        WorkspaceEvidenceConfidenceLevel.Confirmed,
+                        scanResult.BudgetReport?.IsPartial == true,
+                        isBounded: false)));
             }
         }
 
@@ -556,7 +1279,17 @@ public static class WorkspaceEvidencePackBuilder
             if (ContainsAny(material.PreviewText, "todo", "fixme", "temporary", "workaround") &&
                 CountMatchingMarkers(material.PreviewText, "runtime", "ui", "config", "build", "api", "process") >= 2)
             {
-                hotspots.Add(new WorkspaceEvidenceHotspot("mixed_concerns_candidate", material.RelativePath, "Observed temporary/procedural wording mixed with technical concerns in one document."));
+                hotspots.Add(new WorkspaceEvidenceHotspot(
+                    "mixed_concerns_candidate",
+                    material.RelativePath,
+                    "Observed temporary/procedural wording mixed with technical concerns in one document.",
+                    EvidenceMarker(
+                        "risk_zone",
+                        material.RelativePath,
+                        "Observed temporary/procedural wording mixed with technical concerns in one document.",
+                        WorkspaceEvidenceConfidenceLevel.Likely,
+                        scanResult.BudgetReport?.IsPartial == true,
+                        isBounded: material.WasTruncated)));
             }
         }
 
@@ -619,6 +1352,9 @@ public static class WorkspaceEvidencePackBuilder
             signals.Add(new WorkspaceEvidenceSignal("structure", "mixed_import", "Source/build structure coexists with non-source materials.", state.WorkspaceRoot));
         }
 
+        signals.AddRange(BuildRootReadmeIdentitySignals(scanResult));
+        signals.AddRange(BuildSensitiveFileSignals(scanResult));
+
         if (state.StructuralAnomalies.Any(static anomaly => anomaly.Code == "NESTED_NON_SOURCE_PAYLOADS"))
         {
             signals.Add(new WorkspaceEvidenceSignal("structure", "nested_payloads", "Scanner detected nested non-source payload roots beside host structure.", state.WorkspaceRoot));
@@ -675,6 +1411,77 @@ public static class WorkspaceEvidencePackBuilder
             .ToArray();
     }
 
+    private static IEnumerable<WorkspaceEvidenceSignal> BuildSensitiveFileSignals(WorkspaceScanResult scanResult)
+    {
+        foreach (var relativePath in GetSensitiveRelativeFiles(scanResult).Take(24))
+        {
+            yield return new WorkspaceEvidenceSignal(
+                "safety",
+                "sensitive_file_present",
+                $"Scanner detected a sensitive-looking file and skipped content extraction: {WorkspaceSensitiveFilePolicy.GetSensitiveReason(relativePath)}.",
+                relativePath);
+        }
+    }
+
+    private static IEnumerable<string> GetSensitiveRelativeFiles(WorkspaceScanResult scanResult)
+    {
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        return scanResult.RelevantFiles
+            .Select(path => Path.GetRelativePath(workspaceRoot, path).Replace('/', '\\'))
+            .Where(WorkspaceSensitiveFilePolicy.IsSensitivePath)
+            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<WorkspaceEvidenceSignal> BuildRootReadmeIdentitySignals(WorkspaceScanResult scanResult)
+    {
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+        var readmePath = scanResult.RelevantFiles.FirstOrDefault(path =>
+            string.Equals(Path.GetRelativePath(workspaceRoot, path), "README.md", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetRelativePath(workspaceRoot, path), "README.txt", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetRelativePath(workspaceRoot, path), "README.rst", StringComparison.OrdinalIgnoreCase));
+        if (readmePath is null)
+        {
+            yield break;
+        }
+
+        var title = ReadBoundedLines(readmePath, 32)
+            .Select(static line => line.Trim())
+            .Where(static line => !string.IsNullOrWhiteSpace(line))
+            .Select(NormalizeReadmeIdentityLine)
+            .FirstOrDefault(static line => !string.IsNullOrWhiteSpace(line));
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            yield break;
+        }
+
+        yield return new WorkspaceEvidenceSignal(
+            "identity",
+            "root_readme_title",
+            $"Root README title observed: {TruncateEvidenceValue(title, 96)}.",
+            Path.GetRelativePath(workspaceRoot, readmePath).Replace('/', '\\'));
+    }
+
+    private static string NormalizeReadmeIdentityLine(string line)
+    {
+        var normalized = line.Trim().TrimStart('#', '=', '-', '*').Trim();
+        if (normalized.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return normalized;
+    }
+
+    private static string TruncateEvidenceValue(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength].TrimEnd() + "...";
+    }
+
     private static IReadOnlyList<string> BuildObservedLanguages(IEnumerable<string> extensions, string combinedText)
     {
         var languages = new List<string>();
@@ -713,6 +1520,234 @@ public static class WorkspaceEvidencePackBuilder
         AddIfAnyFile(buildSystems, fileNames, "docker", "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml");
         AddIfAnyFile(buildSystems, fileNames, "make", "Makefile");
         return buildSystems.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static bool TryClassifyUnitManifest(
+        string relativePath,
+        out string rootPath,
+        out string kind,
+        out string evidence)
+    {
+        var normalizedPath = relativePath.Replace('/', '\\');
+        var fileName = Path.GetFileName(normalizedPath);
+        var extension = Path.GetExtension(normalizedPath);
+
+        kind = fileName switch
+        {
+            "Cargo.toml" => "rust-cargo",
+            "package.json" => "node-package",
+            "pyproject.toml" => "python-project",
+            "go.mod" => "go-module",
+            "CMakeLists.txt" => "cmake-project",
+            _ when extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) => "dotnet-project",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(kind))
+        {
+            rootPath = string.Empty;
+            evidence = string.Empty;
+            return false;
+        }
+
+        rootPath = Path.GetDirectoryName(normalizedPath)?.Replace('/', '\\') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(rootPath))
+        {
+            rootPath = ".";
+        }
+
+        evidence = $"manifest:{fileName}";
+        return true;
+    }
+
+    private static UnitDraft GetOrCreateUnit(IDictionary<string, UnitDraft> unitsByRoot, string rootPath, string kind, bool isPartial)
+    {
+        if (unitsByRoot.TryGetValue(rootPath, out var existing))
+        {
+            existing.IsPartial |= isPartial;
+            return existing;
+        }
+
+        var draft = new UnitDraft(rootPath, kind);
+        draft.IsPartial = isPartial;
+        unitsByRoot[rootPath] = draft;
+        return draft;
+    }
+
+    private static string ClassifyUnitZone(string rootPath)
+    {
+        var normalized = rootPath.Replace('/', '\\').Trim('\\');
+        if (string.IsNullOrWhiteSpace(normalized) || string.Equals(normalized, ".", StringComparison.OrdinalIgnoreCase))
+        {
+            return "workspace";
+        }
+
+        if (normalized.StartsWith("apps\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("app\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("bin\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("cmd\\", StringComparison.OrdinalIgnoreCase))
+        {
+            return "application";
+        }
+
+        if (normalized.StartsWith("crates\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("packages\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("libs\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("lib\\", StringComparison.OrdinalIgnoreCase))
+        {
+            return "library";
+        }
+
+        if (normalized.StartsWith("tools\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("scripts\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("xtask\\", StringComparison.OrdinalIgnoreCase))
+        {
+            return "tooling";
+        }
+
+        if (normalized.StartsWith("examples\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("samples\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("demo\\", StringComparison.OrdinalIgnoreCase))
+        {
+            return "example";
+        }
+
+        if (normalized.StartsWith("test\\", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("tests\\", StringComparison.OrdinalIgnoreCase))
+        {
+            return "test";
+        }
+
+        return "source";
+    }
+
+    private static bool IsUnsupportedUnitRoot(string rootPath)
+    {
+        var normalized = rootPath.Replace('/', '\\');
+        return normalized.StartsWith(".github", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith(".storybook", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("node_modules", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("target", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("vendor", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("third_party", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPathInsideUnit(string relativePath, string unitRoot)
+    {
+        var normalizedPath = relativePath.Replace('/', '\\');
+        var normalizedRoot = unitRoot.Replace('/', '\\').Trim('\\');
+        return normalizedRoot == "." ||
+               string.Equals(normalizedPath, normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.StartsWith(normalizedRoot + "\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int UnitRootDepth(string rootPath)
+    {
+        return rootPath == "."
+            ? 0
+            : rootPath.Count(static ch => ch is '\\' or '/') + 1;
+    }
+
+    private static int UnitScore(WorkspaceEvidenceProjectUnit unit)
+    {
+        var score = unit.Manifests.Count * 20 + unit.EntryPoints.Count * 30;
+        if (unit.RootPath == ".")
+        {
+            score += 60;
+        }
+
+        if (unit.Evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 50;
+        }
+
+        if (unit.Evidence.Contains("config_primary_unit", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 120;
+        }
+
+        if (unit.RootPath.StartsWith("bin\\", StringComparison.OrdinalIgnoreCase))
+        {
+            score += 10;
+        }
+
+        if (unit.RootPath.StartsWith("crates\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("packages\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("apps\\", StringComparison.OrdinalIgnoreCase))
+        {
+            score += 20;
+        }
+
+        if (unit.RootPath.StartsWith("tools\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("examples\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("samples\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("test\\", StringComparison.OrdinalIgnoreCase) ||
+            unit.RootPath.StartsWith("tests\\", StringComparison.OrdinalIgnoreCase))
+        {
+            score -= 50;
+        }
+
+        return score;
+    }
+
+    private static int RunProfileScore(WorkspaceEvidenceRunProfile profile)
+    {
+        var score = 0;
+        if (profile.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed)
+        {
+            score += 30;
+        }
+
+        if (profile.Evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 50;
+        }
+
+        if (profile.Evidence.Contains("config_primary_unit", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 120;
+        }
+
+        score += profile.Kind switch
+        {
+            "test" => 25,
+            "build" => 20,
+            "run" => 15,
+            "check" => 10,
+            _ => 0
+        };
+
+        if (profile.WorkingDirectory == ".")
+        {
+            score += 20;
+        }
+
+        if (profile.WorkingDirectory.StartsWith("tools\\", StringComparison.OrdinalIgnoreCase) ||
+            profile.WorkingDirectory.StartsWith("examples\\", StringComparison.OrdinalIgnoreCase) ||
+            profile.WorkingDirectory.StartsWith("samples\\", StringComparison.OrdinalIgnoreCase) ||
+            profile.WorkingDirectory.StartsWith("test\\", StringComparison.OrdinalIgnoreCase) ||
+            profile.WorkingDirectory.StartsWith("tests\\", StringComparison.OrdinalIgnoreCase))
+        {
+            score -= 50;
+        }
+
+        return score;
+    }
+
+    private static string SanitizeUnitId(string rootPath)
+    {
+        var builder = new StringBuilder(rootPath.Length);
+        foreach (var ch in rootPath)
+        {
+            builder.Append(char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '-');
+        }
+
+        return builder.ToString().Trim('-');
+    }
+
+    private static string QuoteCommandArgument(string value)
+    {
+        return value.Contains(' ', StringComparison.Ordinal) ? $"\"{value}\"" : value;
     }
 
     private static IReadOnlyList<string> BuildToolchains(
@@ -1157,6 +2192,204 @@ public static class WorkspaceEvidencePackBuilder
         }
     }
 
+    private static IReadOnlyCollection<string> BuildCargoDefaultMemberRoots(WorkspaceScanResult scanResult)
+    {
+        var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var workspaceRoot = scanResult.State.WorkspaceRoot;
+
+        foreach (var file in scanResult.RelevantFiles)
+        {
+            if (!string.Equals(Path.GetFileName(file), "Cargo.toml", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var manifestRelativeDirectory = Path.GetRelativePath(workspaceRoot, Path.GetDirectoryName(file) ?? workspaceRoot)
+                .Replace('/', '\\');
+            if (string.Equals(manifestRelativeDirectory, ".", StringComparison.Ordinal))
+            {
+                manifestRelativeDirectory = string.Empty;
+            }
+
+            var defaultMembers = ExtractCargoDefaultMembers(ReadBoundedLines(file, 120));
+            foreach (var member in defaultMembers)
+            {
+                var normalizedMember = member.Replace('/', '\\').Trim('\\');
+                if (string.IsNullOrWhiteSpace(normalizedMember))
+                {
+                    continue;
+                }
+
+                var root = string.IsNullOrWhiteSpace(manifestRelativeDirectory)
+                    ? normalizedMember
+                    : Path.Combine(manifestRelativeDirectory, normalizedMember).Replace('/', '\\');
+                roots.Add(root.Trim('\\'));
+            }
+        }
+
+        return roots;
+    }
+
+    private static IReadOnlyList<string> ExtractCargoDefaultMembers(IEnumerable<string> lines)
+    {
+        var text = string.Join("\n", lines);
+        var markerIndex = text.IndexOf("default-members", StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var openIndex = text.IndexOf('[', markerIndex);
+        var closeIndex = openIndex < 0 ? -1 : text.IndexOf(']', openIndex);
+        if (openIndex < 0 || closeIndex <= openIndex)
+        {
+            return Array.Empty<string>();
+        }
+
+        return text[(openIndex + 1)..closeIndex]
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(static value => value.Trim().Trim('"', '\''))
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> BuildEntryEvidence(
+        WorkspaceScanResult scanResult,
+        string relativePath,
+        string role,
+        IReadOnlyCollection<string> cargoDefaultMembers)
+    {
+        var evidence = new List<string> { $"entry_file_name:{Path.GetFileName(relativePath)}" };
+        var normalized = relativePath.Replace('/', '\\');
+
+        if (!string.Equals(role, "entry", StringComparison.OrdinalIgnoreCase))
+        {
+            evidence.Add($"role:{role}");
+        }
+
+        if (cargoDefaultMembers.Any(member =>
+                normalized.StartsWith(member + "\\", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, member, StringComparison.OrdinalIgnoreCase)))
+        {
+            evidence.Add("cargo_default_member");
+        }
+
+        if (scanResult.State.Summary.SourceRoots.Any(root =>
+                string.Equals(root, ".", StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith(root.Replace('/', '\\') + "\\", StringComparison.OrdinalIgnoreCase)))
+        {
+            evidence.Add("source_root_overlap");
+        }
+
+        if (IsConventionalEntrypointLocation(normalized))
+        {
+            evidence.Add("conventional_entry_location");
+        }
+
+        if (IsWorkflowOrSupportEntryLocation(normalized))
+        {
+            evidence.Add("secondary_or_workflow_location");
+        }
+
+        return evidence;
+    }
+
+    private static int ScoreEntryCandidate(string relativePath, string role, IReadOnlyList<string> evidence)
+    {
+        var normalized = relativePath.Replace('/', '\\');
+        var score = 0;
+
+        if (evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 50;
+        }
+
+        if (string.Equals(Path.GetFileNameWithoutExtension(normalized), "main", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetFileNameWithoutExtension(normalized), "program", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Path.GetFileNameWithoutExtension(normalized), "app", StringComparison.OrdinalIgnoreCase))
+        {
+            score += 40;
+        }
+
+        if (!string.Equals(role, "entry", StringComparison.OrdinalIgnoreCase))
+        {
+            score += 20;
+        }
+
+        if (evidence.Contains("source_root_overlap", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 15;
+        }
+
+        if (evidence.Contains("conventional_entry_location", StringComparer.OrdinalIgnoreCase))
+        {
+            score += 15;
+        }
+
+        if (ContainsAny(normalized, "\\test\\", "\\tests\\", "\\examples\\", "\\samples\\", "\\demo\\"))
+        {
+            score -= 30;
+        }
+
+        if (ContainsAny(normalized, "\\.github\\", "\\.storybook\\", "\\xtask\\", "\\tools\\", "\\scripts\\"))
+        {
+            score -= 50;
+        }
+
+        if (ContainsAny(normalized, "\\vendor\\", "\\third_party\\", "\\node_modules\\"))
+        {
+            score -= 50;
+        }
+
+        score -= normalized.Split('\\', StringSplitOptions.RemoveEmptyEntries).Length;
+        return score;
+    }
+
+    private static bool IsConventionalEntrypointLocation(string normalizedPath)
+    {
+        return string.Equals(normalizedPath, "main.rs", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedPath, "main.go", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalizedPath, "Program.cs", StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.StartsWith("src\\", StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.Contains("\\src\\", StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.Contains("\\cmd\\", StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsWorkflowOrSupportEntryLocation(string normalizedPath)
+    {
+        return ContainsAny(
+            normalizedPath,
+            "\\.github\\",
+            "\\.storybook\\",
+            "\\xtask\\",
+            "\\tools\\",
+            "\\scripts\\",
+            "\\test\\",
+            "\\tests\\",
+            "\\examples\\",
+            "\\samples\\") ||
+            StartsWithAnyRootSegment(
+                normalizedPath,
+                ".github",
+                ".storybook",
+                "xtask",
+                "tools",
+                "scripts",
+                "test",
+                "tests",
+                "examples",
+                "samples");
+    }
+
+    private static bool StartsWithAnyRootSegment(string normalizedPath, params string[] segments)
+    {
+        return segments.Any(segment =>
+            string.Equals(normalizedPath, segment, StringComparison.OrdinalIgnoreCase) ||
+            normalizedPath.StartsWith(segment + "\\", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string? InferNoiseCode(string relativePath, WorkspaceMaterialKind kind)
     {
         var normalized = relativePath.Replace('/', '\\');
@@ -1236,9 +2469,9 @@ public static class WorkspaceEvidencePackBuilder
         return "entry";
     }
 
-    private static string BuildEntryNote(string relativePath)
+    private static string BuildEntryNote(string relativePath, int score, IReadOnlyList<string> evidence)
     {
-        return $"Observed entry candidate at {relativePath}.";
+        return $"Observed entry candidate at {relativePath}. score={score}; evidence={string.Join(", ", evidence)}.";
     }
 
     private static bool IsPatternEligibleDocument(
@@ -1645,22 +2878,52 @@ public static class WorkspaceEvidencePackBuilder
             {
                 foreach (var reference in ExtractCodeReferences(relativePath, line))
                 {
-                    if (!TryResolveCodeReference(relativePath, reference, relevantMap.Keys, out var targetPath))
+                    if (!TryResolveCodeReference(relativePath, reference, relevantMap.Keys, out var targetPath, out var resolution, out var matchCount))
                     {
+                        if (IsLocalCodeReference(reference))
+                        {
+                            edges.Add(new WorkspaceEvidenceCodeEdge(
+                                relativePath,
+                                reference.Reference.Replace('/', '\\').Trim(),
+                                reference.Kind,
+                                $"Observed unresolved {reference.Kind} reference in '{relativePath}'.",
+                                WorkspaceEvidenceEdgeResolution.Unresolved,
+                                EvidenceMarker(
+                                    "code_edge_candidate",
+                                    relativePath,
+                                    $"Observed unresolved {reference.Kind} reference in '{relativePath}'.",
+                                    WorkspaceEvidenceConfidenceLevel.Unknown,
+                                    scanResult.BudgetReport?.IsPartial == true,
+                                    isBounded: true)));
+                        }
+
                         continue;
                     }
 
+                    var reason = resolution == WorkspaceEvidenceEdgeResolution.Ambiguous
+                        ? $"Observed {reference.Kind} reference in '{relativePath}' with {matchCount} possible local targets."
+                        : $"Observed {reference.Kind} reference in '{relativePath}'.";
                     edges.Add(new WorkspaceEvidenceCodeEdge(
                         relativePath,
                         targetPath,
                         reference.Kind,
-                        $"Observed {reference.Kind} reference in '{relativePath}'."));
+                        reason,
+                        resolution,
+                        EvidenceMarker(
+                            "code_edge_candidate",
+                            relativePath,
+                            reason,
+                            resolution == WorkspaceEvidenceEdgeResolution.Resolved
+                                ? WorkspaceEvidenceConfidenceLevel.Confirmed
+                                : WorkspaceEvidenceConfidenceLevel.Likely,
+                            scanResult.BudgetReport?.IsPartial == true,
+                            isBounded: true)));
                 }
             }
         }
 
         return edges
-            .GroupBy(static edge => $"{edge.FromPath}|{edge.ToPath}|{edge.Kind}", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(static edge => $"{edge.FromPath}|{edge.ToPath}|{edge.Kind}|{edge.Resolution}", StringComparer.OrdinalIgnoreCase)
             .Select(static group => group.First())
             .OrderBy(static edge => edge.FromPath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(static edge => edge.ToPath, StringComparer.OrdinalIgnoreCase)
@@ -1826,6 +3089,15 @@ public static class WorkspaceEvidencePackBuilder
                 "Derived from structural module bucket plus edge overlap."));
         }
 
+        foreach (var profile in candidates.RunProfiles.Take(16))
+        {
+            annotations.Add(new WorkspaceEvidenceConfidenceAnnotation(
+                "run_profile",
+                profile.Id,
+                profile.Confidence,
+                "Derived from manifest/script evidence; command is discovered, not executed."));
+        }
+
         foreach (var dependency in dependencySurface.Take(32))
         {
             annotations.Add(new WorkspaceEvidenceConfidenceAnnotation(
@@ -1969,9 +3241,13 @@ public static class WorkspaceEvidencePackBuilder
         string relativePath,
         (string Kind, string Reference) reference,
         IEnumerable<string> relevantPaths,
-        out string targetPath)
+        out string targetPath,
+        out WorkspaceEvidenceEdgeResolution resolution,
+        out int matchCount)
     {
         targetPath = string.Empty;
+        resolution = WorkspaceEvidenceEdgeResolution.Unresolved;
+        matchCount = 0;
         var normalizedReference = reference.Reference.Replace('/', '\\').Trim();
         if (normalizedReference.Length == 0)
         {
@@ -2062,20 +3338,39 @@ public static class WorkspaceEvidencePackBuilder
             }
         }
 
-        var matched = relevantPaths.FirstOrDefault(path =>
-            candidates.Contains(path, StringComparer.OrdinalIgnoreCase) ||
-            candidates.Any(candidate =>
-                path.EndsWith(candidate, StringComparison.OrdinalIgnoreCase) ||
-                (!string.IsNullOrWhiteSpace(Path.GetFileNameWithoutExtension(candidate)) &&
-                 path.Contains("\\" + Path.GetFileNameWithoutExtension(candidate) + "\\", StringComparison.OrdinalIgnoreCase))) ||
-            path.EndsWith(normalizedReference, StringComparison.OrdinalIgnoreCase));
-        if (matched is null)
+        var matches = relevantPaths
+            .Where(path =>
+                candidates.Contains(path, StringComparer.OrdinalIgnoreCase) ||
+                candidates.Any(candidate =>
+                    path.EndsWith(candidate, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrWhiteSpace(Path.GetFileNameWithoutExtension(candidate)) &&
+                     path.Contains("\\" + Path.GetFileNameWithoutExtension(candidate) + "\\", StringComparison.OrdinalIgnoreCase))) ||
+                path.EndsWith(normalizedReference, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToArray();
+        if (matches.Length == 0)
         {
             return false;
         }
 
-        targetPath = matched;
+        targetPath = matches[0];
+        matchCount = matches.Length;
+        resolution = matches.Length > 1
+            ? WorkspaceEvidenceEdgeResolution.Ambiguous
+            : WorkspaceEvidenceEdgeResolution.Resolved;
         return true;
+    }
+
+    private static bool IsLocalCodeReference((string Kind, string Reference) reference)
+    {
+        var normalized = reference.Reference.Trim();
+        return reference.Kind == "include" ||
+               reference.Kind is "rust-mod" or "rust-use" ||
+               normalized.StartsWith(".", StringComparison.Ordinal) ||
+               normalized.StartsWith("/", StringComparison.Ordinal) ||
+               normalized.StartsWith("\\", StringComparison.Ordinal);
     }
 
     private static bool TryExtractSignature(string relativePath, string line, out string kind, out string signature)
@@ -2391,17 +3686,29 @@ public static class WorkspaceEvidencePackBuilder
 
     private static WorkspaceEvidenceConfidenceLevel ToConfidence(double score)
     {
-        if (score >= 0.75)
-        {
-            return WorkspaceEvidenceConfidenceLevel.Confirmed;
-        }
-
         if (score >= 0.45)
         {
             return WorkspaceEvidenceConfidenceLevel.Likely;
         }
 
         return WorkspaceEvidenceConfidenceLevel.Unknown;
+    }
+
+    private static WorkspaceEvidenceMarker EvidenceMarker(
+        string evidenceKind,
+        string? sourcePath,
+        string reason,
+        WorkspaceEvidenceConfidenceLevel confidence,
+        bool isPartial,
+        bool isBounded)
+    {
+        return new WorkspaceEvidenceMarker(
+            evidenceKind,
+            string.IsNullOrWhiteSpace(sourcePath) ? null : sourcePath,
+            string.IsNullOrWhiteSpace(reason) ? "Observed scanner evidence." : reason,
+            confidence,
+            isPartial,
+            isBounded);
     }
 
     private static bool TryExtractBetween(string value, string prefix, string suffix, out string extracted)
@@ -2536,6 +3843,28 @@ public static class WorkspaceEvidencePackBuilder
                fileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) ||
                fileName.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) ||
                fileName.EndsWith(".vcxproj", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsConfigLikeFileName(string fileName, string extension)
+    {
+        return string.Equals(fileName, ".editorconfig", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, ".env", StringComparison.OrdinalIgnoreCase) ||
+               extension is ".env" or ".ini" or ".json" or ".toml" or ".yaml" or ".yml";
+    }
+
+    private static bool IsDocumentLikeExtension(string extension)
+    {
+        return extension is ".md" or ".pdf" or ".rst" or ".txt";
+    }
+
+    private static bool IsAssetLikeExtension(string extension)
+    {
+        return extension is ".bmp" or ".gif" or ".jpeg" or ".jpg" or ".png" or ".rar" or ".svg" or ".tar" or ".webp" or ".zip" or ".7z";
+    }
+
+    private static bool IsBinaryLikeExtension(string extension)
+    {
+        return extension is ".bin" or ".dll" or ".dylib" or ".exe" or ".so";
     }
 
     private static void AddIfAnyExtension(List<string> target, IEnumerable<string> extensions, string label, params string[] candidates)

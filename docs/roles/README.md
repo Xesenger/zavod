@@ -46,7 +46,7 @@ That means:
 
 
 
-docs/zavod/canon/ = system truth
+docs/canon/ = system truth
 
 roles/ = role truth
 
@@ -370,7 +370,7 @@ Rules
 
 role truth lives in roles/
 
-canon truth lives in docs/zavod/canon/
+canon truth lives in docs/canon/
 
 roles must stay clearly separated
 

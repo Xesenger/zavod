@@ -15,7 +15,7 @@ public sealed record OpenRouterConfiguration(
 {
     public const string DefaultImportModelId = "openai/gpt-4.1-nano";
     public const string DefaultBaseUrl = "https://openrouter.ai/api/v1";
-    public const string DefaultConfigRelativePath = @"app\config\openrouter.local.json";
+    public const string DefaultConfigFileName = "openrouter.local.json";
 
     public static OpenRouterConfiguration? FromEnvironment()
     {
@@ -62,9 +62,9 @@ public sealed record OpenRouterConfiguration(
     {
         var configuredPath = Environment.GetEnvironmentVariable("OPENROUTER_CONFIG_FILE");
         var candidatePath = string.IsNullOrWhiteSpace(configuredPath)
-            ? Path.Combine(Environment.CurrentDirectory, DefaultConfigRelativePath)
+            ? GetDefaultConfigPath()
             : configuredPath.Trim();
-        if (!File.Exists(candidatePath))
+        if (string.IsNullOrWhiteSpace(candidatePath) || !File.Exists(candidatePath))
         {
             return null;
         }
@@ -106,6 +106,14 @@ public sealed record OpenRouterConfiguration(
         {
             return null;
         }
+    }
+
+    private static string GetDefaultConfigPath()
+    {
+        var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        return string.IsNullOrWhiteSpace(documentsPath)
+            ? string.Empty
+            : Path.Combine(documentsPath, "ZAVOD", DefaultConfigFileName);
     }
 
     private static string? ReadOptionalString(JsonElement root, string propertyName)

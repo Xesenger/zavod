@@ -183,17 +183,24 @@ Goal:
 
 Strengthen the scanner from a file inventory tool into an evidence-based project cartographer.
 
+Planning reference: `docs/plans/scanner-v2-evidence-cartographer-v1.md`.
+
 Planned:
 
 - architecture map generation from real code structure
 - module and subsystem boundaries
 - entry points, runtime paths, and dependency edges
+- Structural Project Index with files, manifests, symbols, edges, entrypoints, module candidates, uncertainty, and human summary projections
+- deterministic entry point ranking and task scope packs from evidence
 - ownership and risk zones inferred from file layout, references, and history
-- confidence markers for Confirmed / Likely / Unknown architecture facts
+- confidence markers for Confirmed / Likely / Unknown / Conflict architecture facts
 
 Rules:
 
 - the scanner describes observed structure, not imagined intent
+- scanner output is evidence; Importer output is interpretation
+- README/docs are evidence, not truth
+- scoring must be deterministic and explainable, not LLM-ranked
 - uncertain architecture must remain marked as uncertain
 - the map must help a new developer orient quickly without reading every line of code
 
@@ -202,6 +209,7 @@ Goal:
 - shorten project onboarding
 - give agents and humans a shared navigation layer
 - make architecture drift visible as the code changes
+- help Worker receive bounded task scopes instead of the whole project
 
 ---
 
@@ -281,6 +289,53 @@ Goal:
 - prevent accidental damage  
 - enable safe experimentation  
 - support external agents and contractors  
+
+---
+
+## Unattended Safe Work Mode
+
+Allow ZAVOD to continue bounded work while the user is away, without
+giving it authority to modify the real project.
+
+This is not autopilot. It is a safe deferred-work mode:
+
+```
+ZAVOD may work while the user is away.
+ZAVOD may not apply changes while the user is away.
+```
+
+Planned:
+
+- user-approved `UnattendedWorkOrder` as the only entry point
+- explicit task, scope, allowed paths, allowed tools, budget, and stop conditions
+- maximum runtime, maximum cost, and maximum revision attempts
+- sandbox/staging-only execution while unattended
+- background progress with durable execution state
+- automatic pause on uncertainty, privileged actions, external drift, budget exhaustion, or repeated QC failure
+- `Pending Review` / `Result Inbox` for staged results after the user returns
+- no apply without explicit user Accept
+
+Rules:
+
+- unattended work may produce plans, staged changes, diffs, logs, and reports
+- unattended work may not apply changes to the real project
+- unattended work may not perform privileged actions without user confirmation
+- unattended work must pause rather than guess when the task becomes unclear
+- unattended work must stop on external repository drift and mark the result stale
+- unattended work must be resumable, inspectable, and cancellable
+- all unattended actions must be recorded in the task/shift journal
+
+Goal:
+
+- let ZAVOD do useful work while the user is away
+- preserve user authority over project truth and repository changes
+- keep automation bounded, observable, and recoverable
+
+Relation to nearby roadmap layers:
+
+- depends on Safe Execution Workspaces for sandbox isolation and diff-first output
+- uses Revision Loop Control to prevent unbounded Worker/QC retries
+- depends on External Change Awareness for repo drift detection, stale markers, and safe pause behavior
 
 ---
 
@@ -397,13 +452,13 @@ It is a factual snapshot, not a claim of completeness.
 
 | Area | Status | Notes |
 |------|--------|------|
-| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving; future scanner work should build an evidence-based architecture map and external sync boundary |
+| Scanner / Import / Evidence | Functional | Core flow works, accuracy and depth still evolving; scanner maps external source evidence and is not the `.zavod/` Truth watcher; future scanner work should build an evidence-based architecture map and external sync boundary |
 | Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind promote and reject are wired with Layer C/D attribution; edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still upcoming |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
-| Acceptance / Apply Boundary | Functional | SHA256 hash-guarded atomic apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
+| Acceptance / Apply Boundary | Functional | SHA256 drift-blocking staged apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
 | Dispatching / Router | Functional | ExecutionDispatcher + Bootstrap/ActiveShift/Idle subsystems + ProjectRouter |
-| Advisory layer (Sage) | Functional (S1–S5a) | Two layers coexist: legacy `ProjectSageService` keyword advisory (S0) that still feeds Lead/Worker framing, and typed Sage pipeline (S1–S5a) emitting `SageObservation` records into sage_only JSONL at `.zavod/sage/observations.jsonl`. Pipeline hooks at AfterIntent / BeforeExecution / BeforeResult / AfterResult; core-enforced per-hook and per-task budgets; two field-verified emitters (`semantic_gap` on AfterIntent, `attention_miss` on BeforeExecution). Observations never enter role prompts (v2.1a isolation contract). Pattern memory (`pattern_repeat`), middle-truth correlation layer, and S3 deterministic rules are deferred until real field pain justifies them |
+| Advisory layer (Sage) | Functional (S1–S5a) | Two layers coexist: legacy `ProjectSageService` keyword advisory (S0) that still feeds Lead/Worker framing, and typed Sage pipeline (S1–S5a) emitting `SageObservation` records into sage_only JSONL at `.zavod.local/sage/observations.jsonl`. Pipeline hooks at AfterIntent / BeforeExecution / BeforeResult / AfterResult; core-enforced per-hook and per-task budgets; two field-verified emitters (`semantic_gap` on AfterIntent, `attention_miss` on BeforeExecution). Observations never enter role prompts (v2.1a isolation contract). Pattern memory (`pattern_repeat`), middle-truth correlation layer, and S3 deterministic rules are deferred until real field pain justifies them |
 
 ---
 
@@ -412,9 +467,9 @@ It is a factual snapshot, not a claim of completeness.
 | Area | Status | Notes |
 |------|--------|------|
 | Execution lifecycle | Functional | End-to-end cycle closes: intent → Lead validation → Preflight → Confirm → Worker (with real edits) → sandbox staging → QC decision → apply/abandon → commit. Not yet formalized as a declarative DSL |
-| LLM orchestration (OpenRouter) | Functional | Lead / Worker / QC runtimes with typed contracts; per-call lab telemetry (`.zavod/lab/<UTC>-<role>-<taskId>/{request,response,parsed,meta}.json`); `max_tokens` plumbed through to upstream |
+| LLM orchestration (OpenRouter) | Functional | Lead / Worker / QC runtimes with typed contracts; per-call lab telemetry (`.zavod.local/lab/<UTC>-<role>-<taskId>/{request,response,parsed,meta}.json`); `max_tokens` plumbed through to upstream |
 | Worker execution pipeline | Functional | Worker emits typed `edits` (write_full / insert_after with unique anchors); anchor discipline + revision feedback contract in prompt; output schema enforces real deliverable over plan-only responses |
-| Staging sandbox & apply pipeline | Functional | `.zavod.local/staging/<taskId>/attempt-<N>/` isolated sandbox for Worker edits with `manifest.json`; SHA256 hash-guarded atomic apply on user Accept; quarantine (not delete) on abandon preserves staged artefacts under `_abandoned/<taskId>-<utc>/` |
+| Staging sandbox & apply pipeline | Functional | `.zavod.local/staging/<taskId>/attempt-<N>/` isolated sandbox for Worker edits with `manifest.json`; SHA256 drift-blocking staged apply on user Accept; quarantine (not delete) on abandon preserves staged artefacts under `_abandoned/<taskId>-<utc>/` |
 | Execution verification pipeline | Partial | SHA256 origin-hash guard and staging manifest provide drift detection; mechanical verification layer (build / lint / test via TypedToolContracts) and explicit revision loop breakers are planned |
 | Autonomous runtime planning | Not yet | No model-driven planning layer yet |
 
@@ -455,7 +510,7 @@ It is a factual snapshot, not a claim of completeness.
 
 - Core architectural layers are in place and interacting
 - Chats mode and Projects mode both run on the web renderer
-- Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → hash-guarded apply on user Accept → commit recorded
+- Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → drift-blocking staged apply on user Accept → commit recorded
 - Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, atomic copy to project on Accept, quarantine on abandon
 - Advisory layer runs in two coexisting modes: S0 (keyword-scored) still informs Lead/Worker framing; S1–S5a typed Sage pipeline emits `SageObservation` records (semantic_gap, attention_miss) into sage_only JSONL with zero prompt pollution. Field-verified on real tasks: `attention_miss` caught a missing-file reference ~1ms before Worker LLM dispatch, independently corroborated by Worker's own rationale
 - Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, in-UI Sage surface, and richer "system doubt" memory are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)

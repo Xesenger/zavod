@@ -3,6 +3,9 @@ using System.Collections.Generic;
 namespace zavod.Workspace;
 
 public sealed record WorkspaceEvidencePack(
+    WorkspaceScanRun ScanRun,
+    IReadOnlyList<WorkspaceEvidencePredicate> PredicateRegistry,
+    WorkspaceScanBudgetReport? ScanBudget,
     WorkspaceProjectProfile ProjectProfile,
     // Transitional legacy field. Technical passport is a UX summary, not authoritative scanner truth.
     WorkspaceTechnicalPassport TechnicalPassport,
@@ -11,6 +14,7 @@ public sealed record WorkspaceEvidencePack(
     IReadOnlyList<WorkspaceEvidenceObservation> RawObservations,
     IReadOnlyList<WorkspaceEvidencePattern> DerivedPatterns,
     IReadOnlyList<WorkspaceEvidenceSignalScore> SignalScores,
+    IReadOnlyList<WorkspaceEvidenceFileIndexItem> FileIndex,
     WorkspaceEvidenceCandidates Candidates,
     IReadOnlyList<WorkspaceEvidenceCodeEdge> CodeEdges,
     IReadOnlyList<WorkspaceEvidenceSignatureHint> SignatureHints,
@@ -31,6 +35,17 @@ public sealed record WorkspaceEvidencePack(
     IReadOnlyList<WorkspaceEvidenceSignal> Signals,
     IReadOnlyList<WorkspaceEvidenceSnippet> EvidenceSnippets);
 
+public sealed record WorkspaceScanRun(
+    string ScanRunId,
+    // Compatibility property name: value is a structural scan fingerprint,
+    // not a content-integrity hash of the repository root.
+    string RepoRootHash,
+    string ScannerVersion,
+    IReadOnlyDictionary<string, string> ExtractorVersions,
+    string StartedAtUtc,
+    string CompletedAtUtc,
+    string Mode);
+
 public sealed record WorkspaceProjectProfile(
     string WorkspaceRoot,
     WorkspaceImportKind ImportKind,
@@ -43,6 +58,7 @@ public sealed record WorkspaceProjectProfile(
     int DocumentFileCount,
     int AssetFileCount,
     int BinaryFileCount,
+    int IgnoredNoiseFileCount,
     IReadOnlyList<string> SourceRoots,
     IReadOnlyList<string> BuildRoots,
     IReadOnlyList<string> StructuralAnomalies);
@@ -62,7 +78,10 @@ public sealed record WorkspaceTechnicalPassport(
 public sealed record WorkspaceEvidenceEntryPoint(
     string RelativePath,
     string Role,
-    string Note);
+    string Note,
+    int Score,
+    IReadOnlyList<string> Evidence,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceLayer(
     string Name,
@@ -75,14 +94,17 @@ public sealed record WorkspaceEvidenceModule(
     string Name,
     string Role,
     string LayerName,
-    string EvidenceNote);
+    string EvidenceNote,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceDependencyEdge(
     string From,
     string To,
     string Label,
     string Reason,
-    string? EvidencePath = null);
+    string? EvidencePath = null,
+    WorkspaceEvidenceEdgeResolution Resolution = WorkspaceEvidenceEdgeResolution.Unknown,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceMaterial(
     string RelativePath,
@@ -103,7 +125,12 @@ public sealed record WorkspaceEvidenceSignal(
 public sealed record WorkspaceEvidenceObservation(
     string Kind,
     string Value,
-    string? EvidencePath = null);
+    string? EvidencePath = null,
+    string Id = "",
+    string DisplayId = "",
+    string Predicate = "",
+    string Source = "",
+    string ExtractorVersion = "");
 
 public sealed record WorkspaceEvidencePattern(
     string Code,
@@ -114,23 +141,76 @@ public sealed record WorkspaceEvidenceSignalScore(
     string Signal,
     double Score);
 
+public sealed record WorkspaceEvidenceMarker(
+    string EvidenceKind,
+    string? SourcePath,
+    string Reason,
+    WorkspaceEvidenceConfidenceLevel Confidence,
+    bool IsPartial,
+    bool IsBounded);
+
+public sealed record WorkspaceEvidenceFileIndexItem(
+    string RelativePath,
+    string Extension,
+    long SizeBytes,
+    string Zone,
+    string Role,
+    bool IsSensitive,
+    string MaterialKind,
+    string Evidence);
+
 public enum WorkspaceEvidenceConfidenceLevel
 {
     Unknown = 0,
     Likely = 1,
-    Confirmed = 2
+    Confirmed = 2,
+    Conflict = 3
+}
+
+public enum WorkspaceEvidenceEdgeResolution
+{
+    Unknown = 0,
+    Lexical = 1,
+    Resolved = 2,
+    Ambiguous = 3,
+    Unresolved = 4,
+    Manifest = 5
 }
 
 public sealed record WorkspaceEvidenceCandidates(
     IReadOnlyList<WorkspaceEvidenceEntryPoint> EntryPoints,
     IReadOnlyList<WorkspaceEvidenceModule> ModuleCandidates,
-    IReadOnlyList<WorkspaceEvidenceFileRole> FileRoles);
+    IReadOnlyList<WorkspaceEvidenceFileRole> FileRoles,
+    IReadOnlyList<WorkspaceEvidenceProjectUnit> ProjectUnits,
+    IReadOnlyList<WorkspaceEvidenceRunProfile> RunProfiles);
+
+public sealed record WorkspaceEvidenceProjectUnit(
+    string Id,
+    string RootPath,
+    string Kind,
+    IReadOnlyList<string> Manifests,
+    IReadOnlyList<string> EntryPoints,
+    WorkspaceEvidenceConfidenceLevel Confidence,
+    IReadOnlyList<string> Evidence,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
+
+public sealed record WorkspaceEvidenceRunProfile(
+    string Id,
+    string Kind,
+    string Command,
+    string WorkingDirectory,
+    string SourcePath,
+    WorkspaceEvidenceConfidenceLevel Confidence,
+    IReadOnlyList<string> Evidence,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceCodeEdge(
     string FromPath,
     string ToPath,
     string Kind,
-    string Reason);
+    string Reason,
+    WorkspaceEvidenceEdgeResolution Resolution = WorkspaceEvidenceEdgeResolution.Unknown,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceSignatureHint(
     string RelativePath,
@@ -160,12 +240,14 @@ public sealed record WorkspaceEvidenceFileRole(
     string RelativePath,
     string Role,
     double Confidence,
-    string Reason);
+    string Reason,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceHotspot(
     string Code,
     string RelativePath,
-    string Reason);
+    string Reason,
+    WorkspaceEvidenceMarker? EvidenceMarker = null);
 
 public sealed record WorkspaceEvidenceSnippet(
     string RelativePath,
@@ -229,8 +311,21 @@ public sealed record WorkspaceEvidenceArtifactBundle(
     string PreviewPath,
     string PreviewProjectDocumentPath,
     string PreviewCapsuleDocumentPath,
+    string ScanRunPath,
     string ProjectProfilePath,
     string ProjectReportPath,
+    string ScanSummaryPath,
+    string FilesIndexPath,
+    string ManifestsIndexPath,
+    string SymbolsIndexPath,
+    string EdgesIndexPath,
+    string EntryPointsIndexPath,
+    string ModulesMapPath,
+    string ProjectUnitsIndexPath,
+    string RunProfilesIndexPath,
+    string PredicateRegistryPath,
+    string ScanBudgetPath,
+    string UncertaintyReportPath,
     string TechnicalPassportPath,
     string RawObservationsPath,
     string DerivedPatternsPath,

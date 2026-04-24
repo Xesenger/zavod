@@ -5,5 +5,6 @@ public enum WorkspaceMaterialTextExtractStatus
     Extracted,
     MissingFile,
     UnsupportedKind,
-    EmptyText
+    EmptyText,
+    SensitiveSkipped
 }

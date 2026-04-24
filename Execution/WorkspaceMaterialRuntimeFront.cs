@@ -256,6 +256,11 @@ public sealed class WorkspaceMaterialRuntimeFront(
 
     private static bool IsTechnicalEvidenceFile(string fullPath)
     {
+        if (WorkspaceSensitiveFilePolicy.IsSensitivePath(fullPath))
+        {
+            return true;
+        }
+
         var fileName = Path.GetFileName(fullPath);
         var extension = Path.GetExtension(fullPath);
 
@@ -300,6 +305,17 @@ public sealed class WorkspaceMaterialRuntimeFront(
             return null;
         }
 
+        var relativePath = Path.GetRelativePath(workspaceRoot, fullPath).Replace('/', '\\');
+        var sensitiveReason = WorkspaceSensitiveFilePolicy.GetSensitiveReason(relativePath);
+        if (!string.IsNullOrWhiteSpace(sensitiveReason))
+        {
+            return new WorkspaceTechnicalPreviewInput(
+                relativePath,
+                "sensitive-file",
+                $"content skipped by sensitive file policy: {sensitiveReason}",
+                false);
+        }
+
         try
         {
             var rawText = File.ReadAllText(fullPath, Encoding.UTF8);
@@ -312,7 +328,7 @@ public sealed class WorkspaceMaterialRuntimeFront(
             var wasTruncated = normalized.Length > maxCharsPerMaterial;
             var preview = wasTruncated ? normalized[..maxCharsPerMaterial] : normalized;
             return new WorkspaceTechnicalPreviewInput(
-                Path.GetRelativePath(workspaceRoot, fullPath),
+                relativePath,
                 GetTechnicalEvidenceCategory(fullPath),
                 preview,
                 wasTruncated);
@@ -356,6 +372,11 @@ public sealed class WorkspaceMaterialRuntimeFront(
         var normalizedPath = relativePath.Replace('/', '\\');
         var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(normalizedPath);
         var penalty = 0;
+
+        if (WorkspaceSensitiveFilePolicy.IsSensitivePath(relativePath))
+        {
+            penalty += 6;
+        }
 
         if (IsUnderBuildRoot(normalizedPath, buildRoots))
         {
@@ -485,6 +506,11 @@ public sealed class WorkspaceMaterialRuntimeFront(
 
     private static bool ShouldSkipAdaptiveExpansion(WorkspaceMaterialCandidate candidate, IReadOnlyList<string> buildRoots)
     {
+        if (WorkspaceSensitiveFilePolicy.IsSensitivePath(candidate.RelativePath))
+        {
+            return true;
+        }
+
         var penalty = GetNoisePenalty(candidate.RelativePath, candidate.Kind, buildRoots);
         if (candidate.Kind == WorkspaceMaterialKind.TextDocument && penalty >= 4)
         {

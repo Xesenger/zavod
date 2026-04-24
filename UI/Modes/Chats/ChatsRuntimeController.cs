@@ -137,6 +137,8 @@ internal sealed class ChatsRuntimeController
         _initialized = true;
     }
 
+    public ChatsAdapter ActiveAdapter => _activeAdapter;
+
     public ChatsWebStateSnapshot BuildSnapshot()
     {
         var loadedCount = _activeAdapter.Items.Count;

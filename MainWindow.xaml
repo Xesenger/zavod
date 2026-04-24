@@ -141,6 +141,11 @@
                 Grid.Row="1"
                 Visibility="Collapsed" />
 
+            <chats:ChatsHostView
+                x:Name="ChatsHostView"
+                Grid.Row="1"
+                Visibility="Collapsed" />
+
             <projects:ProjectsHostView
                 x:Name="ProjectsHostView"
                 Grid.Row="1"

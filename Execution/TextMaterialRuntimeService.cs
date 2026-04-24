@@ -21,6 +21,22 @@ public sealed class TextMaterialRuntimeService
                 "Text runtime service supports only text materials.");
         }
 
+        var sensitiveReason = WorkspaceSensitiveFilePolicy.GetSensitiveReason(request.DisplayPath);
+        if (string.IsNullOrWhiteSpace(sensitiveReason) && !string.IsNullOrWhiteSpace(request.FullPath))
+        {
+            sensitiveReason = WorkspaceSensitiveFilePolicy.GetSensitiveReason(request.FullPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(sensitiveReason))
+        {
+            return BuildFailure(
+                request,
+                MaterialRuntimeStatus.SensitiveSkipped,
+                "native-text",
+                "TEXT_SENSITIVE_SKIPPED",
+                $"Text material content was skipped by sensitive file policy: {sensitiveReason}.");
+        }
+
         var rawText = request.InlineText;
         if (string.IsNullOrWhiteSpace(rawText))
         {

@@ -152,7 +152,7 @@ limits.
 * Per-document preview promotion into canonical docs, with Layer C decision records and Layer D journal events
 * Per-document preview rejection, with Layer D journal attribution
 * Role system: Lead, Worker, QC — all live via typed LLM contracts
-* End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 hash-guarded apply on user Accept
+* End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 drift-blocking staged apply on user Accept
 * Revision loop carries forward structured feedback: prior QC rationale, user revision intake, staging skip reasons
 * Quarantine on abandon preserves staged artefacts under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` rather than deleting
 * Sage advisory pipeline (S1–S5a): typed `SageObservation` records in sage-only JSONL, pipeline hooks at four stages, core-enforced budgets, two field-verified emitters (`semantic_gap`, `attention_miss`) — zero prompt pollution
@@ -163,7 +163,7 @@ limits.
 * 5/5 canonical creation is not yet product-complete: per-kind promote / reject exist, but edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still next work
 * Mechanical verification (build / lint / test) via typed tool contracts is deferred; current drift detection is SHA256 origin-hash + staging manifest
 * No internal editor or realtime file watchers — external edits surface only on scan/baseline
-* No in-UI Sage surface yet; observations live in `.zavod/sage/observations.jsonl` for manual inspection
+* No in-UI Sage surface yet; observations live in `.zavod.local/sage/observations.jsonl` for manual inspection
 * Pattern memory, deterministic Sage rules, and middle-truth correlation layer are deferred until real use justifies them
 * Importer may over-interpret or produce inaccurate explanations
 * Large monorepos can still expose scanner/importer ranking gaps: root README product identity, Cargo default members, and main entry points are not always weighted strongly enough yet
@@ -172,6 +172,7 @@ limits.
 
 * Some architectural ideas have already evolved
 * Parts of the system exist as design, not full implementation
+* Local API credentials are machine-local, not repository truth. OpenRouter local config is read from `Documents/ZAVOD/openrouter.local.json` by default, or from `OPENROUTER_CONFIG_FILE`; secret files must not live in the source tree or clean exports.
 * Sage is designed to observe, not adjudicate — role boundaries (Sage observes, QC adjudicates) are enforced by construction
 
 ---

@@ -126,6 +126,8 @@ public sealed record ProjectsShellProjection(
             WorkspaceHealthStatus.Missing => AppText.Current.Get("projects.enum.health.missing"),
             WorkspaceHealthStatus.Unavailable => AppText.Current.Get("projects.enum.health.unavailable"),
             WorkspaceHealthStatus.BrokenStructure => AppText.Current.Get("projects.enum.health.broken_structure"),
+            WorkspaceHealthStatus.MaterialOnly => AppText.Current.Get("projects.enum.health.material_only"),
+            WorkspaceHealthStatus.Degraded => AppText.Current.Get("projects.enum.health.degraded"),
             WorkspaceHealthStatus.ScanPending => AppText.Current.Get("projects.enum.health.scan_pending"),
             WorkspaceHealthStatus.ScanFailed => AppText.Current.Get("projects.enum.health.scan_failed"),
             _ => health.ToString()

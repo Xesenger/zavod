@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ContextCapsule = zavod.Contexting.Capsule;
@@ -76,6 +77,8 @@ var tests = new (string Name, Action Run)[]
     ("Workspace scanner flags nested non-source payloads beside host project honestly", WorkspaceScannerFlagsNestedNonSourcePayloadsBesideHostProjectHonestly),
     ("Workspace scanner flags nested git-backed projects honestly", WorkspaceScannerFlagsNestedGitBackedProjectsHonestly),
     ("Workspace scanner ignores generated noise directories honestly", WorkspaceScannerIgnoresGeneratedNoiseDirectoriesHonestly),
+    ("Workspace scanner keeps automation folders out of primary source roots honestly", WorkspaceScannerKeepsAutomationFoldersOutOfPrimarySourceRootsHonestly),
+    ("Workspace scanner rejects sibling include path prefix honestly", WorkspaceScannerRejectsSiblingIncludePathPrefixHonestly),
     ("Workspace scanner reports noisy workspace hint honestly", WorkspaceScannerReportsNoisyWorkspaceHintHonestly),
     ("Workspace scanner preserves user materials as context candidates honestly", WorkspaceScannerPreservesUserMaterialsAsContextCandidatesHonestly),
     ("Workspace scanner preserves office and multimedia materials honestly", WorkspaceScannerPreservesOfficeAndMultimediaMaterialsHonestly),
@@ -103,6 +106,7 @@ var tests = new (string Name, Action Run)[]
     ("Workspace import material interpretation demotes workflow and tool mains honestly", WorkspaceImportMaterialInterpretationDemotesWorkflowAndToolMainsHonestly),
     ("Workspace import material summary is adapter-owned, not scanner-owned honestly", WorkspaceImportMaterialSummaryIsAdapterOwnedNotScannerOwnedHonestly),
     ("Workspace material runtime front prepares mixed materials honestly", WorkspaceMaterialRuntimeFrontPreparesMixedMaterialsHonestly),
+    ("Workspace material runtime front skips sensitive file content honestly", WorkspaceMaterialRuntimeFrontSkipsSensitiveFileContentHonestly),
     ("Workspace material runtime front expands technical evidence beyond cmake honestly", WorkspaceMaterialRuntimeFrontExpandsTechnicalEvidenceBeyondCmakeHonestly),
     ("Workspace material runtime front keeps mixed coverage under text pressure honestly", WorkspaceMaterialRuntimeFrontKeepsMixedCoverageUnderTextPressureHonestly),
     ("Workspace evidence pack keeps runtime surfaces bounded honestly", WorkspaceEvidencePackKeepsRuntimeSurfacesBoundedHonestly),
@@ -114,13 +118,24 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence pack avoids broad reverse project inference honestly", WorkspaceEvidencePackAvoidsBroadReverseProjectInferenceHonestly),
     ("Workspace evidence pack requires supporting signals for coarse dependency edges honestly", WorkspaceEvidencePackRequiresSupportingSignalsForCoarseDependencyEdgesHonestly),
     ("Workspace evidence pack exposes cold candidates and hotspots honestly", WorkspaceEvidencePackExposesColdCandidatesAndHotspotsHonestly),
+    ("Workspace evidence pack exposes root README identity as evidence honestly", WorkspaceEvidencePackExposesRootReadmeIdentityAsEvidenceHonestly),
+    ("Workspace evidence pack maps project units honestly", WorkspaceEvidencePackMapsProjectUnitsHonestly),
+    ("Workspace evidence pack applies scanner config unit overrides honestly", WorkspaceEvidencePackAppliesScannerConfigUnitOverridesHonestly),
+    ("Workspace evidence pack maps run profiles honestly", WorkspaceEvidencePackMapsRunProfilesHonestly),
     ("Workspace evidence pack requires repeated structural support for runtime and platforms honestly", WorkspaceEvidencePackRequiresRepeatedStructuralSupportForRuntimeAndPlatformsHonestly),
     ("Workspace evidence pack keeps behavior and origin bounded on noisy mixed repo honestly", WorkspaceEvidencePackKeepsBehaviorAndOriginBoundedOnNoisyMixedRepoHonestly),
     ("Workspace evidence pack keeps service runtime bounded for test server roots honestly", WorkspaceEvidencePackKeepsServiceRuntimeBoundedForTestServerRootsHonestly),
     ("Workspace evidence pack keeps legacy scanner semantics deprecated honestly", WorkspaceEvidencePackKeepsLegacyScannerSemanticsDeprecatedHonestly),
     ("Workspace evidence pack requires non doc overlap for technical doc boosts honestly", WorkspaceEvidencePackRequiresNonDocOverlapForTechnicalDocBoostsHonestly),
     ("Workspace evidence pack extracts code edges and signatures honestly", WorkspaceEvidencePackExtractsCodeEdgesAndSignaturesHonestly),
+    ("Workspace evidence pack annotates edge resolution honestly", WorkspaceEvidencePackAnnotatesEdgeResolutionHonestly),
     ("Workspace evidence pack improves Rust and Go code edges honestly", WorkspaceEvidencePackImprovesRustAndGoCodeEdgesHonestly),
+    ("Workspace task scope resolver maps bounded scope honestly", WorkspaceTaskScopeResolverMapsBoundedScopeHonestly),
+    ("Workspace evidence predicate registry maps scanner surfaces honestly", WorkspaceEvidencePredicateRegistryMapsScannerSurfacesHonestly),
+    ("Scanner v2 plan forbids smoke repo specialization honestly", ScannerV2PlanForbidsSmokeRepoSpecializationHonestly),
+    ("Workspace scanner fingerprint is provenance not content hash honestly", WorkspaceScannerFingerprintIsProvenanceNotContentHashHonestly),
+    ("Workspace scanner reports performance budgets honestly", WorkspaceScannerReportsPerformanceBudgetsHonestly),
+    ("Workspace evidence pack ranks Cargo default member entries honestly", WorkspaceEvidencePackRanksCargoDefaultMemberEntriesHonestly),
     ("Workspace evidence pack extracts dependency surface honestly", WorkspaceEvidencePackExtractsDependencySurfaceHonestly),
     ("Workspace evidence pack keeps binary hints bounded honestly", WorkspaceEvidencePackKeepsBinaryHintsBoundedHonestly),
     ("Workspace evidence pack keeps technical passport options bounded honestly", WorkspaceEvidencePackKeepsTechnicalPassportOptionsBoundedHonestly),
@@ -147,6 +162,7 @@ var tests = new (string Name, Action Run)[]
     ("Pdf extraction service prefers bundled pdftotext honestly", PdfExtractionServicePrefersBundledPdfToTextHonestly),
     ("Archive inspection service prefers bundled 7za honestly", ArchiveInspectionServicePrefersBundled7zaHonestly),
     ("Image inspection service uses windows image metadata honestly", ImageInspectionServiceUsesWindowsImageMetadataHonestly),
+    ("External process runner drains stdout and stderr honestly", ExternalProcessRunnerDrainsStdoutAndStderrHonestly),
     ("Architecture diagram runtime renders bounded png honestly", ArchitectureDiagramRuntimeRendersBoundedPngHonestly),
     ("OpenRouter client fails fast on missing config honestly", OpenRouterClientFailsFastOnMissingConfigHonestly),
     ("OpenRouter configuration defaults import model honestly", OpenRouterConfigurationDefaultsImportModelHonestly),
@@ -155,6 +171,7 @@ var tests = new (string Name, Action Run)[]
     ("Brave search runtime respects broker denial honestly", BraveSearchRuntimeRespectsBrokerDenialHonestly),
     ("Web search tool returns structured results through brave runtime honestly", WebSearchToolReturnsStructuredResultsThroughBraveRuntimeHonestly),
     ("Workspace import material interpreter runtime builds context-only result honestly", WorkspaceImportMaterialInterpreterRuntimeBuildsContextOnlyResultHonestly),
+    ("Workspace evidence artifact runtime writes localized report legacy honestly", WorkspaceEvidenceArtifactRuntimeWritesLocalizedReportHonestly),
     ("Workspace evidence artifact runtime writes localized report honestly", WorkspaceEvidenceArtifactRuntimeWritesLocalizedReportUtf8Honestly),
     ("Workspace evidence artifact runtime writes readable utf8 json honestly", WorkspaceEvidenceArtifactRuntimeWritesReadableUtf8JsonHonestly),
     ("Workspace evidence artifact runtime writes cold scanner payloads honestly", WorkspaceEvidenceArtifactRuntimeWritesColdScannerPayloadsHonestly),
@@ -182,6 +199,7 @@ var tests = new (string Name, Action Run)[]
     ("Project document runtime rejects preview doc with journal event honestly", ProjectDocumentRuntimeRejectsPreviewDocWithJournalEventHonestly),
     ("Project document runtime regenerates capsule v2 deterministically honestly", ProjectDocumentRuntimeRegeneratesCapsuleV2DeterministicallyHonestly),
     ("Workspace import material interpreter runtime preserves upstream failure honestly", WorkspaceImportMaterialInterpreterRuntimePreservesUpstreamFailureHonestly),
+    ("Workspace scanner marks empty import missing honestly", WorkspaceScannerMarksEmptyImportMissingHonestly),
     ("Workspace scanner separates primary source roots from build roots honestly", WorkspaceScannerSeparatesPrimarySourceRootsFromBuildRootsHonestly),
     ("Workspace scanner classifies config only import honestly", WorkspaceScannerClassifiesConfigOnlyImportHonestly),
     ("Workspace scanner handles documents only import honestly", WorkspaceScannerHandlesDocumentsOnlyImportHonestly),
@@ -202,6 +220,12 @@ var tests = new (string Name, Action Run)[]
     ("Workspace baseline marks non-project import as partial", WorkspaceBaselineMarksNonProjectImportAsPartial),
     ("Acceptance guard allows safe apply for unchanged touched scope", AcceptanceGuardAllowsSafeApplyForUnchangedTouchedScope),
     ("Acceptance guard blocks touched file conflict", AcceptanceGuardBlocksTouchedFileConflict),
+    ("Acceptance guard rejects sibling path prefix escape honestly", AcceptanceGuardRejectsSiblingPathPrefixEscapeHonestly),
+    ("Staging task id path segment accepts safe ids honestly", StagingTaskIdPathSegmentAcceptsSafeIdsHonestly),
+    ("Staging task id path segment rejects unsafe ids honestly", StagingTaskIdPathSegmentRejectsUnsafeIdsHonestly),
+    ("Staging writer rejects sibling path prefix escape honestly", StagingWriterRejectsSiblingPathPrefixEscapeHonestly),
+    ("Staging applier blocks hash drift honestly", StagingApplierBlocksHashDriftHonestly),
+    ("Staging applier ignores manifest absolute staged path honestly", StagingApplierIgnoresManifestAbsoluteStagedPathHonestly),
     ("Acceptance evidence can be assembled from execution run result", AcceptanceEvidenceCanBeAssembledFromExecutionRunResult),
     ("Acceptance evidence factory assembles scanner and execution layers together", AcceptanceEvidenceFactoryAssemblesScannerAndExecutionLayersTogether),
     ("Acceptance evidence carries tool execution envelope automatically", AcceptanceEvidenceCarriesToolExecutionEnvelopeAutomatically),
@@ -363,6 +387,7 @@ var tests = new (string Name, Action Run)[]
     ("Non-closable execution outcome does not mutate closure truth", NonClosableExecutionOutcomeDoesNotMutateClosureTruth),
     ("Successful confirmed closure persists canonical truth", SuccessfulConfirmedClosurePersistsCanonicalTruth),
     ("Accept result applies and completes task without closing shift", AcceptResultAppliesAndCompletesTaskWithoutClosingShift),
+    ("Accept result blocks missing acceptance evaluation honestly", AcceptResultBlocksMissingAcceptanceEvaluationHonestly),
     ("Accept result still applies when observed acceptance is safe", AcceptResultStillAppliesWhenObservedAcceptanceIsSafe),
     ("Accept result is blocked when observed acceptance conflicts", AcceptResultIsBlockedWhenObservedAcceptanceConflicts),
     ("Soft checkpoint resolver ignores light step", SoftCheckpointResolverIgnoresLightStep),
@@ -393,6 +418,9 @@ var tests = new (string Name, Action Run)[]
     ("Chats runtime controller includes attachment content in execution request honestly", ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHonestly),
     ("Projects flow consumes attachments before work-cycle send honestly", ProjectsFlowConsumesAttachmentsBeforeWorkCycleSendHonestly),
     ("Projects work cycle confirm preflight creates runtime-backed result honestly", ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly),
+    ("Projects work cycle QC unavailable does not open result surface honestly", ProjectsWorkCycleQcUnavailableDoesNotOpenResultSurfaceHonestly),
+    ("Projects work cycle blocks physical apply before acceptance gate honestly", ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly),
+    ("Projects work cycle blocks truth apply when staging apply skips files honestly", ProjectsWorkCycleBlocksTruthApplyWhenStagingApplySkipsFilesHonestly),
     ("Projects work cycle accept result updates truth honestly", ProjectsWorkCycleAcceptResultUpdatesTruthHonestly),
     ("Project sage finds relevant history honestly", ProjectSageFindsRelevantHistoryHonestly),
     ("Project sage stays quiet without match honestly", ProjectSageStaysQuietWithoutMatchHonestly),
@@ -952,6 +980,8 @@ static void ToolExecutionEnvelopeCarriesRouteAndEvidence()
     {
         Directory.CreateDirectory(Path.Combine(root, "Tooling"));
         File.WriteAllText(Path.Combine(root, "Tooling", "tool.txt"), "workspace envelope fixture");
+        File.WriteAllText(Path.Combine(root, "Tooling", "tool.cs"), "public sealed class ToolFixture {}");
+        File.WriteAllText(Path.Combine(root, "Tooling", "tool.csproj"), "<Project />");
 
         var workspaceEnvelope = layer.InspectWorkspaceWithEnvelope(
             PromptRole.Qc,
@@ -3695,11 +3725,13 @@ static void AcceptResultAppliesAndCompletesTaskWithoutClosingShift()
         var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
         var shift = CreateShiftState(task) with { CurrentTaskId = task.TaskId };
         _ = ShiftStateStorage.Save(workspaceRoot, shift);
+        EnsureProjectStructureForTest(workspaceRoot);
 
         var runtime = ExecutionRuntimeController.Begin(task, shift);
         runtime = ExecutionRuntimeController.ProduceResult(runtime);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -3721,6 +3753,108 @@ static void AcceptResultAppliesAndCompletesTaskWithoutClosingShift()
         AssertEqual(reloadedState, applied.ProjectState, "Persisted project state must match accepted-result apply.");
         AssertEqual(ShiftStateStatus.Active, reloadedShift.Status, "Persisted shift must remain active after accept.");
         AssertEqual(TaskStateStatus.Completed, persistedTask.Status, "Persisted task must be completed after accept.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static ExecutionRuntimeState ObserveSafeAcceptanceForApply(ExecutionRuntimeState runtime, string workspaceRoot)
+{
+    EnsureRuntimeTouchedFilesExist(workspaceRoot, runtime);
+    EnsureProjectStructureForTest(workspaceRoot);
+    return ExecutionRuntimeController.ObserveAcceptanceAfterQc(
+        runtime,
+        workspaceRoot,
+        new AcceptanceProcessEvidence(0, "ok", string.Empty, TimedOut: false, WasCanceled: false),
+        "workspace unchanged");
+}
+
+static void EnsureProjectStructureForTest(string workspaceRoot)
+{
+    var projectPath = Path.Combine(workspaceRoot, "project.csproj");
+    if (!File.Exists(projectPath))
+    {
+        File.WriteAllText(projectPath, "<Project />");
+    }
+
+    var programPath = Path.Combine(workspaceRoot, "Program.cs");
+    if (!File.Exists(programPath))
+    {
+        File.WriteAllText(programPath, "class Program {}");
+    }
+}
+
+static void EnsureRuntimeTouchedFilesExist(string workspaceRoot, ExecutionRuntimeState runtime)
+{
+    if (runtime.Result is null)
+    {
+        return;
+    }
+
+    foreach (var relativePath in runtime.Result.Modifications
+        .Select(static modification => modification.Path)
+        .Where(static path => !string.IsNullOrWhiteSpace(path))
+        .Select(static path => path.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(workspaceRoot, relativePath));
+        if (!IsUnderRootForTest(workspaceRoot, fullPath))
+        {
+            throw new InvalidOperationException("Test fixture touched path escaped workspace root.");
+        }
+
+        var directory = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            File.WriteAllText(fullPath, "test fixture touched file");
+        }
+    }
+}
+
+static bool IsUnderRootForTest(string root, string path)
+{
+    var comparison = OperatingSystem.IsWindows()
+        ? StringComparison.OrdinalIgnoreCase
+        : StringComparison.Ordinal;
+    var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    var pathFull = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    return string.Equals(pathFull, rootFull, comparison) ||
+           pathFull.StartsWith(rootFull + Path.DirectorySeparatorChar, comparison) ||
+           pathFull.StartsWith(rootFull + Path.AltDirectorySeparatorChar, comparison);
+}
+
+static void AcceptResultBlocksMissingAcceptanceEvaluationHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var initial = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-accept-missing-gate", "ZAVOD Accept Missing Gate");
+        var activeState = ProjectStateStorage.Save(initial with { ActiveShiftId = "SHIFT-001", ActiveTaskId = "TASK-001" });
+        var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+        var shift = CreateShiftState(task) with { CurrentTaskId = task.TaskId };
+        _ = ShiftStateStorage.Save(workspaceRoot, shift);
+
+        var runtime = ExecutionRuntimeController.Begin(task, shift);
+        runtime = ExecutionRuntimeController.ProduceResult(runtime);
+        runtime = ExecutionRuntimeController.RequestQcReview(runtime);
+        runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+
+        AssertThrows<InvalidOperationException>(
+            () => AcceptedResultApplyProcessor.Apply(
+                activeState,
+                shift,
+                task,
+                runtime,
+                new DateTimeOffset(2026, 03, 31, 10, 03, 00, TimeSpan.Zero)),
+            "Accepted result apply must not move truth without an acceptance evaluation.");
     }
     finally
     {
@@ -3946,6 +4080,7 @@ static void SoftCheckpointProcessorWritesSnapshotWithoutMutatingTruth()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -4031,6 +4166,7 @@ static void SoftCheckpointProcessorIsIdempotentByDedupeKey()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -4107,6 +4243,7 @@ static void HardCheckpointPathShortCircuitsSoftSnapshotWrite()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -4216,6 +4353,7 @@ static void ProofScenarioSemanticShiftLogsSoftSnapshot()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
             shift,
@@ -4284,6 +4422,7 @@ static void ProofScenarioHardCheckpointLogsShortCircuit()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
             shift,
@@ -4354,6 +4493,7 @@ static void ProofScenarioRepeatedAcceptLogsDedupe()
         runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, providedResult);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
             shift,
@@ -4403,6 +4543,7 @@ static void AcceptedResultCannotBeAppliedTwice()
         runtime = ExecutionRuntimeController.ProduceResult(runtime);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -4479,6 +4620,7 @@ static void PostAcceptPersistedShiftClosesExplicitlyThroughTruthBasedAcceptedCon
         runtime = ExecutionRuntimeController.ProduceResult(runtime);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         _ = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -4615,6 +4757,7 @@ static void AcceptedResultCannotBeAbandonedAfterApply()
         runtime = ExecutionRuntimeController.ProduceResult(runtime);
         runtime = ExecutionRuntimeController.RequestQcReview(runtime);
         runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+        runtime = ObserveSafeAcceptanceForApply(runtime, workspaceRoot);
 
         var applied = AcceptedResultApplyProcessor.Apply(
             activeState,
@@ -8069,6 +8212,7 @@ static void ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHon
     }
 }
 
+#pragma warning disable CS8321 // Legacy draft tests are not part of the active invariant suite yet.
 static void ProjectsWorkCycleRevisionCarriesAttachmentContentHonestly()
 {
     var workspaceRoot = CreateScratchWorkspace();
@@ -8192,6 +8336,7 @@ static void ProjectsWorkCycleRevisionCarriesAttachmentContentAsciiHonestly()
         DeleteScratchWorkspace(workspaceRoot);
     }
 }
+#pragma warning restore CS8321
 
 static void ProjectsFlowConsumesAttachmentsBeforeWorkCycleSendHonestly()
 {
@@ -8291,6 +8436,247 @@ static void ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly(
         AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Log), "Projects flow must emit worker log item from runtime-backed execution.");
         AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Artifact), "Projects flow must emit worker artifact item from runtime-backed execution.");
         AssertTrue(adapter.Items.Any(item => item.Kind == ConversationItemKind.Status && item.Text.Contains("QC accepted", StringComparison.Ordinal)), "Projects flow must emit QC status derived from runtime review.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleQcUnavailableDoesNotOpenResultSurfaceHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-qc-unavailable-flow";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project QC Unavailable Flow");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var workerRuntime = new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "status": "success",
+              "summary": "Prepared a bounded runtime-backed execution result.",
+              "plan": ["Inspect task", "Produce bounded result"],
+              "actions": ["Produced deterministic test result"],
+              "modifications": [],
+              "edits": [],
+              "blockers": [],
+              "risks": [],
+              "warnings": []
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var qcRuntime = new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            "not-json",
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            workerAgentRuntime: workerRuntime,
+            qcAgentRuntime: qcRuntime);
+
+        _ = controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult();
+        _ = controller.EnterWorkAsync().GetAwaiter().GetResult();
+        _ = controller.ConfirmPreflightAsync().GetAwaiter().GetResult();
+
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertTrue(resume is not null, "QC unavailable flow must persist a resume snapshot.");
+        AssertTrue(resume!.RuntimeState is not null, "QC unavailable flow must keep runtime state for retry/revision.");
+        AssertEqual(SurfacePhase.Execution, resume.PhaseState.Phase, "QC unavailable must not open the result surface.");
+        AssertEqual(ExecutionSubphase.Revision, resume.PhaseState.ExecutionSubphase, "QC unavailable must return execution to revision.");
+        AssertEqual(ResultSubphase.RevisionRequested, resume.PhaseState.ResultSubphase, "QC unavailable must request revision intake.");
+        AssertEqual(QCReviewStatus.NotStarted, resume.RuntimeState!.QcStatus, "Revision restart after unavailable QC must require fresh QC.");
+        AssertTrue(resume.RuntimeState.Result is null, "Revision restart after unavailable QC must not keep an accepted current result.");
+        AssertFalse(
+            adapter.Items.Any(item => item.Kind == ConversationItemKind.Status && item.Text.Contains("QC accepted", StringComparison.OrdinalIgnoreCase)),
+            "QC unavailable must not emit an accepted-result status.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("Result was not accepted", StringComparison.OrdinalIgnoreCase)),
+            "QC unavailable must tell the user the result was not accepted.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-acceptance-gate-before-staging";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Acceptance Gate Before Staging");
+        var targetPath = Path.Combine(workspaceRoot, "src", "File.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "original", Encoding.UTF8);
+
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var workerRuntime = new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "status": "success",
+              "summary": "Prepared a staged file edit.",
+              "plan": ["Inspect task", "Stage bounded edit"],
+              "actions": ["Staged deterministic file edit"],
+              "modifications": [{"path": "src/File.txt", "kind": "edit", "summary": "Update file text"}],
+              "edits": [{"path": "src/File.txt", "operation": "write_full", "content": "staged"}],
+              "blockers": [],
+              "risks": [],
+              "warnings": []
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var qcRuntime = new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "decision": "ACCEPT",
+              "rationale": "The staged edit is bounded.",
+              "issues": [],
+              "next_action": "Surface the result to the user."
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            workerAgentRuntime: workerRuntime,
+            qcAgentRuntime: qcRuntime);
+
+        AssertTrue(controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult(), "Work cycle should accept the task intent.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Work cycle should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Work cycle should stage a worker result and enter result review.");
+
+        var accepted = controller.AcceptResultAsync().GetAwaiter().GetResult();
+
+        AssertFalse(accepted, "AcceptResult must stop before physical apply when acceptance evaluation is missing.");
+        AssertEqual("original", File.ReadAllText(targetPath, Encoding.UTF8), "Missing acceptance evaluation must not physically apply staged files.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("Accepted result apply blocked", StringComparison.OrdinalIgnoreCase)),
+            "Blocked apply should be visible in the project conversation.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleBlocksTruthApplyWhenStagingApplySkipsFilesHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-staging-skip-before-truth";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Staging Skip Before Truth");
+        var targetPath = Path.Combine(workspaceRoot, "src", "File.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "original", Encoding.UTF8);
+        EnsureProjectStructureForTest(workspaceRoot);
+
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var workerRuntime = new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "status": "success",
+              "summary": "Prepared a staged file edit.",
+              "plan": ["Inspect task", "Stage bounded edit"],
+              "actions": ["Staged deterministic file edit"],
+              "modifications": [{"path": "src/File.txt", "kind": "edit", "summary": "Update file text"}],
+              "edits": [{"path": "src/File.txt", "operation": "write_full", "content": "staged"}],
+              "blockers": [],
+              "risks": [],
+              "warnings": []
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var qcRuntime = new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {
+              "decision": "ACCEPT",
+              "rationale": "The staged edit is bounded.",
+              "issues": [],
+              "next_action": "Surface the result to the user."
+            }
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            workerAgentRuntime: workerRuntime,
+            qcAgentRuntime: qcRuntime);
+
+        AssertTrue(controller.SendProjectsMessageAsync("Fix button layout without adding new layers.").GetAwaiter().GetResult(), "Work cycle should accept the task intent.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Work cycle should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Work cycle should stage a worker result and enter result review.");
+
+        var projectStateBeforeAccept = ProjectStateStorage.Load(workspaceRoot);
+        var taskId = projectStateBeforeAccept.ActiveTaskId ?? throw new InvalidOperationException("Test expected active task.");
+        var resume = ResumeStageStorage.Load(workspaceRoot) ?? throw new InvalidOperationException("Test expected resume snapshot.");
+        var acceptedRuntime = ExecutionRuntimeController.ObserveAcceptanceAfterQc(
+            resume.RuntimeState ?? throw new InvalidOperationException("Test expected runtime state."),
+            workspaceRoot,
+            new AcceptanceProcessEvidence(0, "ok", string.Empty, TimedOut: false, WasCanceled: false),
+            "workspace unchanged");
+        WorkCycleActionController.SaveWorkCycleSnapshot(
+            workspaceRoot,
+            StepPhaseMachine.ResumeResult(),
+            resume.IntentSummary,
+            isClarificationActive: false,
+            clarificationDraft: string.Empty,
+            runtimeState: acceptedRuntime);
+
+        var stagedFile = Path.Combine(workspaceRoot, ".zavod.local", "staging", taskId, "attempt-01", "src", "File.txt");
+        File.Delete(stagedFile);
+
+        var accepted = controller.AcceptResultAsync().GetAwaiter().GetResult();
+        var projectStateAfterAccept = ProjectStateStorage.Load(workspaceRoot);
+
+        AssertFalse(accepted, "AcceptResult must stop truth movement when physical staging apply skipped a file.");
+        AssertEqual("original", File.ReadAllText(targetPath, Encoding.UTF8), "Skipped physical apply must preserve the project file.");
+        AssertEqual<string?>(taskId, projectStateAfterAccept.ActiveTaskId, "Skipped physical apply must not clear active task truth.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("Staging apply did not apply all files", StringComparison.OrdinalIgnoreCase)),
+            "Skipped physical apply should be visible in the project conversation.");
     }
     finally
     {
@@ -8585,6 +8971,61 @@ static void WorkspaceScannerIgnoresGeneratedNoiseDirectoriesHonestly()
     finally
     {
         DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceScannerKeepsAutomationFoldersOutOfPrimarySourceRootsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, ".github", "actions", "ship"));
+        Directory.CreateDirectory(Path.Combine(root, ".github", "workflows"));
+        File.WriteAllText(Path.Combine(root, "Cargo.toml"), "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "src", "main.rs"), "fn main() {}\n");
+        File.WriteAllText(Path.Combine(root, ".github", "actions", "ship", "main.js"), "console.log('action');\n");
+        File.WriteAllText(Path.Combine(root, ".github", "workflows", "ci.yml"), "name: ci\n");
+
+        var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var relativeFiles = result.RelevantFiles
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToArray();
+
+        AssertTrue(result.State.Summary.SourceRoots.Contains("src"), "Real source root should remain primary.");
+        AssertFalse(result.State.Summary.SourceRoots.Contains(".github"), "Automation folders must not become primary source roots.");
+        AssertTrue(relativeFiles.Contains(Path.Combine(".github", "actions", "ship", "main.js")), "Automation source files should remain scan evidence.");
+        AssertTrue(result.State.Summary.EntryCandidates.Contains(Path.Combine(".github", "actions", "ship", "main.js")), "Automation entry-like files should remain cold candidates for later ranking/demotion.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceScannerRejectsSiblingIncludePathPrefixHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var sibling = root + "-evil";
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.cpp"), "int main() { return 0; }");
+        Directory.CreateDirectory(sibling);
+        File.WriteAllText(Path.Combine(sibling, "main.cpp"), "int main() { return 1; }");
+
+        var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root, new[] { sibling }));
+        var relativeFiles = result.RelevantFiles
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToArray();
+
+        AssertTrue(relativeFiles.Any(path => string.Equals(path, Path.Combine("src", "main.cpp"), StringComparison.OrdinalIgnoreCase)), "Scanner should fall back to workspace root when include path is outside boundary.");
+        AssertFalse(result.RelevantFiles.Any(path => path.StartsWith(sibling, StringComparison.OrdinalIgnoreCase)), "Scanner must not accept sibling path prefixes as inside the workspace root.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+        DeleteScratchWorkspace(sibling);
     }
 }
 
@@ -9230,7 +9671,8 @@ static void WorkspaceImportMaterialSummaryIsAdapterOwnedNotScannerOwnedHonestly(
 
         var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
         var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
-        AssertTrue(string.IsNullOrWhiteSpace(packet.EvidencePack.TreeSummary), "Scanner-owned tree summary should stay empty during cold-boundary transition.");
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
+        AssertTrue(string.IsNullOrWhiteSpace(pack.TreeSummary), "Scanner-owned tree summary should stay empty during cold-boundary transition.");
 
         var response = new WorkspaceImportMaterialPromptResponse(
             string.Empty,
@@ -9458,6 +9900,47 @@ static void WorkspaceMaterialRuntimeFrontPreparesMixedMaterialsHonestly()
     }
 }
 
+static void WorkspaceMaterialRuntimeFrontSkipsSensitiveFileContentHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, ".env"), "API_TOKEN=real-env-secret");
+        File.WriteAllText(Path.Combine(root, "secrets.txt"), "PASSWORD=real-text-secret");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 2, maxCharsPerMaterial: 128);
+
+        var sensitiveMaterial = packet.Materials.Single(material => string.Equals(material.RelativePath, "secrets.txt", StringComparison.OrdinalIgnoreCase));
+        AssertEqual("SensitiveSkipped", sensitiveMaterial.PreparationStatus, "Sensitive text material should expose explicit skipped status.");
+        AssertEqual(string.Empty, sensitiveMaterial.PreviewText, "Sensitive text material content must not enter preview text.");
+        AssertTrue(packet.TechnicalEvidence.Any(item =>
+            string.Equals(item.RelativePath, ".env", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(item.Category, "sensitive-file", StringComparison.OrdinalIgnoreCase)),
+            "Sensitive config files should stay visible as redacted technical evidence.");
+        AssertTrue(packet.EvidencePack!.RawObservations.Any(observation =>
+            observation.Kind == "sensitive_file_detected" &&
+            string.Equals(observation.EvidencePath, ".env", StringComparison.OrdinalIgnoreCase)),
+            "Evidence pack should record sensitive file presence without content.");
+        AssertTrue(packet.EvidencePack.Signals.Any(signal =>
+            signal.Category == "safety" &&
+            signal.Code == "sensitive_file_present"),
+            "Evidence pack should expose a safety signal for sensitive-looking files.");
+
+        var exposedText = string.Join(
+            "\n",
+            packet.Materials.Select(material => material.PreviewText)
+                .Concat(packet.TechnicalEvidence.Select(item => item.PreviewText))
+                .Concat(packet.EvidencePack.EvidenceSnippets.Select(snippet => snippet.PreviewText)));
+        AssertFalse(exposedText.Contains("real-env-secret", StringComparison.Ordinal), "Sensitive .env content must not leak into preview or snippets.");
+        AssertFalse(exposedText.Contains("real-text-secret", StringComparison.Ordinal), "Sensitive text content must not leak into preview or snippets.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
 static void WorkspaceMaterialRuntimeFrontKeepsMixedCoverageUnderTextPressureHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -9556,7 +10039,8 @@ static void WorkspaceEvidencePackKeepsRuntimeSurfacesBoundedHonestly()
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
-        var surfaces = packet.EvidencePack.TechnicalPassport.RuntimeSurfaces;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
+        var surfaces = pack.TechnicalPassport.RuntimeSurfaces;
 
         AssertTrue(surfaces.Contains("cli"), "Evidence pack should preserve CLI surface when cmd entrypoints are visible.");
         AssertTrue(surfaces.Contains("service"), "Evidence pack should preserve service surface when server-style entrypoints are visible.");
@@ -9588,12 +10072,15 @@ static void WorkspaceEvidencePackEmitsColdObservationsPatternsAndScoresHonestly(
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
-        var pack = packet.EvidencePack;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
 
         AssertTrue(pack.RawObservations.Any(static observation => observation.Kind == "file_found" && observation.Value == "CMakeLists.txt"), "Evidence pack should expose raw file observations without narrative interpretation.");
         AssertTrue(pack.RawObservations.Any(static observation => observation.Kind == "source_root_detected"), "Evidence pack should expose scanner root observations explicitly.");
         AssertTrue(pack.DerivedPatterns.Any(static pattern => pattern.Code == "build_manifest_present"), "Evidence pack should expose build-manifest presence as a derived pattern.");
         AssertTrue(pack.SignalScores.Any(static score => score.Signal == "build.cmake" && score.Score > 0.0), "Evidence pack should expose scored signals separately from the raw signal list.");
+        AssertFalse(
+            pack.ConfidenceAnnotations.Any(static annotation => annotation.TargetKind == "signal" && annotation.Confidence == WorkspaceEvidenceConfidenceLevel.Confirmed),
+            "Score-derived signal confidence must not become Confirmed without direct evidence.");
     }
     finally
     {
@@ -9618,7 +10105,7 @@ static void WorkspaceEvidencePackDoesNotInferBrowserRuntimeFromNarrativeReadmeAl
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 160);
-        var pack = packet.EvidencePack;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
 
         AssertFalse(pack.TechnicalPassport.RuntimeSurfaces.Contains("web", StringComparer.OrdinalIgnoreCase), "Narrative README alone should not create browser runtime surface without supporting technical evidence.");
         AssertFalse(pack.DerivedPatterns.Any(static pattern => pattern.Code == "browser_surface_pattern"), "Narrative README alone should not create browser surface pattern without supporting technical evidence.");
@@ -9685,7 +10172,8 @@ static void WorkspaceEvidencePackDerivesCoarseModulesHonestly()
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
-        var modules = packet.EvidencePack.ModuleCandidates;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
+        var modules = pack.ModuleCandidates;
 
         AssertTrue(modules.Any(module => module.Name.Contains("Core", StringComparison.OrdinalIgnoreCase)), "Evidence pack should preserve structural module buckets from source roots.");
         AssertTrue(modules.Any(module => module.Name.Contains("Runtime", StringComparison.OrdinalIgnoreCase)), "Evidence pack should preserve structural runtime bucket from source roots.");
@@ -9720,7 +10208,8 @@ static void WorkspaceEvidencePackDerivesCoarseDependencyEdgesHonestly()
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 128);
-        var edges = packet.EvidencePack.DependencyEdges;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
+        var edges = pack.DependencyEdges;
 
         AssertTrue(edges.Any(edge => edge.From.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase)), "Evidence pack should preserve structural entry edges from detected bootstrap files.");
         AssertTrue(edges.Any(edge => string.Equals(edge.Label, "subsystem", StringComparison.OrdinalIgnoreCase) || string.Equals(edge.Label, "entry-surface", StringComparison.OrdinalIgnoreCase) || string.Equals(edge.Label, "main", StringComparison.OrdinalIgnoreCase)), "Evidence pack should preserve only mechanical edge labels from cold candidates.");
@@ -9753,10 +10242,11 @@ static void WorkspaceEvidencePackAvoidsBroadReverseProjectInferenceHonestly()
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 256);
-        var layerNames = packet.EvidencePack.ObservedLayers.Select(static layer => layer.Name).ToArray();
-        var moduleNames = packet.EvidencePack.ModuleCandidates.Select(static module => module.Name).ToArray();
-        var runtimeSurfaces = packet.EvidencePack.TechnicalPassport.RuntimeSurfaces;
-        var originSignals = packet.EvidencePack.Signals.Where(static signal => signal.Category == "origin").Select(static signal => signal.Code).ToArray();
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
+        var layerNames = pack.ObservedLayers.Select(static layer => layer.Name).ToArray();
+        var moduleNames = pack.ModuleCandidates.Select(static module => module.Name).ToArray();
+        var runtimeSurfaces = pack.TechnicalPassport.RuntimeSurfaces;
+        var originSignals = pack.Signals.Where(static signal => signal.Category == "origin").Select(static signal => signal.Code).ToArray();
 
         AssertFalse(layerNames.Contains("UI", StringComparer.OrdinalIgnoreCase), "Reverse/debugger repo should not invent UI layer from generic wording alone.");
         AssertFalse(layerNames.Contains("Service", StringComparer.OrdinalIgnoreCase), "Reverse/debugger repo should not invent service layer without service evidence.");
@@ -9837,13 +10327,205 @@ static void WorkspaceEvidencePackExposesColdCandidatesAndHotspotsHonestly()
             new ImageInspectionRuntimeService());
 
         var packet = runtimeFront.BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 160);
-        var pack = packet.EvidencePack;
+        var pack = packet.EvidencePack ?? throw new InvalidOperationException("Evidence pack should be present.");
 
         AssertTrue(pack.Candidates.EntryPoints.Count >= 1, "Cold candidates should preserve entry point candidates as a first-class scanner output.");
         AssertTrue(pack.Candidates.ModuleCandidates.Count >= 1, "Cold candidates should preserve module candidates as a first-class scanner output.");
         AssertTrue(pack.Candidates.FileRoles.Any(static role => role.Role == "ui"), "Cold candidates should preserve heuristic file roles without narrative interpretation.");
         AssertTrue(pack.Candidates.FileRoles.Any(static role => role.Role == "test"), "Cold candidates should preserve test-like file roles.");
         AssertTrue(pack.Hotspots is not null, "Cold scanner output should expose hotspots collection even when bounded.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackExposesRootReadmeIdentityAsEvidenceHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+        File.WriteAllText(Path.Combine(root, "go.mod"), "module example.com/svix");
+        File.WriteAllText(Path.Combine(root, "README.md"), "# Svix - Webhooks as a service\n\nNarrative body.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        var identitySignal = pack.Signals.FirstOrDefault(signal =>
+            string.Equals(signal.Category, "identity", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(signal.Code, "root_readme_title", StringComparison.OrdinalIgnoreCase));
+
+        AssertTrue(identitySignal is not null, "Root README identity should be exposed as a cold evidence signal.");
+        AssertContains(identitySignal!.Reason, "Svix - Webhooks as a service", "Root README title should be preserved as evidence, not lost behind generic scanner output.");
+        AssertEqual("README.md", identitySignal.EvidencePath, "Root README identity evidence should point at the observed file.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackMapsProjectUnitsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, ".github", "actions", "ship"));
+        Directory.CreateDirectory(Path.Combine(root, "bin", "spiced", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "crates", "runtime", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "tools", "helper", "src"));
+        File.WriteAllText(Path.Combine(root, "Cargo.toml"), "[workspace]\nmembers = [\"bin/spiced\", \"crates/runtime\", \"tools/helper\"]\ndefault-members = [\"bin/spiced\"]");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "Cargo.toml"), "[package]\nname = \"spiced\"");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "crates", "runtime", "Cargo.toml"), "[package]\nname = \"runtime\"");
+        File.WriteAllText(Path.Combine(root, "crates", "runtime", "src", "lib.rs"), "pub fn start() {}");
+        File.WriteAllText(Path.Combine(root, "tools", "helper", "Cargo.toml"), "[package]\nname = \"helper\"");
+        File.WriteAllText(Path.Combine(root, "tools", "helper", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, ".github", "actions", "ship", "package.json"), "{ \"name\": \"ship-action\" }");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        var units = pack.Candidates.ProjectUnits;
+        AssertTrue(units.Count >= 3, "Evidence pack should preserve workspace unit candidates as first-class scanner output.");
+        var spicedUnit = units.FirstOrDefault(unit => string.Equals(unit.RootPath, Path.Combine("bin", "spiced"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(spicedUnit is not null, "Cargo default member should become a project unit candidate.");
+        AssertEqual("rust-cargo", spicedUnit!.Kind, "Cargo unit should carry a deterministic manifest kind signal.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, spicedUnit.Confidence, "Unit with manifest and entrypoint overlap should be confirmed.");
+        AssertTrue(spicedUnit.Manifests.Contains(Path.Combine("bin", "spiced", "Cargo.toml"), StringComparer.OrdinalIgnoreCase), "Project unit should list its manifest evidence.");
+        AssertTrue(spicedUnit.EntryPoints.Contains(Path.Combine("bin", "spiced", "src", "main.rs"), StringComparer.OrdinalIgnoreCase), "Project unit should list entrypoint overlap.");
+        AssertTrue(spicedUnit.Evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase), "Project unit should expose Cargo default-member evidence.");
+        AssertTrue(spicedUnit.Evidence.Contains("unit_zone:application", StringComparer.OrdinalIgnoreCase), "Manifest-backed bin unit should carry reusable application-zone evidence.");
+        AssertTrue(spicedUnit.EvidenceMarker is not null, "Project unit should carry a structured scanner evidence marker.");
+        AssertEqual("project_unit_candidate", spicedUnit.EvidenceMarker!.EvidenceKind, "Project unit marker should expose evidence kind.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, spicedUnit.EvidenceMarker.Confidence, "Confirmed project unit marker should come from manifest plus entrypoint overlap.");
+        AssertFalse(spicedUnit.EvidenceMarker.IsPartial, "Complete scan project unit marker should not be partial.");
+        var runtimeUnit = units.FirstOrDefault(unit => string.Equals(unit.RootPath, Path.Combine("crates", "runtime"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(runtimeUnit is not null, "Library crate should remain visible as a project unit.");
+        AssertTrue(runtimeUnit!.Evidence.Contains("unit_zone:library", StringComparer.OrdinalIgnoreCase), "Crates/packages units should carry reusable library-zone evidence.");
+        var helperUnit = units.FirstOrDefault(unit => string.Equals(unit.RootPath, Path.Combine("tools", "helper"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(helperUnit is not null, "Tool manifest should remain visible as a project unit.");
+        AssertTrue(helperUnit!.Evidence.Contains("unit_zone:tooling", StringComparer.OrdinalIgnoreCase), "Tool units should carry reusable tooling-zone evidence instead of repo-specific demotion.");
+        AssertFalse(units.Any(unit => unit.RootPath.StartsWith(".github", StringComparison.OrdinalIgnoreCase)), "Workflow/action manifests should not become project units.");
+        AssertTrue(units.First().RootPath == "." || string.Equals(units.First().RootPath, Path.Combine("bin", "spiced"), StringComparison.OrdinalIgnoreCase), "Workspace unit ordering should keep root/default member ahead of helper tools.");
+        var unitList = units.ToList();
+        AssertTrue(
+            unitList.FindIndex(unit => string.Equals(unit.RootPath, Path.Combine("crates", "runtime"), StringComparison.OrdinalIgnoreCase)) <
+            unitList.FindIndex(unit => string.Equals(unit.RootPath, Path.Combine("tools", "helper"), StringComparison.OrdinalIgnoreCase)),
+            "Library/package units should rank ahead of helper tool units when both are present.");
+
+        var packet = new WorkspaceImportMaterialPreviewPacket(
+            scan.State.WorkspaceRoot,
+            scan.State.ImportKind,
+            scan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            pack);
+        var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(packet).UserPrompt;
+        AssertContains(prompt, $"project_units: {Path.Combine("bin", "spiced")} (rust-cargo, zone=application", "Importer prompt should expose unit zone evidence for weaker model grounding.");
+        AssertContains(prompt, "evidence=cargo_default_member", "Importer prompt should expose default-member evidence beside project units.");
+        AssertContains(prompt, $"{Path.Combine("tools", "helper")} (rust-cargo, zone=tooling", "Importer prompt should expose tooling-zone evidence instead of hiding support units.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackMapsRunProfilesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "app"));
+        Directory.CreateDirectory(Path.Combine(root, "bin", "server", "src"));
+        File.WriteAllText(Path.Combine(root, "package.json"), """
+            {
+              "scripts": {
+                "dev": "vite",
+                "build": "vite build",
+                "test": "vitest",
+                "lint": "eslint .",
+                "format": "prettier ."
+              }
+            }
+            """);
+        File.WriteAllText(Path.Combine(root, "Cargo.toml"), "[workspace]\nmembers = [\"bin/server\"]\ndefault-members = [\"bin/server\"]");
+        File.WriteAllText(Path.Combine(root, "bin", "server", "Cargo.toml"), "[package]\nname = \"server\"");
+        File.WriteAllText(Path.Combine(root, "bin", "server", "src", "main.rs"), "fn main() {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var profiles = pack.Candidates.RunProfiles;
+
+        AssertTrue(profiles.Any(profile => profile.Kind == "build" && profile.Command == "npm run build"), "Run profile index should preserve package.json build script.");
+        AssertTrue(profiles.Any(profile => profile.Kind == "test" && profile.Command == "npm run test"), "Run profile index should preserve package.json test script.");
+        AssertTrue(profiles.Any(profile => profile.Kind == "run" && profile.Command == "npm run dev"), "Run profile index should preserve package.json dev/start scripts as run profiles.");
+        AssertTrue(profiles.Any(profile => profile.Kind == "check" && profile.Command == "npm run lint"), "Run profile index should preserve lint/check style scripts.");
+        AssertFalse(profiles.Any(profile => profile.Command.Contains("format", StringComparison.OrdinalIgnoreCase)), "Run profile index should not include arbitrary package scripts as execution recommendations.");
+
+        var cargoRun = profiles.FirstOrDefault(profile =>
+            profile.Kind == "run" &&
+            profile.Command.Contains(Path.Combine("bin", "server", "Cargo.toml"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(cargoRun is not null, "Cargo unit with entrypoint overlap should produce a run profile.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, cargoRun!.Confidence, "Cargo run profile with entrypoint overlap should be confirmed.");
+        AssertTrue(cargoRun.Evidence.Contains("cargo_default_member", StringComparer.OrdinalIgnoreCase), "Cargo run profile should inherit default-member evidence.");
+        AssertTrue(cargoRun.EvidenceMarker is not null, "Run profile should carry a structured scanner evidence marker.");
+        AssertEqual("run_profile_candidate", cargoRun.EvidenceMarker!.EvidenceKind, "Run profile marker should expose evidence kind.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, cargoRun.EvidenceMarker.Confidence, "Confirmed run profile marker should come from manifest plus entrypoint overlap.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackAppliesScannerConfigUnitOverridesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, ".zavod", "scanner"));
+        Directory.CreateDirectory(Path.Combine(root, "apps", "desktop", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "tools", "helper", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "vendor", "sdk"));
+
+        File.WriteAllText(
+            Path.Combine(root, ".zavod", "scanner", "config.json"),
+            """
+            {
+              "primaryUnits": ["tools/helper"],
+              "ignoreZones": ["apps/desktop"],
+              "vendorZones": ["vendor/sdk"],
+              "generatedPatterns": ["*.g.cs"]
+            }
+            """);
+        File.WriteAllText(Path.Combine(root, "Cargo.toml"), "[workspace]\nmembers = [\"apps/desktop\", \"tools/helper\", \"vendor/sdk\"]");
+        File.WriteAllText(Path.Combine(root, "apps", "desktop", "Cargo.toml"), "[package]\nname = \"desktop\"");
+        File.WriteAllText(Path.Combine(root, "apps", "desktop", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "tools", "helper", "Cargo.toml"), "[package]\nname = \"helper\"");
+        File.WriteAllText(Path.Combine(root, "tools", "helper", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "tools", "helper", "src", "generated.g.cs"), "public sealed class Generated {}");
+        File.WriteAllText(Path.Combine(root, "vendor", "sdk", "Cargo.toml"), "[package]\nname = \"sdk\"");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var units = pack.Candidates.ProjectUnits;
+
+        var helperUnit = units.FirstOrDefault(unit => string.Equals(unit.RootPath, Path.Combine("tools", "helper"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(helperUnit is not null, "Configured primary unit should remain visible even when it lives under a usually demoted helper path.");
+        AssertTrue(helperUnit!.Evidence.Contains("config_primary_unit", StringComparer.OrdinalIgnoreCase), "Configured primary unit should carry explicit config evidence.");
+        AssertTrue(helperUnit.Evidence.Contains("config:.zavod\\scanner\\config.json", StringComparer.OrdinalIgnoreCase), "Config evidence should point to the scanner config file.");
+        AssertFalse(units.Any(unit => string.Equals(unit.RootPath, Path.Combine("apps", "desktop"), StringComparison.OrdinalIgnoreCase)), "Configured ignore zone should suppress that unit candidate.");
+        AssertFalse(units.Any(unit => string.Equals(unit.RootPath, Path.Combine("vendor", "sdk"), StringComparison.OrdinalIgnoreCase)), "Unsupported/vendor roots should not become project units even when present in workspace manifests.");
+        AssertEqual(Path.Combine("tools", "helper"), units[0].RootPath, "Configured primary unit should outrank helper-path demotion deterministically.");
+        var generatedFile = pack.FileIndex.FirstOrDefault(file => string.Equals(file.RelativePath, Path.Combine("tools", "helper", "src", "generated.g.cs"), StringComparison.OrdinalIgnoreCase));
+        AssertTrue(generatedFile is not null, "Configured generated pattern should keep the file visible in inventory.");
+        AssertEqual("generated", generatedFile!.Zone, "Configured generated pattern should mark file inventory zone without deleting evidence.");
+        AssertContains(generatedFile.Evidence, "config_generated_pattern", "Generated file inventory item should carry config evidence.");
     }
     finally
     {
@@ -10073,9 +10755,62 @@ static void WorkspaceEvidencePackExtractsCodeEdgesAndSignaturesHonestly()
         var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
         var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
 
-        AssertTrue(pack.CodeEdges.Any(edge => edge.FromPath.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) && edge.ToPath.EndsWith("src\\engine.h", StringComparison.OrdinalIgnoreCase)), "Scanner should extract bounded file-to-file include edges.");
+        var includeEdge = pack.CodeEdges.FirstOrDefault(edge => edge.FromPath.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) && edge.ToPath.EndsWith("src\\engine.h", StringComparison.OrdinalIgnoreCase));
+        AssertTrue(includeEdge is not null, "Scanner should extract bounded file-to-file include edges.");
+        AssertTrue(includeEdge!.EvidenceMarker is not null, "Code edge should carry a structured scanner evidence marker.");
+        AssertEqual("code_edge_candidate", includeEdge.EvidenceMarker!.EvidenceKind, "Code edge marker should expose evidence kind.");
+        AssertTrue(includeEdge.EvidenceMarker.IsBounded, "Shallow code edge extraction should mark evidence as bounded.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, includeEdge.EvidenceMarker.Confidence, "Resolved include edge can be confirmed by direct file evidence.");
+        var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(new WorkspaceImportMaterialPreviewPacket(
+            scan.State.WorkspaceRoot,
+            scan.State.ImportKind,
+            scan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            pack)).UserPrompt;
+        AssertContains(prompt, "marker=code_edge_candidate/Confirmed/partial=False/bounded=True", "Importer prompt should expose bounded code-edge marker discipline.");
         AssertTrue(pack.SignatureHints.Any(hint => hint.Kind == "bootstrap" && hint.RelativePath.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase)), "Scanner should extract cheap bootstrap signature hints.");
         AssertTrue(pack.SignatureHints.Any(hint => hint.Kind == "type" && hint.RelativePath.EndsWith("src\\engine.h", StringComparison.OrdinalIgnoreCase)), "Scanner should extract cheap type signature hints.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackAnnotatesEdgeResolutionHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src", "core"));
+        Directory.CreateDirectory(Path.Combine(root, "src", "ui"));
+        File.WriteAllText(Path.Combine(root, "src", "main.cpp"), "#include \"engine.h\"\n#include \"missing.h\"\nint main() { return 0; }");
+        File.WriteAllText(Path.Combine(root, "src", "core", "engine.h"), "class Engine {};");
+        File.WriteAllText(Path.Combine(root, "src", "ui", "engine.h"), "class EngineView {};");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        var ambiguousEdge = pack.CodeEdges.FirstOrDefault(edge =>
+                edge.FromPath.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) &&
+                edge.ToPath.EndsWith("engine.h", StringComparison.OrdinalIgnoreCase) &&
+                edge.Resolution == WorkspaceEvidenceEdgeResolution.Ambiguous);
+        AssertTrue(
+            ambiguousEdge is not null,
+            "Multiple local include candidates should be marked ambiguous instead of silently presented as confirmed resolution.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Likely, ambiguousEdge!.EvidenceMarker!.Confidence, "Ambiguous edge must not be marked confirmed.");
+        AssertTrue(
+            pack.CodeEdges.Any(edge =>
+                edge.FromPath.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(edge.ToPath, "missing.h", StringComparison.OrdinalIgnoreCase) &&
+                edge.Resolution == WorkspaceEvidenceEdgeResolution.Unresolved),
+            "Unresolved local include evidence should remain visible with unresolved resolution.");
+        AssertTrue(
+            pack.Edges.Any(edge =>
+                edge.From.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) &&
+                edge.Resolution == WorkspaceEvidenceEdgeResolution.Ambiguous),
+            "Authoritative dependency edges should preserve code edge resolution.");
     }
     finally
     {
@@ -10101,6 +10836,317 @@ static void WorkspaceEvidencePackImprovesRustAndGoCodeEdgesHonestly()
 
         AssertTrue(pack.CodeEdges.Any(edge => edge.FromPath.EndsWith("src\\main.go", StringComparison.OrdinalIgnoreCase) && edge.ToPath.EndsWith("src\\pkg\\main.go", StringComparison.OrdinalIgnoreCase)), "Cheap go import resolution should connect main.go to local package files.");
         AssertTrue(pack.CodeEdges.Any(edge => edge.FromPath.EndsWith("rustsrc\\main.rs", StringComparison.OrdinalIgnoreCase) && edge.ToPath.EndsWith("rustsrc\\engine.rs", StringComparison.OrdinalIgnoreCase)), "Cheap Rust mod resolution should connect main.rs to sibling module files.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceTaskScopeResolverMapsBoundedScopeHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Workspace"));
+        Directory.CreateDirectory(Path.Combine(root, "Execution"));
+        Directory.CreateDirectory(Path.Combine(root, "src", "ui"));
+        Directory.CreateDirectory(Path.Combine(root, "src", "tests"));
+
+        File.WriteAllText(Path.Combine(root, "Workspace", "PreviewDocumentService.cs"), "using zavod.Execution;\nclass PreviewDocumentService {}");
+        File.WriteAllText(Path.Combine(root, "Workspace", "CanonicalPromotionService.cs"), "class CanonicalPromotionService {}");
+        File.WriteAllText(Path.Combine(root, "Execution", "DecisionJournalWriter.cs"), "class DecisionJournalWriter {}");
+        File.WriteAllText(Path.Combine(root, "src", "ui", "Theme.css"), ".button { color: red; }");
+        File.WriteAllText(Path.Combine(root, "src", "tests", "UnrelatedTests.cs"), "class UnrelatedTests {}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var scope = WorkspaceTaskScopeResolver.Resolve(pack, "fix promote reject preview docs journal flow", maxPrimaryFiles: 3, maxRelatedFiles: 4);
+
+        AssertTrue(scope.PrimaryFiles.Any(file => file.RelativePath.EndsWith("Workspace\\PreviewDocumentService.cs", StringComparison.OrdinalIgnoreCase)), "Scope resolver should select preview document files from task terms.");
+        AssertTrue(scope.PrimaryFiles.Any(file => file.RelativePath.EndsWith("Workspace\\CanonicalPromotionService.cs", StringComparison.OrdinalIgnoreCase)), "Scope resolver should select promotion/canonical files from task terms.");
+        AssertTrue(scope.PrimaryFiles.Concat(scope.RelatedFiles).Any(file => file.RelativePath.EndsWith("Execution\\DecisionJournalWriter.cs", StringComparison.OrdinalIgnoreCase)), "Scope resolver should keep journal-related files visible.");
+        AssertTrue(scope.SoftExcludedFiles.Any(file => file.RelativePath.EndsWith("src\\ui\\Theme.css", StringComparison.OrdinalIgnoreCase) || file.RelativePath.EndsWith("src\\tests\\UnrelatedTests.cs", StringComparison.OrdinalIgnoreCase)), "Scope resolver should report soft exclusions without turning them into hard bans.");
+        AssertTrue(scope.Evidence.Any(item => item.Contains("path_term:preview", StringComparison.OrdinalIgnoreCase)), "Scope resolver should explain why primary files were selected.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePredicateRegistryMapsScannerSurfacesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src", "core"));
+        Directory.CreateDirectory(Path.Combine(root, "src", "ui"));
+        File.WriteAllText(Path.Combine(root, "src", "main.cpp"), "#include \"core/engine.h\"\nint main() { return 0; }");
+        File.WriteAllText(Path.Combine(root, "src", "core", "engine.h"), "class Engine {};");
+        File.WriteAllText(Path.Combine(root, "src", "ui", "Theme.css"), ".button { color: red; }");
+        File.WriteAllText(Path.Combine(root, "package.json"), "{ \"scripts\": { \"build\": \"vite build\" }, \"dependencies\": { \"vite\": \"^5.0.0\" } }");
+        File.WriteAllText(Path.Combine(root, "README.md"), "# Predicate Demo\n\nTechnical notes.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(
+            scan,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            new[]
+            {
+                new WorkspaceMaterialPreviewInput(
+                    "README.md",
+                    WorkspaceMaterialKind.TextDocument,
+                    "text-first-preview",
+                    "# Predicate Demo\n\nTechnical notes.",
+                    false,
+                    "Extracted",
+                    "text",
+                    "plain text")
+            });
+        var rebuiltPack = WorkspaceEvidencePackBuilder.Build(
+            scan,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            new[]
+            {
+                new WorkspaceMaterialPreviewInput(
+                    "README.md",
+                    WorkspaceMaterialKind.TextDocument,
+                    "text-first-preview",
+                    "# Predicate Demo\n\nTechnical notes.",
+                    false,
+                    "Extracted",
+                    "text",
+                    "plain text")
+            });
+        var scope = WorkspaceTaskScopeResolver.Resolve(pack, "fix core engine build", maxPrimaryFiles: 4, maxRelatedFiles: 4);
+
+        AssertTrue(pack.PredicateRegistry.Any(static predicate => predicate.Id == WorkspaceEvidencePredicateRegistry.DeclaresCodeEdge), "Predicate registry should be part of evidence pack output.");
+        AssertEqual(
+            pack.PredicateRegistry.Count,
+            pack.PredicateRegistry.Select(static predicate => predicate.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "Predicate ids must be unique.");
+        AssertTrue(
+            pack.ScanRun.ExtractorVersions.ContainsKey("predicate_registry"),
+            "ScanRun provenance should name predicate registry version.");
+        AssertEqual(
+            pack.RawObservations.Count,
+            pack.RawObservations.Select(static observation => observation.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "Raw observation stable ids should be unique inside a pack.");
+        AssertTrue(
+            pack.RawObservations.All(static observation => observation.Id.StartsWith("EV-", StringComparison.OrdinalIgnoreCase) &&
+                                                           !string.IsNullOrWhiteSpace(observation.DisplayId) &&
+                                                           !string.IsNullOrWhiteSpace(observation.Predicate) &&
+                                                           !string.IsNullOrWhiteSpace(observation.Source) &&
+                                                           !string.IsNullOrWhiteSpace(observation.ExtractorVersion)),
+            "Raw observations should carry stable id, display id, predicate, source, and extractor version.");
+        AssertTrue(
+            pack.RawObservations
+                .OrderBy(static observation => observation.Kind, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(static observation => observation.Value, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(static observation => observation.EvidencePath, StringComparer.OrdinalIgnoreCase)
+                .Select(static observation => observation.Id)
+                .SequenceEqual(
+                    rebuiltPack.RawObservations
+                        .OrderBy(static observation => observation.Kind, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(static observation => observation.Value, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(static observation => observation.EvidencePath, StringComparer.OrdinalIgnoreCase)
+                        .Select(static observation => observation.Id),
+                    StringComparer.OrdinalIgnoreCase),
+            "Raw observation stable ids should survive identical rebuilds.");
+
+        foreach (var observation in pack.RawObservations)
+        {
+            var predicate = WorkspaceEvidencePredicateRegistry.PredicateForObservationKind(observation.Kind);
+            AssertTrue(WorkspaceEvidencePredicateRegistry.IsRegistered(predicate), $"Observation kind '{observation.Kind}' should map to a registered predicate.");
+            AssertEqual(predicate, observation.Predicate, $"Observation '{observation.Id}' should carry its registered predicate.");
+        }
+
+        foreach (var signal in pack.Signals)
+        {
+            var predicate = WorkspaceEvidencePredicateRegistry.PredicateForSignal(signal.Category, signal.Code);
+            AssertTrue(WorkspaceEvidencePredicateRegistry.IsRegistered(predicate), $"Signal '{signal.Category}:{signal.Code}' should map to a registered predicate.");
+        }
+
+        foreach (var edge in pack.CodeEdges)
+        {
+            var predicate = WorkspaceEvidencePredicateRegistry.PredicateForEdge(edge.Kind, edge.Resolution);
+            AssertTrue(WorkspaceEvidencePredicateRegistry.IsRegistered(predicate), $"Code edge kind '{edge.Kind}' should map to a registered predicate.");
+        }
+
+        foreach (var edge in pack.Edges)
+        {
+            var predicate = WorkspaceEvidencePredicateRegistry.PredicateForEdge(edge.Label, edge.Resolution);
+            AssertTrue(WorkspaceEvidencePredicateRegistry.IsRegistered(predicate), $"Dependency edge label '{edge.Label}' should map to a registered predicate.");
+        }
+
+        foreach (var file in scope.PrimaryFiles.Concat(scope.RelatedFiles).Concat(scope.SoftExcludedFiles))
+        {
+            foreach (var evidence in file.Evidence)
+            {
+                AssertTrue(
+                    WorkspaceEvidencePredicateRegistry.TryResolveScopeEvidence(evidence, out var predicate) &&
+                    WorkspaceEvidencePredicateRegistry.IsRegistered(predicate),
+                    $"Scope evidence '{evidence}' should map to a registered predicate.");
+            }
+        }
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ScannerV2PlanForbidsSmokeRepoSpecializationHonestly()
+{
+    var planPath = Path.Combine(
+        Directory.GetCurrentDirectory(),
+        "docs",
+        "plans",
+        "scanner-v2-evidence-cartographer-v1.md");
+    var plan = File.ReadAllText(planPath, Encoding.UTF8);
+
+    AssertContains(plan, "Real Repository Smoke Discipline", "Scanner v2 plan should name the anti-specialization guardrail.");
+    AssertContains(plan, "Real repositories may be used as smoke targets, but not as behavioral", "Real repository scans should stay smoke checks, not scanner contracts.");
+    AssertContains(plan, "behavior must be specified through synthetic, general-case fixtures", "Scanner behavior should be contracted through reusable synthetic fixtures.");
+    AssertContains(plan, "real repo names, product names, and path quirks must not become scanner", "Scanner plan should forbid path/name specialization.");
+    AssertContains(plan, "repository-specific heuristics for current smoke targets", "Scanner non-goals should reject smoke-target specialization explicitly.");
+}
+
+static void WorkspaceScannerFingerprintIsProvenanceNotContentHashHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "Program.cs"), "public sealed class Before {}");
+        File.WriteAllText(Path.Combine(root, "zavod.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />");
+
+        var firstScan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var firstPack = WorkspaceEvidencePackBuilder.Build(firstScan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var firstPrompt = WorkspaceImportMaterialPromptRequestBuilder.Build(new WorkspaceImportMaterialPreviewPacket(
+            firstScan.State.WorkspaceRoot,
+            firstScan.State.ImportKind,
+            firstScan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            firstPack)).UserPrompt;
+
+        File.WriteAllText(Path.Combine(root, "src", "Program.cs"), "public sealed class After {}");
+
+        var secondScan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var secondPack = WorkspaceEvidencePackBuilder.Build(secondScan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        AssertEqual(firstPack.ScanRun.RepoRootHash, secondPack.ScanRun.RepoRootHash, "Scanner fingerprint should track structural scan identity, not file-content integrity.");
+        AssertContains(firstPrompt, "scan_fingerprint:", "Importer prompt should use scanner-facing scan_fingerprint wording.");
+        AssertContains(firstPrompt, "scan_fingerprint_scope: structural scan identity, not content-integrity hash", "Importer prompt should state fingerprint scope honestly.");
+        AssertFalse(firstPrompt.Contains("repo_root_hash:", StringComparison.Ordinal), "Importer prompt should not present the compatibility field as a repo root content hash.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceScannerReportsPerformanceBudgetsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "src", "Alpha.cs"), "public sealed class Alpha {}");
+        File.WriteAllText(Path.Combine(root, "src", "Beta.cs"), "public sealed class Beta {}");
+        File.WriteAllText(Path.Combine(root, "docs", "large.md"), new string('x', 96));
+
+        var budget = new WorkspaceScanBudget(
+            MaxVisitedFiles: 100,
+            MaxRelevantFiles: 1,
+            MaxRelevantFileBytes: 32);
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root, Budget: budget));
+        var report = scan.BudgetReport ?? throw new InvalidOperationException("Scan should always carry a budget report.");
+
+        AssertTrue(report.IsPartial, "Budget-limited scan should mark itself partial.");
+        AssertEqual(WorkspaceHealthStatus.ScanPending, scan.State.Health, "Budget-limited scan should not report fully healthy workspace health.");
+        AssertEqual(1, report.IncludedRelevantFileCount, "Relevant file budget should cap included relevant files.");
+        AssertEqual(1, report.SkippedLargeFileCount, "Large relevant file should be counted as skipped by size.");
+        AssertTrue(report.SkippedRelevantFileCount >= 1, "Relevant file cap should count skipped relevant files.");
+        AssertTrue(report.Skips.Any(static skip => skip.Reason == "max_relevant_file_bytes" && skip.RelativePath.EndsWith("large.md", StringComparison.OrdinalIgnoreCase)), "Budget report should preserve sampled large-file skip evidence.");
+        AssertTrue(scan.State.StructuralAnomalies.Any(static anomaly => anomaly.Code == "SCAN_BUDGET_PARTIAL"), "Partial scans should surface as structural scan uncertainty.");
+
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        AssertTrue(pack.ScanBudget?.IsPartial == true, "Evidence pack should carry scan budget report.");
+        AssertTrue(pack.RawObservations.Any(static observation => observation.Kind == "scan_budget_degraded" && observation.Value == "partial_scan"), "Evidence pack should expose partial scan observation.");
+        AssertTrue(pack.RawObservations.Any(static observation => observation.Kind == "scan_budget_skip_detected" && observation.Value == "max_relevant_file_bytes"), "Evidence pack should expose budget skip observations.");
+        AssertEqual(
+            WorkspaceEvidencePredicateRegistry.ReportsScanBudget,
+            WorkspaceEvidencePredicateRegistry.PredicateForObservationKind("scan_budget_skip_detected"),
+            "Budget observations should map to a registered budget predicate.");
+
+        var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(new WorkspaceImportMaterialPreviewPacket(
+            scan.State.WorkspaceRoot,
+            scan.State.ImportKind,
+            scan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            pack)).UserPrompt;
+        AssertContains(prompt, "scan_budget:", "Importer prompt should make scan budget state visible.");
+        AssertContains(prompt, "partial=True", "Importer prompt should preserve partial scan status.");
+        AssertContains(prompt, "health: ScanPending", "Importer prompt should not surface partial scans as plain Healthy.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceEvidencePackRanksCargoDefaultMemberEntriesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "bin", "spiced", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "tools", "cayenne-flightsql", "src"));
+        Directory.CreateDirectory(Path.Combine(root, ".github", "actions", "ship"));
+
+        File.WriteAllText(
+            Path.Combine(root, "Cargo.toml"),
+            "[workspace]\ndefault-members = [\"bin/spiced\"]\nmembers = [\"bin/spiced\", \"tools/cayenne-flightsql\"]\n");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "Cargo.toml"), "[package]\nname = \"spiced\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "bin", "spiced", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, "tools", "cayenne-flightsql", "Cargo.toml"), "[package]\nname = \"cayenne-flightsql\"\nversion = \"0.1.0\"\n");
+        File.WriteAllText(Path.Combine(root, "tools", "cayenne-flightsql", "src", "main.rs"), "fn main() {}");
+        File.WriteAllText(Path.Combine(root, ".github", "actions", "ship", "main.js"), "console.log('action');");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+
+        var spicedPath = Path.Combine("bin", "spiced", "src", "main.rs");
+        var toolPath = Path.Combine("tools", "cayenne-flightsql", "src", "main.rs");
+
+        AssertTrue(scan.State.Summary.EntryCandidates.Contains(spicedPath), "Source-bearing bin workspace member should not be lost as generated noise.");
+        AssertFalse(scan.State.Summary.IgnoredNoiseRoots.Contains("bin"), "Manifest-backed top-level bin workspace member should not be reported as ignored noise.");
+        AssertTrue(pack.Candidates.EntryPoints.Count > 0, "Evidence pack should preserve entry candidates.");
+        AssertEqual(spicedPath, pack.Candidates.EntryPoints[0].RelativePath, "Cargo default-member entry should outrank tool/helper mains.");
+        AssertTrue(pack.Candidates.EntryPoints[0].Evidence.Contains("cargo_default_member"), "Entry point evidence should expose Cargo default-member support.");
+        AssertTrue(
+            pack.Candidates.EntryPoints[0].Score > pack.Candidates.EntryPoints.First(entry => string.Equals(entry.RelativePath, toolPath, StringComparison.OrdinalIgnoreCase)).Score,
+            "Default-member score should beat non-default tool entry score deterministically.");
+
+        var packet = new WorkspaceImportMaterialPreviewPacket(
+            scan.State.WorkspaceRoot,
+            scan.State.ImportKind,
+            scan.State.Summary.SourceRoots,
+            Array.Empty<WorkspaceTechnicalPreviewInput>(),
+            Array.Empty<WorkspaceMaterialPreviewInput>(),
+            pack);
+        var prompt = WorkspaceImportMaterialPromptRequestBuilder.Build(packet).UserPrompt;
+        AssertContains(prompt, $"{spicedPath} (entry, score=", "Importer prompt should expose ranked entrypoint paths.");
+        AssertContains(prompt, "marker=entrypoint_candidate/Confirmed/partial=False/bounded=False", "Importer prompt should expose entrypoint evidence marker discipline.");
+        AssertContains(prompt, "evidence=cargo_default_member", "Importer prompt should expose entrypoint default-member evidence.");
+        AssertContains(prompt, "conventional_entry_location", "Importer prompt should expose conventional entrypoint evidence.");
+        AssertContains(prompt, $"{toolPath} (entry, score=", "Importer prompt should preserve secondary tool entrypoint candidates.");
+        AssertContains(prompt, "secondary_or_workflow_location", "Importer prompt should expose secondary/support entrypoint evidence.");
     }
     finally
     {
@@ -11223,6 +12269,26 @@ static void ImageInspectionServiceUsesWindowsImageMetadataHonestly()
     }
 }
 
+static void ExternalProcessRunnerDrainsStdoutAndStderrHonestly()
+{
+    var runner = new ExternalProcessRunner();
+    var result = runner.Run(new ExternalProcessRequest(
+        "powershell",
+        new[]
+        {
+            "-NoProfile",
+            "-Command",
+            "1..2000 | ForEach-Object { [Console]::Error.WriteLine('err') }; Write-Output 'done'"
+        },
+        TimeSpan.FromSeconds(10),
+        "stderr-drain-test"));
+
+    AssertFalse(result.TimedOut, "External process runner should not deadlock while child writes stderr.");
+    AssertEqual(0, result.ExitCode, "External process runner should preserve child exit code.");
+    AssertContains(result.StdOut, "done", "External process runner should capture stdout.");
+    AssertContains(result.StdErr, "err", "External process runner should capture stderr.");
+}
+
 static void ArchitectureDiagramRuntimeRendersBoundedPngHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -11343,7 +12409,7 @@ static void OpenRouterConfigurationCanLoadLocalFileHonestly()
         Environment.SetEnvironmentVariable("OPENROUTER_BASE_URL", null);
         Environment.SetEnvironmentVariable("OPENROUTER_REFERER", null);
         Environment.SetEnvironmentVariable("OPENROUTER_TITLE", null);
-        Environment.SetEnvironmentVariable("OPENROUTER_CONFIG_FILE", null);
+        Environment.SetEnvironmentVariable("OPENROUTER_CONFIG_FILE", Path.Combine(configDirectory, "openrouter.local.json"));
         Environment.SetEnvironmentVariable("OPENROUTER_TIMEOUT_SECONDS", null);
 
         var configuration = OpenRouterConfiguration.FromEnvironment();
@@ -11700,7 +12766,9 @@ static void WorkspaceEvidenceArtifactRuntimeAttachesModulesOnlyThroughStructured
                     {
                         new WorkspaceEvidenceModule("Presentation", "frontend", "UI", "cold exact match")
                     },
-                    basePack.Candidates.FileRoles)
+                    basePack.Candidates.FileRoles,
+                    basePack.Candidates.ProjectUnits,
+                    basePack.Candidates.RunProfiles)
             }
         };
 
@@ -11753,6 +12821,22 @@ static void WorkspaceEvidenceArtifactRuntimeAttachesModulesOnlyThroughStructured
         AssertContains(reportText, "Presentation: frontend [Likely] (Observed presentation files only.)", "Exact cold module-to-layer match should remain renderable.");
         AssertFalse(reportText.Contains("  - Source Root Mirror", StringComparison.OrdinalIgnoreCase), "Source Root module must not attach to root layer by incidental text overlap.");
         AssertContains(reportText, "[Unattached] Source Root Mirror [Unknown]: scan (Observed from source root metadata.)", "Unmatched modules should remain visible as unattached instead of being guessed into a layer.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceScannerMarksEmptyImportMissingHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+
+        AssertEqual(WorkspaceHealthStatus.Missing, result.State.Health, "Empty workspace scan should not surface as healthy.");
+        AssertTrue(result.State.StructuralAnomalies.Any(static anomaly => anomaly.Code == "NO_RELEVANT_FILES"), "Empty workspace scan should preserve no-relevant-files anomaly.");
     }
     finally
     {
@@ -13208,11 +14292,56 @@ static void WorkspaceEvidenceArtifactRuntimeWritesColdScannerPayloadsHonestly()
 
         var bundle = service.WriteBundle(run);
 
+        AssertTrue(File.Exists(bundle.ScanRunPath), "Artifact runtime should write scanrun provenance as a first-class cold scanner payload.");
+        AssertTrue(File.Exists(bundle.ScanSummaryPath), "Artifact runtime should write cold scan summary as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.FilesIndexPath), "Artifact runtime should write file inventory index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.ManifestsIndexPath), "Artifact runtime should write manifest index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.SymbolsIndexPath), "Artifact runtime should write symbol index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.EdgesIndexPath), "Artifact runtime should write edge index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.EntryPointsIndexPath), "Artifact runtime should write entrypoint index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.ModulesMapPath), "Artifact runtime should write module map as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.ProjectUnitsIndexPath), "Artifact runtime should write project unit index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.RunProfilesIndexPath), "Artifact runtime should write run/test profile index as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.PredicateRegistryPath), "Artifact runtime should write predicate registry as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.ScanBudgetPath), "Artifact runtime should write scan budget as a first-class scanner review payload.");
+        AssertTrue(File.Exists(bundle.UncertaintyReportPath), "Artifact runtime should write uncertainty report as a first-class scanner review payload.");
         AssertTrue(File.Exists(bundle.RawObservationsPath), "Artifact runtime should write raw observations as a first-class cold scanner payload.");
         AssertTrue(File.Exists(bundle.DerivedPatternsPath), "Artifact runtime should write derived patterns as a first-class cold scanner payload.");
         AssertTrue(File.Exists(bundle.SignalScoresPath), "Artifact runtime should write signal scores as a first-class cold scanner payload.");
         AssertTrue(File.Exists(bundle.CandidatesPath), "Artifact runtime should write candidates as a first-class cold scanner payload.");
         AssertTrue(File.Exists(bundle.HotspotsPath), "Artifact runtime should write hotspots as a first-class cold scanner payload.");
+        var scanSummary = File.ReadAllText(bundle.ScanSummaryPath);
+        var filesIndexText = File.ReadAllText(bundle.FilesIndexPath);
+        AssertContains(File.ReadAllText(bundle.ScanRunPath), "\"ScannerVersion\": \"2.0.0-alpha\"", "ScanRun artifact should preserve scanner version provenance.");
+        AssertContains(File.ReadAllText(bundle.ScanRunPath), "\"RepoRootHash\": \"sha256:", "ScanRun artifact should preserve the compatibility fingerprint field.");
+        AssertContains(File.ReadAllText(bundle.PredicateRegistryPath), "declares_code_edge", "Predicate registry artifact should preserve registered predicate ids.");
+        AssertContains(File.ReadAllText(bundle.ScanBudgetPath), "\"IsPartial\": false", "Scan budget artifact should preserve default complete budget status.");
+        AssertContains(File.ReadAllText(bundle.UncertaintyReportPath), "\"anomalies\"", "Uncertainty report artifact should expose scanner anomalies.");
+        var probeBundleProjection = JsonSerializer.Serialize(new { artifactBundle = bundle }, new JsonSerializerOptions { WriteIndented = true });
+        AssertContains(probeBundleProjection, "\"ScanSummaryPath\"", "Probe-style artifactBundle JSON should expose scan summary path.");
+        AssertContains(probeBundleProjection, "\"PredicateRegistryPath\"", "Probe-style artifactBundle JSON should expose predicate registry path.");
+        AssertContains(probeBundleProjection, "\"ScanBudgetPath\"", "Probe-style artifactBundle JSON should expose scan budget path.");
+        AssertContains(probeBundleProjection, "\"UncertaintyReportPath\"", "Probe-style artifactBundle JSON should expose uncertainty report path.");
+        AssertContains(scanSummary, "# Scan Summary", "Scan summary should be a dedicated scanner review document.");
+        AssertContains(scanSummary, "Cold scanner projection", "Scan summary should state it is evidence-only.");
+        AssertContains(scanSummary, "scan_fingerprint:", "Scan summary should use scanner-facing scan_fingerprint wording.");
+        AssertContains(scanSummary, "fingerprint_scope: structural scan identity, not content-integrity hash", "Scan summary should not overclaim content-integrity hashing.");
+        AssertFalse(scanSummary.Contains("repo_root_hash:", StringComparison.Ordinal), "Scan summary should not present the compatibility field as a repo root content hash.");
+        AssertContains(scanSummary, "budget_status: `complete`", "Scan summary should preserve complete budget status.");
+        AssertContains(scanSummary, "noise_files_ignored:", "Scan summary should preserve noise count surface.");
+        AssertContains(scanSummary, "`src\\main.cpp`", "Scan summary should list observed entry points.");
+        AssertContains(scanSummary, "marker=entrypoint_candidate/Likely/partial=False/bounded=False", "Scan summary should expose entrypoint evidence marker discipline.");
+        AssertFalse(scanSummary.Contains("What This Project Is", StringComparison.OrdinalIgnoreCase), "Scan summary must not reuse importer narrative/project-purpose headings.");
+        AssertContains(filesIndexText, "\"RelativePath\": \"src\\\\main.cpp\"", "Files index should preserve observed source file path.");
+        AssertContains(filesIndexText, "\"Zone\": \"source\"", "Files index should classify source files without narrative interpretation.");
+        AssertContains(filesIndexText, "\"RelativePath\": \"README.md\"", "Files index should preserve observed material file path.");
+        AssertContains(filesIndexText, "\"MaterialKind\": \"TextDocument\"", "Files index should preserve material kind metadata.");
+        AssertContains(File.ReadAllText(bundle.ManifestsIndexPath), "\"RelativePath\": \"CMakeLists.txt\"", "Manifest index should preserve observed build manifest paths.");
+        AssertContains(File.ReadAllText(bundle.SymbolsIndexPath), "\"Symbols\"", "Symbol index should keep shallow symbol observations separate from narrative.");
+        AssertContains(File.ReadAllText(bundle.EdgesIndexPath), "\"DependencyEdges\"", "Edge index should keep dependency edges as a cold scanner surface.");
+        AssertContains(File.ReadAllText(bundle.EntryPointsIndexPath), "\"RelativePath\": \"src\\\\main.cpp\"", "Entrypoint index should preserve cold entrypoint candidates.");
+        AssertContains(File.ReadAllText(bundle.ProjectUnitsIndexPath), "\"Manifests\"", "Project unit index should preserve unit manifest evidence.");
+        AssertContains(File.ReadAllText(bundle.RunProfilesIndexPath), "cmake", "Run profile index should preserve discovered run/test/build commands.");
         AssertContains(File.ReadAllText(bundle.DerivedPatternsPath), "build_manifest_present", "Derived patterns artifact should preserve cold pattern codes.");
     }
     finally
@@ -13235,6 +14364,7 @@ static void WorkspaceScannerClassifiesConfigOnlyImportHonestly()
         var toolResult = tool.Execute(new WorkspaceInspectRequest("REQ-WS-CONFIG-001", root, null));
 
         AssertEqual(WorkspaceImportKind.NonSourceImport, result.State.ImportKind, "Config-only import should remain non-source, not source project.");
+        AssertEqual(WorkspaceHealthStatus.MaterialOnly, result.State.Health, "Config-only import should not surface as healthy codebase structure.");
         AssertEqual(3, result.State.Summary.ConfigFileCount, "Config-only import should be counted separately from docs and source.");
         AssertFalse(result.State.HasRecognizableProjectStructure, "Config-only import should not pretend to be a source/build project.");
         AssertContains(toolResult.Summary, "config=3", "Workspace tool summary should expose config file count.");
@@ -13255,7 +14385,7 @@ static void WorkspaceScannerHandlesDocumentsOnlyImportHonestly()
 
         var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
 
-        AssertEqual(WorkspaceHealthStatus.Healthy, result.State.Health, "Documents-only import should not be treated as broken.");
+        AssertEqual(WorkspaceHealthStatus.MaterialOnly, result.State.Health, "Documents-only import should surface as material-only, not healthy codebase structure.");
         AssertEqual(WorkspaceImportKind.NonSourceImport, result.State.ImportKind, "Documents-only import should classify as non-source import.");
         AssertFalse(result.State.HasRecognizableProjectStructure, "Documents-only import should not pretend it recognized a normal source project.");
         AssertFalse(result.State.HasSourceFiles, "Documents-only import should not report source files.");
@@ -13278,6 +14408,7 @@ static void WorkspaceScannerClassifiesNonSourceImportHonestly()
         var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
 
         AssertEqual(WorkspaceImportKind.NonSourceImport, result.State.ImportKind, "Non-source import should be classified honestly.");
+        AssertEqual(WorkspaceHealthStatus.MaterialOnly, result.State.Health, "Non-source import should not surface as healthy codebase structure.");
         AssertFalse(result.State.HasRecognizableProjectStructure, "Non-source import should not pretend to be a source project.");
     }
     finally
@@ -13358,6 +14489,7 @@ static void WorkspaceScannerClassifiesBinaryImportHonestly()
         var result = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
 
         AssertEqual(WorkspaceImportKind.NonSourceImport, result.State.ImportKind, "Binary-only import should classify as non-source import.");
+        AssertEqual(WorkspaceHealthStatus.MaterialOnly, result.State.Health, "Binary-only import should not surface as healthy codebase structure.");
         AssertEqual(2, result.State.Summary.BinaryFileCount, "Binary-only import should count binary evidence separately.");
         AssertFalse(result.State.HasRecognizableProjectStructure, "Binary-only import should not pretend to be a source project.");
     }
@@ -13655,6 +14787,228 @@ static void AcceptanceGuardBlocksTouchedFileConflict()
     finally
     {
         DeleteScratchWorkspace(root);
+    }
+}
+
+static void AcceptanceGuardRejectsSiblingPathPrefixEscapeHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var sibling = root + "-sibling";
+    try
+    {
+        Directory.CreateDirectory(sibling);
+        File.WriteAllText(Path.Combine(root, "project.csproj"), "<Project />");
+        File.WriteAllText(Path.Combine(sibling, "Program.cs"), "class Program {}");
+        var escapePath = Path.Combine("..", Path.GetFileName(sibling), "Program.cs");
+
+        AssertThrows<InvalidOperationException>(
+            () => ExecutionBaseBuilder.Build(root, new[] { escapePath }, "EXEC-ESCAPE"),
+            "Execution base builder must reject sibling paths that only share a string prefix with the workspace root.");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var baseline = WorkspaceBaselineBuilder.Build(scan);
+        var executionBase = new ExecutionBase(
+            "EXEC-ESCAPE-MANUAL",
+            DateTimeOffset.UtcNow,
+            new TouchedScope(new[] { escapePath }),
+            new[] { new ExecutionBaseFileEntry(escapePath, 0, 0) },
+            "Manual escape base for guard regression.");
+        var runtimeProfile = RuntimeProfile.ScopedLocalDefault;
+        var runtimeSelection = new RuntimeSelectionDecision(runtimeProfile, IsAllowed: true, "Scoped local selected for safe default execution.");
+        var processEvidence = new AcceptanceProcessEvidence(0, "ok", string.Empty, TimedOut: false, WasCanceled: false);
+        var evidence = AcceptanceEvidenceBuilder.Build(
+            scan.State,
+            baseline,
+            executionBase,
+            runtimeSelection,
+            runtimeProfile,
+            "worker completed successfully",
+            "Program.cs updated",
+            processEvidence,
+            toolExecution: null,
+            "workspace unchanged");
+
+        var decision = AcceptanceGuard.Evaluate(evidence);
+
+        AssertEqual(AcceptanceDecisionStatus.Blocked, decision.Status, "Acceptance guard must block sibling path prefix escape.");
+        AssertTrue(decision.Conflicts.Any(conflict => conflict.RelativePath == escapePath), "Acceptance guard should report escaped touched path.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+        DeleteScratchWorkspace(sibling);
+    }
+}
+
+static void StagingTaskIdPathSegmentAcceptsSafeIdsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-001",
+            1,
+            "Safe task id regression.",
+            new[]
+            {
+                new WorkerEdit("src/File.txt", WorkerEdit.OperationWriteFull, "content")
+            });
+
+        AssertEqual("TASK-001", manifest.TaskId, "Safe task ids should be preserved as staging path segments.");
+        AssertTrue(Directory.Exists(Path.Combine(root, ".zavod.local", "staging", "TASK-001", "attempt-01")), "Safe task id should create the expected staging directory.");
+        AssertTrue(File.Exists(Path.Combine(root, ".zavod.local", "staging", "TASK-001", "attempt-01", "manifest.json")), "Safe task id should preserve a load-bearing manifest.");
+
+        var outcome = StagingApplier.Apply(root, "TASK-001");
+
+        AssertEqual("content", File.ReadAllText(Path.Combine(root, "src", "File.txt"), Encoding.UTF8), "Safe task id should allow staged content to apply.");
+        AssertEqual(1, outcome.AppliedFiles.Count, "Safe task id should allow one staged file to apply.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void StagingTaskIdPathSegmentRejectsUnsafeIdsHonestly()
+{
+    foreach (var unsafeTaskId in new[] { "..\\evil", "../evil", "TASK/001", "TASK\\001", "TASK:001", "TASK*001", "   " })
+    {
+        var root = CreateScratchWorkspace();
+        try
+        {
+            AssertThrows<ArgumentException>(
+                () => StagingWriter.Stage(
+                    root,
+                    unsafeTaskId,
+                    1,
+                    "Unsafe task id regression.",
+                    new[]
+                    {
+                        new WorkerEdit("src/File.txt", WorkerEdit.OperationWriteFull, "content")
+                    }),
+                $"Unsafe task id '{unsafeTaskId}' should be rejected before staging writes.");
+            AssertThrows<ArgumentException>(
+                () => StagingApplier.Apply(root, unsafeTaskId),
+                $"Unsafe task id '{unsafeTaskId}' should be rejected before apply path lookup.");
+            StagingWriter.Cleanup(root, unsafeTaskId);
+            var quarantined = StagingWriter.Quarantine(root, unsafeTaskId);
+            AssertEqual<string?>(null, quarantined, "Unsafe task id should not produce a quarantine path.");
+            AssertFalse(Directory.Exists(Path.Combine(root, ".zavod.local", "staging")), "Rejected task id must not create staging directories.");
+        }
+        finally
+        {
+            DeleteScratchWorkspace(root);
+        }
+    }
+}
+
+static void StagingWriterRejectsSiblingPathPrefixEscapeHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var sibling = root + "-sibling";
+    try
+    {
+        Directory.CreateDirectory(sibling);
+        var siblingRelative = Path.Combine("..", Path.GetFileName(sibling), "owned.txt");
+
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-STAGE-ESCAPE",
+            1,
+            "Stage escape regression.",
+            new[]
+            {
+                new WorkerEdit(siblingRelative, WorkerEdit.OperationWriteFull, "escaped")
+            });
+
+        var result = manifest.Results.Single();
+        AssertFalse(result.Applied, "Staging writer must not stage sibling path prefix escapes.");
+        AssertContains(result.SkipReason ?? string.Empty, "path escapes project root", "Staging writer should explain escaped paths.");
+        AssertFalse(File.Exists(Path.Combine(sibling, "owned.txt")), "Staging writer must not write into a sibling directory.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+        DeleteScratchWorkspace(sibling);
+    }
+}
+
+static void StagingApplierBlocksHashDriftHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var targetPath = Path.Combine(root, "src", "File.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "original", Encoding.UTF8);
+
+        StagingWriter.Stage(
+            root,
+            "TASK-HASH-DRIFT",
+            1,
+            "Hash drift regression.",
+            new[]
+            {
+                new WorkerEdit("src/File.txt", WorkerEdit.OperationWriteFull, "staged")
+            });
+        File.WriteAllText(targetPath, "external edit", Encoding.UTF8);
+
+        var outcome = StagingApplier.Apply(root, "TASK-HASH-DRIFT");
+
+        AssertEqual("external edit", File.ReadAllText(targetPath, Encoding.UTF8), "Hash drift must preserve external project edits.");
+        AssertEqual(0, outcome.AppliedFiles.Count, "Hash drift must block the staged file from applying.");
+        AssertTrue(outcome.SkippedFiles.Any(static item => item.Contains("project file changed since staging", StringComparison.OrdinalIgnoreCase)), "Hash drift should be surfaced as a skipped file.");
+        AssertTrue(outcome.HashMismatchWarnings.Any(static item => item.Contains("Apply blocked", StringComparison.OrdinalIgnoreCase)), "Hash drift warning must say apply was blocked.");
+        AssertFalse(outcome.HashMismatchWarnings.Any(static item => item.Contains("Apply proceeded", StringComparison.OrdinalIgnoreCase)), "Hash drift warning must not claim apply proceeded.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void StagingApplierIgnoresManifestAbsoluteStagedPathHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var outside = CreateScratchWorkspace();
+    try
+    {
+        var targetPath = Path.Combine(root, "src", "File.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "original", Encoding.UTF8);
+        var outsidePayload = Path.Combine(outside, "payload.txt");
+        File.WriteAllText(outsidePayload, "outside payload", Encoding.UTF8);
+
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-STAGED-PATH",
+            1,
+            "Manifest path trust regression.",
+            new[]
+            {
+                new WorkerEdit("src/File.txt", WorkerEdit.OperationWriteFull, "safe staged payload")
+            });
+        var attemptRoot = manifest.StagingRoot;
+        var poisoned = manifest with
+        {
+            Results = manifest.Results.Select(result => result with { StagedAbsolutePath = outsidePayload }).ToArray()
+        };
+        File.WriteAllText(
+            Path.Combine(attemptRoot, "manifest.json"),
+            JsonSerializer.Serialize(poisoned, new JsonSerializerOptions { WriteIndented = true }),
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        var outcome = StagingApplier.Apply(root, "TASK-STAGED-PATH");
+
+        AssertEqual("safe staged payload", File.ReadAllText(targetPath, Encoding.UTF8), "Applier must read the canonical staged path under the attempt root, not a manifest-provided absolute path.");
+        AssertEqual(1, outcome.AppliedFiles.Count, "Valid canonical staged file should still apply.");
+        AssertFalse(File.ReadAllText(targetPath, Encoding.UTF8).Contains("outside payload", StringComparison.Ordinal), "Manifest-provided outside payload must not be read.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+        DeleteScratchWorkspace(outside);
     }
 }
 

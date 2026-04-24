@@ -6,6 +6,8 @@ public enum WorkspaceHealthStatus
     Missing,
     Unavailable,
     BrokenStructure,
+    MaterialOnly,
+    Degraded,
     ScanPending,
     ScanFailed
 }

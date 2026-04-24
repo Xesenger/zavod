@@ -7,13 +7,6 @@ using zavod.Persistence;
 
 namespace zavod.Execution;
 
-public sealed record OpenRouterAttachment(
-    string Label,
-    string IntakeType,
-    string FilePath,
-    string Content,
-    bool UsedPreviewOnly);
-
 internal static class ConversationAttachmentPromptBuilder
 {
     private const int MaxAttachments = 4;

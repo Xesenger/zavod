@@ -27,8 +27,21 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var directory = outputDirectory ?? Path.Combine(ResolveArtifactRoot(runResult), ".zavod", "import_evidence_bundle");
         Directory.CreateDirectory(directory);
 
+        var scanRunPath = Path.Combine(directory, "scanrun.json");
         var projectProfilePath = Path.Combine(directory, "project_profile.json");
         var projectReportPath = Path.Combine(directory, "project_report.md");
+        var scanSummaryPath = Path.Combine(directory, "scan_summary.md");
+        var filesIndexPath = Path.Combine(directory, "files.index.json");
+        var manifestsIndexPath = Path.Combine(directory, "manifests.index.json");
+        var symbolsIndexPath = Path.Combine(directory, "symbols.index.json");
+        var edgesIndexPath = Path.Combine(directory, "edges.index.json");
+        var entryPointsIndexPath = Path.Combine(directory, "entrypoints.index.json");
+        var modulesMapPath = Path.Combine(directory, "modules.map.json");
+        var projectUnitsIndexPath = Path.Combine(directory, "project_units.index.json");
+        var runProfilesIndexPath = Path.Combine(directory, "runprofiles.index.json");
+        var predicateRegistryPath = Path.Combine(directory, "predicate_registry.json");
+        var scanBudgetPath = Path.Combine(directory, "scan_budget.json");
+        var uncertaintyReportPath = Path.Combine(directory, "uncertainty_report.json");
         var technicalPassportPath = Path.Combine(directory, "technical_passport.json");
         var rawObservationsPath = Path.Combine(directory, "raw_observations.json");
         var derivedPatternsPath = Path.Combine(directory, "derived_patterns.json");
@@ -93,8 +106,21 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 
         var projectReport = BuildProjectReport(runResult);
 
+        File.WriteAllText(scanRunPath, JsonSerializer.Serialize(pack?.ScanRun, JsonOptions), Encoding.UTF8);
         File.WriteAllText(projectProfilePath, JsonSerializer.Serialize(pack?.ProjectProfile, JsonOptions), Encoding.UTF8);
         File.WriteAllText(projectReportPath, projectReport, Encoding.UTF8);
+        File.WriteAllText(scanSummaryPath, BuildScanSummary(runResult), Encoding.UTF8);
+        File.WriteAllText(filesIndexPath, JsonSerializer.Serialize(pack?.FileIndex ?? Array.Empty<WorkspaceEvidenceFileIndexItem>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(manifestsIndexPath, JsonSerializer.Serialize(BuildManifestIndex(pack), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(symbolsIndexPath, JsonSerializer.Serialize(BuildSymbolIndex(pack), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(edgesIndexPath, JsonSerializer.Serialize(BuildEdgesIndex(pack), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(entryPointsIndexPath, JsonSerializer.Serialize(pack?.Candidates?.EntryPoints ?? Array.Empty<WorkspaceEvidenceEntryPoint>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(modulesMapPath, JsonSerializer.Serialize(pack?.Candidates?.ModuleCandidates ?? Array.Empty<WorkspaceEvidenceModule>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(projectUnitsIndexPath, JsonSerializer.Serialize(pack?.Candidates?.ProjectUnits ?? Array.Empty<WorkspaceEvidenceProjectUnit>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(runProfilesIndexPath, JsonSerializer.Serialize(pack?.Candidates?.RunProfiles ?? Array.Empty<WorkspaceEvidenceRunProfile>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(predicateRegistryPath, JsonSerializer.Serialize(pack?.PredicateRegistry ?? Array.Empty<WorkspaceEvidencePredicate>(), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(scanBudgetPath, JsonSerializer.Serialize(pack?.ScanBudget, JsonOptions), Encoding.UTF8);
+        File.WriteAllText(uncertaintyReportPath, JsonSerializer.Serialize(BuildUncertaintyReport(runResult), JsonOptions), Encoding.UTF8);
         File.WriteAllText(technicalPassportPath, JsonSerializer.Serialize(pack?.TechnicalPassport ?? BuildEmptyPassport(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(rawObservationsPath, JsonSerializer.Serialize(pack?.RawObservations ?? Array.Empty<WorkspaceEvidenceObservation>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(derivedPatternsPath, JsonSerializer.Serialize(pack?.DerivedPatterns ?? Array.Empty<WorkspaceEvidencePattern>(), JsonOptions), Encoding.UTF8);
@@ -105,7 +131,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         File.WriteAllText(dependencySurfacePath, JsonSerializer.Serialize(pack?.DependencySurface ?? Array.Empty<WorkspaceEvidenceDependencySurfaceItem>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(confidenceAnnotationsPath, JsonSerializer.Serialize(pack?.ConfidenceAnnotations ?? Array.Empty<WorkspaceEvidenceConfidenceAnnotation>(), JsonOptions), Encoding.UTF8);
         File.WriteAllText(entryPointsPath, JsonSerializer.Serialize(entryPointPayload, JsonOptions), Encoding.UTF8);
-        File.WriteAllText(candidatesPath, JsonSerializer.Serialize(pack?.Candidates ?? new WorkspaceEvidenceCandidates(Array.Empty<WorkspaceEvidenceEntryPoint>(), Array.Empty<WorkspaceEvidenceModule>(), Array.Empty<WorkspaceEvidenceFileRole>()), JsonOptions), Encoding.UTF8);
+        File.WriteAllText(candidatesPath, JsonSerializer.Serialize(pack?.Candidates ?? new WorkspaceEvidenceCandidates(Array.Empty<WorkspaceEvidenceEntryPoint>(), Array.Empty<WorkspaceEvidenceModule>(), Array.Empty<WorkspaceEvidenceFileRole>(), Array.Empty<WorkspaceEvidenceProjectUnit>(), Array.Empty<WorkspaceEvidenceRunProfile>()), JsonOptions), Encoding.UTF8);
         File.WriteAllText(layerMapPath, JsonSerializer.Serialize(layerPayload, JsonOptions), Encoding.UTF8);
         File.WriteAllText(moduleCandidatesPath, JsonSerializer.Serialize(modulePayload, JsonOptions), Encoding.UTF8);
         File.WriteAllText(dependencyEdgesPath, JsonSerializer.Serialize(pack?.Edges ?? Array.Empty<WorkspaceEvidenceDependencyEdge>(), JsonOptions), Encoding.UTF8);
@@ -138,8 +164,21 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             previewPath,
             previewDocs.PreviewProjectPath,
             previewDocs.PreviewCapsulePath,
+            scanRunPath,
             projectProfilePath,
             projectReportPath,
+            scanSummaryPath,
+            filesIndexPath,
+            manifestsIndexPath,
+            symbolsIndexPath,
+            edgesIndexPath,
+            entryPointsIndexPath,
+            modulesMapPath,
+            projectUnitsIndexPath,
+            runProfilesIndexPath,
+            predicateRegistryPath,
+            scanBudgetPath,
+            uncertaintyReportPath,
             technicalPassportPath,
             rawObservationsPath,
             derivedPatternsPath,
@@ -162,6 +201,198 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             architectureMapPath,
             pdfPath,
             $"Evidence bundle written to {directory}.");
+    }
+
+    private static string BuildScanSummary(WorkspaceImportMaterialInterpreterRunResult runResult)
+    {
+        var pack = runResult.PreviewPacket.EvidencePack;
+        var builder = new StringBuilder();
+        builder.AppendLine("# Scan Summary");
+        builder.AppendLine();
+        builder.AppendLine("Cold scanner projection. This summary reports observed evidence only and does not claim project purpose.");
+        builder.AppendLine();
+
+        if (pack is null)
+        {
+            builder.AppendLine("- evidence_pack: none");
+            return builder.ToString().TrimEnd();
+        }
+
+        var profile = pack.ProjectProfile;
+        var budget = pack.ScanBudget;
+        builder.AppendLine("## Scan Run");
+        builder.AppendLine($"- scan_run_id: `{pack.ScanRun.ScanRunId}`");
+        builder.AppendLine($"- scanner_version: `{pack.ScanRun.ScannerVersion}`");
+        builder.AppendLine($"- mode: `{pack.ScanRun.Mode}`");
+        builder.AppendLine($"- scan_fingerprint: `{pack.ScanRun.RepoRootHash}`");
+        builder.AppendLine("- fingerprint_scope: structural scan identity, not content-integrity hash");
+        builder.AppendLine($"- budget_status: `{(budget?.IsPartial == true ? "partial" : "complete")}`");
+        if (budget is not null)
+        {
+            builder.AppendLine($"- visited_files: {budget.VisitedFileCount}");
+            builder.AppendLine($"- included_relevant_files: {budget.IncludedRelevantFileCount}");
+            builder.AppendLine($"- skipped_large_files: {budget.SkippedLargeFileCount}");
+            builder.AppendLine($"- skipped_relevant_files: {budget.SkippedRelevantFileCount}");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Counts");
+        builder.AppendLine($"- relevant_files: {profile.RelevantFileCount}");
+        builder.AppendLine($"- source_files: {profile.SourceFileCount}");
+        builder.AppendLine($"- build_files: {profile.BuildFileCount}");
+        builder.AppendLine($"- config_files: {profile.ConfigFileCount}");
+        builder.AppendLine($"- document_files: {profile.DocumentFileCount}");
+        builder.AppendLine($"- asset_files: {profile.AssetFileCount}");
+        builder.AppendLine($"- binary_files: {profile.BinaryFileCount}");
+        builder.AppendLine($"- noise_files_ignored: {profile.IgnoredNoiseFileCount}");
+
+        AppendSummaryList(
+            builder,
+            "Entry Points",
+            pack.Candidates.EntryPoints.Take(10).Select(static entry => $"`{entry.RelativePath}` ({entry.Role}, score={entry.Score}, marker={FormatMarker(entry.EvidenceMarker)}, evidence={string.Join("; ", entry.Evidence.Take(3))})"));
+        AppendSummaryList(
+            builder,
+            "Project Units",
+            pack.Candidates.ProjectUnits.Take(10).Select(static unit => $"`{unit.RootPath}` ({unit.Kind}, {unit.Confidence}, manifests={unit.Manifests.Count}, entries={unit.EntryPoints.Count}, marker={FormatMarker(unit.EvidenceMarker)})"));
+        AppendSummaryList(
+            builder,
+            "Run Profiles",
+            pack.Candidates.RunProfiles.Take(10).Select(static profileItem => $"{profileItem.Kind}: `{profileItem.Command}` @ `{profileItem.WorkingDirectory}` ({profileItem.Confidence}, marker={FormatMarker(profileItem.EvidenceMarker)})"));
+
+        builder.AppendLine("## Uncertainty");
+        var uncertainty = BuildUncertaintyLines(pack).ToArray();
+        if (uncertainty.Length == 0)
+        {
+            builder.AppendLine("- none");
+        }
+        else
+        {
+            foreach (var line in uncertainty)
+            {
+                builder.AppendLine($"- {line}");
+            }
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private static IReadOnlyList<object> BuildManifestIndex(WorkspaceEvidencePack? pack)
+    {
+        if (pack is null)
+        {
+            return Array.Empty<object>();
+        }
+
+        var dependencyCounts = pack.DependencySurface
+            .GroupBy(static item => item.SourcePath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.Count(), StringComparer.OrdinalIgnoreCase);
+
+        return pack.Candidates.ProjectUnits
+            .SelectMany(unit => unit.Manifests.Select(manifest => new
+            {
+                RelativePath = manifest,
+                UnitId = unit.Id,
+                UnitRoot = unit.RootPath,
+                UnitKind = unit.Kind,
+                UnitConfidence = unit.Confidence,
+                DependencyCount = dependencyCounts.TryGetValue(manifest, out var count) ? count : 0,
+                Evidence = unit.Evidence
+            }))
+            .OrderBy(static item => item.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(static item => item.UnitId, StringComparer.OrdinalIgnoreCase)
+            .Cast<object>()
+            .ToArray();
+    }
+
+    private static object BuildSymbolIndex(WorkspaceEvidencePack? pack)
+    {
+        return new
+        {
+            Symbols = pack?.SymbolHints ?? Array.Empty<WorkspaceEvidenceSymbolHint>(),
+            Signatures = pack?.SignatureHints ?? Array.Empty<WorkspaceEvidenceSignatureHint>()
+        };
+    }
+
+    private static object BuildEdgesIndex(WorkspaceEvidencePack? pack)
+    {
+        return new
+        {
+            DependencyEdges = pack?.Edges ?? Array.Empty<WorkspaceEvidenceDependencyEdge>(),
+            CodeEdges = pack?.CodeEdges ?? Array.Empty<WorkspaceEvidenceCodeEdge>()
+        };
+    }
+
+    private static object BuildUncertaintyReport(WorkspaceImportMaterialInterpreterRunResult runResult)
+    {
+        var pack = runResult.PreviewPacket.EvidencePack;
+        if (pack is null)
+        {
+            return new
+            {
+                scanRunId = (string?)null,
+                anomalies = Array.Empty<string>(),
+                budget = (WorkspaceScanBudgetReport?)null,
+                budgetSkips = Array.Empty<WorkspaceScanBudgetSkip>(),
+                rawObservations = Array.Empty<WorkspaceEvidenceObservation>()
+            };
+        }
+
+        return new
+        {
+            scanRunId = pack.ScanRun.ScanRunId,
+            anomalies = pack.ProjectProfile.StructuralAnomalies,
+            budget = pack.ScanBudget,
+            budgetSkips = pack.ScanBudget?.Skips ?? Array.Empty<WorkspaceScanBudgetSkip>(),
+            rawObservations = pack.RawObservations
+                .Where(static observation =>
+                    observation.Kind.Contains("budget", StringComparison.OrdinalIgnoreCase) ||
+                    observation.Kind.Contains("anomaly", StringComparison.OrdinalIgnoreCase))
+                .ToArray()
+        };
+    }
+
+    private static IEnumerable<string> BuildUncertaintyLines(WorkspaceEvidencePack pack)
+    {
+        foreach (var anomaly in pack.ProjectProfile.StructuralAnomalies)
+        {
+            yield return anomaly;
+        }
+
+        if (pack.ScanBudget is { IsPartial: true } budget)
+        {
+            yield return $"partial_scan: visited={budget.VisitedFileCount}, included={budget.IncludedRelevantFileCount}, skipped_large={budget.SkippedLargeFileCount}, skipped_relevant={budget.SkippedRelevantFileCount}";
+            foreach (var skip in budget.Skips.Take(10))
+            {
+                yield return $"budget_skip: `{skip.RelativePath}` reason={skip.Reason}";
+            }
+        }
+    }
+
+    private static void AppendSummaryList(StringBuilder builder, string title, IEnumerable<string> lines)
+    {
+        builder.AppendLine();
+        builder.AppendLine($"## {title}");
+        var items = lines.ToArray();
+        if (items.Length == 0)
+        {
+            builder.AppendLine("- none");
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            builder.AppendLine($"- {item}");
+        }
+    }
+
+    private static string FormatMarker(WorkspaceEvidenceMarker? marker)
+    {
+        if (marker is null)
+        {
+            return "none";
+        }
+
+        return $"{marker.EvidenceKind}/{marker.Confidence}/partial={marker.IsPartial}/bounded={marker.IsBounded}";
     }
 
     private static string BuildProjectReport(WorkspaceImportMaterialInterpreterRunResult runResult)
@@ -1208,7 +1439,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         }
 
         var candidate = Path.GetFullPath(Path.Combine(workspaceRoot, roots[0]));
-        if (!candidate.StartsWith(Path.GetFullPath(workspaceRoot), StringComparison.OrdinalIgnoreCase))
+        if (!IsUnderRoot(workspaceRoot, candidate))
         {
             return workspaceRoot;
         }
@@ -1272,7 +1503,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             }
 
             var fullCandidate = Path.GetFullPath(candidate);
-            if (!fullCandidate.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase))
+            if (!IsUnderRoot(workspaceRoot, fullCandidate))
             {
                 continue;
             }
@@ -1284,6 +1515,18 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private static bool IsUnderRoot(string root, string path)
+    {
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var pathFull = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return string.Equals(pathFull, rootFull, comparison) ||
+               pathFull.StartsWith(rootFull + Path.DirectorySeparatorChar, comparison) ||
+               pathFull.StartsWith(rootFull + Path.AltDirectorySeparatorChar, comparison);
     }
 
     private static int ScoreCandidateRoot(string workspaceRoot, string candidateRoot, IReadOnlyList<string> observedPaths)

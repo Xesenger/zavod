@@ -173,6 +173,16 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         }
 
         builder.AppendLine("project_profile:");
+        builder.AppendLine($"  scan_run_id: {pack.ScanRun.ScanRunId}");
+        builder.AppendLine($"  scan_fingerprint: {pack.ScanRun.RepoRootHash}");
+        builder.AppendLine("  scan_fingerprint_scope: structural scan identity, not content-integrity hash");
+        builder.AppendLine($"  scanner_version: {pack.ScanRun.ScannerVersion}");
+        builder.AppendLine($"  predicate_registry: {JoinOrNone(pack.PredicateRegistry.Select(static predicate => predicate.Id))}");
+        if (pack.ScanBudget is not null)
+        {
+            builder.AppendLine($"  scan_budget: visited={pack.ScanBudget.VisitedFileCount}, included={pack.ScanBudget.IncludedRelevantFileCount}, partial={pack.ScanBudget.IsPartial}, skipped_large={pack.ScanBudget.SkippedLargeFileCount}, skipped_relevant={pack.ScanBudget.SkippedRelevantFileCount}");
+        }
+
         builder.AppendLine($"  health: {pack.ProjectProfile.Health}");
         builder.AppendLine($"  drift: {pack.ProjectProfile.DriftStatus}");
         builder.AppendLine($"  relevant_files: {pack.ProjectProfile.RelevantFileCount}");
@@ -182,6 +192,7 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         builder.AppendLine($"  document_files: {pack.ProjectProfile.DocumentFileCount}");
         builder.AppendLine($"  asset_files: {pack.ProjectProfile.AssetFileCount}");
         builder.AppendLine($"  binary_files: {pack.ProjectProfile.BinaryFileCount}");
+        builder.AppendLine($"  noise_files_ignored: {pack.ProjectProfile.IgnoredNoiseFileCount}");
         builder.AppendLine($"  source_roots: {JoinOrNone(pack.ProjectProfile.SourceRoots)}");
         builder.AppendLine($"  build_roots: {JoinOrNone(pack.ProjectProfile.BuildRoots)}");
         builder.AppendLine($"  anomalies: {JoinOrNone(pack.ProjectProfile.StructuralAnomalies)}");
@@ -203,13 +214,15 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         builder.AppendLine($"  config_markers: {JoinOrNone(pack.TechnicalPassport.ConfigMarkers)}");
         builder.AppendLine($"  build_variants: {JoinOrNone(pack.TechnicalPassport.BuildVariants)}");
         builder.AppendLine($"  notable_options: {JoinOrNone(pack.TechnicalPassport.NotableOptions)}");
-        builder.AppendLine($"entry_points: {JoinOrNone(pack.Candidates.EntryPoints.Select(static entry => $"{entry.RelativePath} ({entry.Role})"))}");
-        builder.AppendLine($"file_roles: {JoinOrNone(pack.Candidates.FileRoles.Select(static role => $"{role.RelativePath} ({role.Role} {role.Confidence:0.00})"))}");
-        builder.AppendLine($"module_candidates: {JoinOrNone(pack.Candidates.ModuleCandidates.Select(static module => $"{module.Name} ({module.LayerName}/{module.Role})"))}");
+        builder.AppendLine($"entry_points: {JoinOrNone(pack.Candidates.EntryPoints.Select(FormatEntryPointForPrompt))}");
+        builder.AppendLine($"project_units: {JoinOrNone(pack.Candidates.ProjectUnits.Select(FormatProjectUnitForPrompt))}");
+        builder.AppendLine($"run_profiles: {JoinOrNone(pack.Candidates.RunProfiles.Select(FormatRunProfileForPrompt))}");
+        builder.AppendLine($"file_roles: {JoinOrNone(pack.Candidates.FileRoles.Select(static role => $"{role.RelativePath} ({role.Role} {role.Confidence:0.00}, marker={FormatMarker(role.EvidenceMarker)})"))}");
+        builder.AppendLine($"module_candidates: {JoinOrNone(pack.Candidates.ModuleCandidates.Select(static module => $"{module.Name} ({module.LayerName}/{module.Role}, marker={FormatMarker(module.EvidenceMarker)})"))}");
         builder.AppendLine("code_edges:");
         foreach (var edge in pack.CodeEdges.Take(16))
         {
-            builder.AppendLine($"- {edge.FromPath} -> {edge.ToPath} | {edge.Kind} | {edge.Reason}");
+            builder.AppendLine($"- {edge.FromPath} -> {edge.ToPath} | {edge.Kind} | {edge.Resolution} | marker={FormatMarker(edge.EvidenceMarker)} | {edge.Reason}");
         }
         builder.AppendLine("signature_hints:");
         foreach (var hint in pack.SignatureHints.Take(16))
@@ -224,12 +237,12 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         builder.AppendLine("dependency_edges:");
         foreach (var edge in pack.Edges.Take(16))
         {
-            builder.AppendLine($"- {edge.From} -> {edge.To} | {edge.Label} | {edge.Reason}");
+            builder.AppendLine($"- {edge.From} -> {edge.To} | {edge.Label} | {edge.Resolution} | marker={FormatMarker(edge.EvidenceMarker)} | {edge.Reason}");
         }
         builder.AppendLine("hotspots:");
         foreach (var hotspot in pack.Hotspots.Take(12))
         {
-            builder.AppendLine($"- {hotspot.Code} | {hotspot.RelativePath} | {hotspot.Reason}");
+            builder.AppendLine($"- {hotspot.Code} | {hotspot.RelativePath} | marker={FormatMarker(hotspot.EvidenceMarker)} | {hotspot.Reason}");
         }
         builder.AppendLine("signals:");
         foreach (var signal in pack.Signals.Take(24))
@@ -273,6 +286,52 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
         return items.Length == 0 ? "none" : string.Join(", ", items);
     }
 
+    private static string FormatEntryPointForPrompt(WorkspaceEvidenceEntryPoint entry)
+    {
+        var promptEvidence = entry.Evidence
+            .Where(static evidence =>
+                string.Equals(evidence, "cargo_default_member", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(evidence, "source_root_overlap", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(evidence, "conventional_entry_location", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(evidence, "secondary_or_workflow_location", StringComparison.OrdinalIgnoreCase) ||
+                evidence.StartsWith("role:", StringComparison.OrdinalIgnoreCase) ||
+                evidence.StartsWith("entry_file_name:", StringComparison.OrdinalIgnoreCase))
+            .Take(6);
+
+        return $"{entry.RelativePath} ({entry.Role}, score={entry.Score}, marker={FormatMarker(entry.EvidenceMarker)}, evidence={JoinOrNone(promptEvidence)})";
+    }
+
+    private static string FormatProjectUnitForPrompt(WorkspaceEvidenceProjectUnit unit)
+    {
+        var zone = unit.Evidence
+            .FirstOrDefault(static evidence => evidence.StartsWith("unit_zone:", StringComparison.OrdinalIgnoreCase))?
+            .Split(':', 2)[1] ?? "unknown";
+        var promptEvidence = unit.Evidence
+            .Where(static evidence =>
+                evidence.StartsWith("unit_zone:", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(evidence, "cargo_default_member", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(evidence, "config_primary_unit", StringComparison.OrdinalIgnoreCase) ||
+                evidence.StartsWith("manifest:", StringComparison.OrdinalIgnoreCase))
+            .Take(6);
+
+        return $"{unit.RootPath} ({unit.Kind}, zone={zone}, {unit.Confidence}, entries={unit.EntryPoints.Count}, marker={FormatMarker(unit.EvidenceMarker)}, evidence={JoinOrNone(promptEvidence)})";
+    }
+
+    private static string FormatRunProfileForPrompt(WorkspaceEvidenceRunProfile profile)
+    {
+        return $"{profile.Kind}: {profile.Command} @ {profile.WorkingDirectory} ({profile.Confidence}, marker={FormatMarker(profile.EvidenceMarker)})";
+    }
+
+    private static string FormatMarker(WorkspaceEvidenceMarker? marker)
+    {
+        if (marker is null)
+        {
+            return "none";
+        }
+
+        return $"{marker.EvidenceKind}/{marker.Confidence}/partial={marker.IsPartial}/bounded={marker.IsBounded}";
+    }
+
     private static string BuildImporterAdapterSummary(WorkspaceEvidencePack pack)
     {
         var parts = new List<string>
@@ -281,6 +340,8 @@ public static class WorkspaceImportMaterialPromptRequestBuilder
             $"roots={pack.ProjectProfile.SourceRoots.Count}",
             $"patterns={pack.DerivedPatterns.Count}",
             $"entries={pack.Candidates.EntryPoints.Count}",
+            $"units={pack.Candidates.ProjectUnits.Count}",
+            $"run_profiles={pack.Candidates.RunProfiles.Count}",
             $"modules={pack.Candidates.ModuleCandidates.Count}",
             $"code_edges={pack.CodeEdges.Count}",
             $"hotspots={pack.Hotspots.Count}"

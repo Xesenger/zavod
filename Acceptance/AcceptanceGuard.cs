@@ -29,7 +29,7 @@ public static class AcceptanceGuard
         foreach (var touchedFile in evidence.ExecutionBase.Files)
         {
             var currentFullPath = Path.GetFullPath(Path.Combine(workspaceRoot, touchedFile.RelativePath));
-            if (!currentFullPath.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase))
+            if (!IsUnderRoot(workspaceRoot, currentFullPath))
             {
                 conflicts.Add(new AcceptanceConflict(touchedFile.RelativePath, "Touched path escaped workspace root."));
                 reasons.Add("A touched path escaped the workspace root.");
@@ -103,5 +103,18 @@ public static class AcceptanceGuard
             new AcceptanceReasonSummary(
                 $"Acceptance is blocked with classification {classification}.",
                 reasons));
+    }
+
+    private static bool IsUnderRoot(string root, string path)
+    {
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var pathFull = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return string.Equals(pathFull, rootFull, comparison) ||
+               pathFull.StartsWith(rootFull + Path.DirectorySeparatorChar, comparison) ||
+               pathFull.StartsWith(rootFull + Path.AltDirectorySeparatorChar, comparison);
     }
 }

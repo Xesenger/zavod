@@ -22,6 +22,59 @@ public static class AcceptedResultApplyProcessor
         ArgumentNullException.ThrowIfNull(taskState);
         ArgumentNullException.ThrowIfNull(runtimeState);
 
+        ValidateCanApply(projectState, shiftState, taskState, runtimeState);
+
+        var lifecycle = ResultCommitCoordinator.RegisterProducedResult(runtimeState.Result!);
+        var acceptance = ResultCommitCoordinator.AcceptResult(lifecycle, runtimeState.Result!, runtimeState.Review!, timestamp);
+        var acceptedResult = TryAttachCheckpointTruth(acceptance.AcceptedResult, runtimeState.Result!);
+        var applyOutcome = ResultCommitCoordinator.ApplyAcceptedResult(
+            acceptance.AcceptedLifecycle,
+            acceptedResult,
+            ApplyTarget.Codebase,
+            BuildApplyChanges(runtimeState.Result!));
+        var commit = ResultCommitCoordinator.Commit(
+            applyOutcome.AppliedLifecycle,
+            applyOutcome.ApplyOperation,
+            timestamp,
+            runtimeState.Result!.Summary,
+            taskState.TaskId,
+            runtimeState.Review!.DecisionAnchors);
+
+        var completedTask = taskState.Complete(PromptRole.ShiftLead, timestamp);
+        var updatedShift = shiftState.UpdateTask(completedTask);
+        updatedShift = ResultCommitCoordinator.UpdateShiftState(updatedShift, commit.CommitRecord, PromptRole.ShiftLead);
+        updatedShift = updatedShift with { CurrentTaskId = null };
+
+        var updatedProjectState = projectState with
+        {
+            ActiveShiftId = shiftState.ShiftId,
+            ActiveTaskId = null
+        };
+
+        var persistedProjectState = ProjectStateStorage.Save(updatedProjectState);
+        var shiftFilePath = ShiftStateStorage.Save(persistedProjectState.Paths.ProjectRoot, updatedShift);
+
+        return new AcceptedResultApplyResult(
+            persistedProjectState,
+            updatedShift,
+            completedTask,
+            acceptedResult,
+            applyOutcome.ApplyOperation,
+            commit.CommitRecord,
+            shiftFilePath);
+    }
+
+    public static void ValidateCanApply(
+        ProjectState projectState,
+        ShiftState shiftState,
+        TaskState taskState,
+        ExecutionRuntimeState runtimeState)
+    {
+        ArgumentNullException.ThrowIfNull(projectState);
+        ArgumentNullException.ThrowIfNull(shiftState);
+        ArgumentNullException.ThrowIfNull(taskState);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+
         if (!string.Equals(projectState.ActiveShiftId, shiftState.ShiftId, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Accepted result apply requires active project shift to match target shift.");
@@ -48,45 +101,6 @@ public static class AcceptedResultApplyProcessor
         }
 
         ValidateAcceptanceGate(runtimeState);
-
-        var lifecycle = ResultCommitCoordinator.RegisterProducedResult(runtimeState.Result);
-        var acceptance = ResultCommitCoordinator.AcceptResult(lifecycle, runtimeState.Result, runtimeState.Review, timestamp);
-        var acceptedResult = TryAttachCheckpointTruth(acceptance.AcceptedResult, runtimeState.Result);
-        var applyOutcome = ResultCommitCoordinator.ApplyAcceptedResult(
-            acceptance.AcceptedLifecycle,
-            acceptedResult,
-            ApplyTarget.Codebase,
-            BuildApplyChanges(runtimeState.Result));
-        var commit = ResultCommitCoordinator.Commit(
-            applyOutcome.AppliedLifecycle,
-            applyOutcome.ApplyOperation,
-            timestamp,
-            runtimeState.Result.Summary,
-            taskState.TaskId,
-            runtimeState.Review.DecisionAnchors);
-
-        var completedTask = taskState.Complete(PromptRole.ShiftLead, timestamp);
-        var updatedShift = shiftState.UpdateTask(completedTask);
-        updatedShift = ResultCommitCoordinator.UpdateShiftState(updatedShift, commit.CommitRecord, PromptRole.ShiftLead);
-        updatedShift = updatedShift with { CurrentTaskId = null };
-
-        var updatedProjectState = projectState with
-        {
-            ActiveShiftId = shiftState.ShiftId,
-            ActiveTaskId = null
-        };
-
-        var persistedProjectState = ProjectStateStorage.Save(updatedProjectState);
-        var shiftFilePath = ShiftStateStorage.Save(persistedProjectState.Paths.ProjectRoot, updatedShift);
-
-        return new AcceptedResultApplyResult(
-            persistedProjectState,
-            updatedShift,
-            completedTask,
-            acceptedResult,
-            applyOutcome.ApplyOperation,
-            commit.CommitRecord,
-            shiftFilePath);
     }
 
     private static AcceptedResult TryAttachCheckpointTruth(AcceptedResult acceptedResult, WorkerExecutionResult result)
@@ -157,7 +171,7 @@ public static class AcceptedResultApplyProcessor
     {
         if (runtimeState.AcceptanceEvaluation is null)
         {
-            return;
+            throw new InvalidOperationException("Accepted result apply requires acceptance evaluation.");
         }
 
         if (runtimeState.AcceptanceEvaluation.Decision.Status != AcceptanceDecisionStatus.Allowed)

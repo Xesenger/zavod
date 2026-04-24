@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -10,6 +11,7 @@
     <Compile Include="..\..\Execution\ArchiveInspectionRuntimeService.cs" Link="Execution\ArchiveInspectionRuntimeService.cs" />
     <Compile Include="..\..\Execution\ArchitectureDiagramRuntimeService.cs" Link="Execution\ArchitectureDiagramRuntimeService.cs" />
     <Compile Include="..\..\Execution\BundledToolLocator.cs" Link="Execution\BundledToolLocator.cs" />
+    <Compile Include="..\..\Execution\ConversationAttachmentPromptBuilder.cs" Link="Execution\ConversationAttachmentPromptBuilder.cs" />
     <Compile Include="..\..\Execution\ExternalProcessRequest.cs" Link="Execution\ExternalProcessRequest.cs" />
     <Compile Include="..\..\Execution\ExternalProcessResult.cs" Link="Execution\ExternalProcessResult.cs" />
     <Compile Include="..\..\Execution\ExternalProcessRunner.cs" Link="Execution\ExternalProcessRunner.cs" />
@@ -22,6 +24,7 @@
     <Compile Include="..\..\Execution\MaterialRuntimeStatus.cs" Link="Execution\MaterialRuntimeStatus.cs" />
     <Compile Include="..\..\Execution\OpenRouterConfiguration.cs" Link="Execution\OpenRouterConfiguration.cs" />
     <Compile Include="..\..\Execution\OpenRouterDiagnostic.cs" Link="Execution\OpenRouterDiagnostic.cs" />
+    <Compile Include="..\..\Execution\OpenRouterAttachment.cs" Link="Execution\OpenRouterAttachment.cs" />
     <Compile Include="..\..\Execution\OpenRouterExecutionClient.cs" Link="Execution\OpenRouterExecutionClient.cs" />
     <Compile Include="..\..\Execution\OpenRouterExecutionRequest.cs" Link="Execution\OpenRouterExecutionRequest.cs" />
     <Compile Include="..\..\Execution\OpenRouterExecutionResponse.cs" Link="Execution\OpenRouterExecutionResponse.cs" />
@@ -39,8 +42,14 @@
     <Compile Include="..\..\Prompting\PromptSystemCatalog.cs" Link="Prompting\PromptSystemCatalog.cs" />
     <Compile Include="..\..\Workspace\WorkspaceHealthStatus.cs" Link="Workspace\WorkspaceHealthStatus.cs" />
     <Compile Include="..\..\Workspace\WorkspaceDriftStatus.cs" Link="Workspace\WorkspaceDriftStatus.cs" />
+    <Compile Include="..\..\Workspace\GitRoadmapHistoryReader.cs" Link="Workspace\GitRoadmapHistoryReader.cs" />
+    <Compile Include="..\..\Workspace\DirectionSignalInterpreter.cs" Link="Workspace\DirectionSignalInterpreter.cs" />
+    <Compile Include="..\..\Workspace\RoadmapSignalInterpreter.cs" Link="Workspace\RoadmapSignalInterpreter.cs" />
     <Compile Include="..\..\Workspace\WorkspaceEvidencePack.cs" Link="Workspace\WorkspaceEvidencePack.cs" />
     <Compile Include="..\..\Workspace\WorkspaceEvidencePackBuilder.cs" Link="Workspace\WorkspaceEvidencePackBuilder.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceEvidencePredicateRegistry.cs" Link="Workspace\WorkspaceEvidencePredicateRegistry.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceScannerConfig.cs" Link="Workspace\WorkspaceScannerConfig.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceTaskScopeResolver.cs" Link="Workspace\WorkspaceTaskScopeResolver.cs" />
     <Compile Include="..\..\Workspace\WorkspaceDocumentationLanguagePolicy.cs" Link="Workspace\WorkspaceDocumentationLanguagePolicy.cs" />
     <Compile Include="..\..\Workspace\WorkspaceStructuralAnomaly.cs" Link="Workspace\WorkspaceStructuralAnomaly.cs" />
     <Compile Include="..\..\Workspace\WorkspaceChangeSummary.cs" Link="Workspace\WorkspaceChangeSummary.cs" />
@@ -69,6 +78,7 @@
     <Compile Include="..\..\Workspace\WorkspaceMaterialTextExtractStatus.cs" Link="Workspace\WorkspaceMaterialTextExtractStatus.cs" />
     <Compile Include="..\..\Workspace\WorkspaceScanRequest.cs" Link="Workspace\WorkspaceScanRequest.cs" />
     <Compile Include="..\..\Workspace\WorkspaceScanResult.cs" Link="Workspace\WorkspaceScanResult.cs" />
+    <Compile Include="..\..\Workspace\WorkspaceSensitiveFilePolicy.cs" Link="Workspace\WorkspaceSensitiveFilePolicy.cs" />
     <Compile Include="..\..\Workspace\WorkspaceMaterialKind.cs" Link="Workspace\WorkspaceMaterialKind.cs" />
     <Compile Include="..\..\Workspace\WorkspaceMaterialCandidate.cs" Link="Workspace\WorkspaceMaterialCandidate.cs" />
     <Compile Include="..\..\Workspace\WorkspaceScanner.cs" Link="Workspace\WorkspaceScanner.cs" />

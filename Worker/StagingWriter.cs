@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -30,11 +30,12 @@ public static class StagingWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
         ArgumentNullException.ThrowIfNull(edits);
 
+        var taskPathSegment = StagingTaskIdPathSegment.Normalize(taskId);
         var normalizedRoot = Path.GetFullPath(projectRoot);
         var stagingRoot = Path.Combine(
             normalizedRoot,
             StagingSubpath.Replace('/', Path.DirectorySeparatorChar),
-            taskId.Trim(),
+            taskPathSegment,
             $"attempt-{attemptNumber:D2}");
 
         // Clear any half-written previous run of the same attempt. Staging is
@@ -53,13 +54,18 @@ public static class StagingWriter
         }
 
         var manifest = new StagingManifest(
-            taskId.Trim(),
+            taskPathSegment,
             taskDescription?.Trim() ?? string.Empty,
             stagingRoot,
             DateTimeOffset.UtcNow,
             results);
 
         PersistManifest(stagingRoot, manifest);
+        if (!File.Exists(Path.Combine(stagingRoot, "manifest.json")))
+        {
+            throw new InvalidOperationException("Staging manifest is load-bearing and must be written before apply.");
+        }
+
         return manifest;
     }
 
@@ -70,7 +76,7 @@ public static class StagingWriter
     /// </summary>
     public static void Cleanup(string projectRoot, string taskId)
     {
-        if (string.IsNullOrWhiteSpace(projectRoot) || string.IsNullOrWhiteSpace(taskId))
+        if (string.IsNullOrWhiteSpace(projectRoot) || !StagingTaskIdPathSegment.TryNormalize(taskId, out var taskPathSegment))
         {
             return;
         }
@@ -79,7 +85,7 @@ public static class StagingWriter
         var taskStagingRoot = Path.Combine(
             normalizedRoot,
             StagingSubpath.Replace('/', Path.DirectorySeparatorChar),
-            taskId.Trim());
+            taskPathSegment);
 
         if (Directory.Exists(taskStagingRoot))
         {
@@ -89,7 +95,7 @@ public static class StagingWriter
             }
             catch (IOException)
             {
-                // Best effort — directory may be locked by an external tool.
+                // Best effort â€” directory may be locked by an external tool.
             }
             catch (UnauthorizedAccessException)
             {
@@ -100,7 +106,7 @@ public static class StagingWriter
 
     /// <summary>
     /// Called when a task is abandoned (QC REJECT, Worker refused, LLM
-    /// unavailable on fresh cycle). The staged tree is NOT discarded —
+    /// unavailable on fresh cycle). The staged tree is NOT discarded â€”
     /// users may want to inspect what the Worker actually produced before
     /// QC killed it. Instead we move the task's staging root into
     /// <c>.zavod.local/staging/_abandoned/&lt;taskId&gt;-&lt;utc&gt;/</c> so the
@@ -109,7 +115,7 @@ public static class StagingWriter
     /// </summary>
     public static string? Quarantine(string projectRoot, string taskId)
     {
-        if (string.IsNullOrWhiteSpace(projectRoot) || string.IsNullOrWhiteSpace(taskId))
+        if (string.IsNullOrWhiteSpace(projectRoot) || !StagingTaskIdPathSegment.TryNormalize(taskId, out var taskPathSegment))
         {
             return null;
         }
@@ -118,7 +124,7 @@ public static class StagingWriter
         var taskStagingRoot = Path.Combine(
             normalizedRoot,
             StagingSubpath.Replace('/', Path.DirectorySeparatorChar),
-            taskId.Trim());
+            taskPathSegment);
 
         if (!Directory.Exists(taskStagingRoot))
         {
@@ -143,7 +149,7 @@ public static class StagingWriter
         }
 
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmssfffZ");
-        var quarantinedPath = Path.Combine(abandonedRoot, $"{taskId.Trim()}-{timestamp}");
+        var quarantinedPath = Path.Combine(abandonedRoot, $"{taskPathSegment}-{timestamp}");
 
         try
         {
@@ -187,7 +193,7 @@ public static class StagingWriter
         }
 
         var projectAbsolute = Path.GetFullPath(Path.Combine(projectRoot, normalizedRelative));
-        if (!projectAbsolute.StartsWith(projectRoot, StringComparison.OrdinalIgnoreCase))
+        if (!IsInsideDirectory(projectAbsolute, projectRoot))
         {
             return Skip(edit, "path escapes project root");
         }
@@ -294,17 +300,46 @@ public static class StagingWriter
     private static void PersistManifest(string stagingRoot, StagingManifest manifest)
     {
         var manifestPath = Path.Combine(stagingRoot, "manifest.json");
+        var tempPath = manifestPath + ".tmp";
         try
         {
             var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions
             {
                 WriteIndented = true
             });
-            File.WriteAllText(manifestPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.WriteAllText(tempPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            if (File.Exists(manifestPath))
+            {
+                File.Replace(tempPath, manifestPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            }
+            else
+            {
+                File.Move(tempPath, manifestPath);
+            }
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // Best effort — manifest is telemetry, not load-bearing for apply.
+            throw new InvalidOperationException("Staging manifest is load-bearing and must be written before apply.", ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new InvalidOperationException("Staging manifest is load-bearing and must be written before apply.", ex);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 
@@ -313,5 +348,13 @@ public static class StagingWriter
         var bytes = Encoding.UTF8.GetBytes(content);
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static bool IsInsideDirectory(string candidatePath, string rootPath)
+    {
+        var normalizedRoot = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var normalizedCandidate = Path.GetFullPath(candidatePath);
+        return normalizedCandidate.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
     }
 }

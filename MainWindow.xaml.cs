@@ -61,7 +61,8 @@ namespace zavod
         // ProjectsWebSnapshotBuilder output. Step 3b wires navigation intents
         // (select_project, navigate_screen) so screens flip on click; no core
         // mutations and no real project payloads yet.
-        private const bool UseProjectsWebRenderer = true;
+        private static readonly bool UseChatsWebRenderer = true;
+        private static readonly bool UseProjectsWebRenderer = true;
         private bool _projectsWebInitialSnapshotPushed;
         private readonly ProjectsWebSnapshotBuilder _projectsWebSnapshotBuilder;
         private readonly string? _verificationCaptureMode;
@@ -126,6 +127,9 @@ namespace zavod
 
             ChatsWebRendererView.IntentReceived += ChatsWebRendererView_IntentReceived;
             ChatsWebRendererView.FirstFrameReady += ChatsWebRendererView_FirstFrameReady;
+            ChatsHostView.ComposerSendClicked += ChatsComposerSendButton_Click;
+            ChatsHostView.NewChatClicked += ChatsNewChatButton_Click;
+            ChatsHostView.ChatRowClicked += ChatsHostView_ChatRowClicked;
             ProjectsWebRendererView.IntentReceived += ProjectsWebRendererView_IntentReceived;
             ProjectsHostView.WorkCycleView.ConversationRenderer.IntentReceived += ProjectsConversationRenderer_IntentReceived;
 
@@ -520,16 +524,46 @@ namespace zavod
 
             _shellPassWebRefreshRequested = true;
             await _chatsController.EnsureInitializedAsync();
-            await ChatsWebRendererView.PreloadAsync();
+            if (UseChatsWebRenderer)
+            {
+                await ChatsWebRendererView.PreloadAsync();
+            }
             await ApplyShellPassChatsSnapshotAsync();
-            ChatsWebRendererView.Visibility = Visibility.Visible;
+            ChatsWebRendererView.Visibility = UseChatsWebRenderer ? Visibility.Visible : Visibility.Collapsed;
+            ChatsHostView.Visibility = UseChatsWebRenderer ? Visibility.Collapsed : Visibility.Visible;
             ProjectsHostView.Visibility = Visibility.Collapsed;
+            ProjectsWebRendererView.Visibility = Visibility.Collapsed;
+            await TryCaptureVerificationAsync();
         }
 
         private async Task ApplyShellPassChatsSnapshotAsync()
         {
             var snapshot = _chatsController.BuildSnapshot();
-            await ChatsWebRendererView.ApplySnapshotAsync(snapshot);
+            if (UseChatsWebRenderer)
+            {
+                await ChatsWebRendererView.ApplySnapshotAsync(snapshot);
+                return;
+            }
+
+            ApplyChatsHostSnapshot(snapshot);
+            await Task.CompletedTask;
+        }
+
+        private void ApplyChatsHostSnapshot(ChatsWebStateSnapshot snapshot)
+        {
+            ChatsHostView.ConversationView.Adapter = _chatsController.ActiveAdapter;
+            ChatsHostView.SetSidebarState(
+                visible: true,
+                title: "Chats",
+                meta: string.Empty,
+                note: string.Empty,
+                width: (double)Application.Current.Resources["Ui.Layout.Chats.SidebarVisualWidth"]);
+            ChatsHostView.SetSidebarEntries(
+                snapshot.Chats.Select(chat => new ChatsSidebarEntry(chat.Id, chat.Title)).ToArray(),
+                snapshot.ActiveChatId);
+            ChatsHostView.SetEmptyState(snapshot.IsEmpty, snapshot.EmptyState.Headline, snapshot.EmptyState.Subtitle);
+            ChatsHostView.SetConversationVisible(!snapshot.IsEmpty);
+            ChatsHostView.SetComposerPlacement(!snapshot.IsEmpty);
         }
 
         private async Task ApplyProjectsConversationSnapshotAsync()
@@ -693,6 +727,10 @@ namespace zavod
 
             ApplyModeChrome();
             ApplyProjectsScreenChrome();
+            if (_selectedMode == AppMode.Projects && UseProjectsWebRenderer)
+            {
+                await EnsureProjectsWebReadyAndPushAsync();
+            }
             await TryCaptureVerificationAsync();
         }
 
@@ -991,6 +1029,20 @@ namespace zavod
             _ = SendChatsMessageAsync();
         }
 
+        private void ChatsNewChatButton_Click(object sender, RoutedEventArgs e)
+        {
+            _chatsController.CreateOrActivateDraft();
+            _ = ApplyShellPassChatsSnapshotAsync();
+        }
+
+        private async void ChatsHostView_ChatRowClicked(object? sender, string chatId)
+        {
+            if (await _chatsController.SelectChatAsync(chatId))
+            {
+                await ApplyShellPassChatsSnapshotAsync();
+            }
+        }
+
         private async Task SendChatsMessageAsync(string? shellPassText = null)
         {
             if (_selectedMode != AppMode.Chats)
@@ -998,12 +1050,17 @@ namespace zavod
                 return;
             }
 
-            var submission = await _chatsController.ConsumeComposerSubmissionAsync(shellPassText ?? string.Empty);
+            var text = shellPassText ?? ChatsHostView.ComposerTextBox.Text ?? string.Empty;
+            var submission = await _chatsController.ConsumeComposerSubmissionAsync(text);
             if (!await _chatsController.SendMessageAsync(
                     submission,
                     _shellPassEnabled ? ApplyShellPassChatsSnapshotAsync : null))
             {
                 return;
+            }
+            if (shellPassText is null)
+            {
+                ChatsHostView.ComposerTextBox.Text = string.Empty;
             }
             if (_shellPassEnabled)
             {
@@ -1079,7 +1136,8 @@ namespace zavod
                 var chats = _selectedMode == AppMode.Chats;
                 var projectsWebActive = !chats && UseProjectsWebRenderer;
 
-                ChatsWebRendererView.Visibility = chats ? Visibility.Visible : Visibility.Collapsed;
+                ChatsWebRendererView.Visibility = chats && UseChatsWebRenderer ? Visibility.Visible : Visibility.Collapsed;
+                ChatsHostView.Visibility = chats && !UseChatsWebRenderer ? Visibility.Visible : Visibility.Collapsed;
                 ProjectsHostView.Visibility = chats || projectsWebActive ? Visibility.Collapsed : Visibility.Visible;
                 ProjectsWebRendererView.Visibility = projectsWebActive ? Visibility.Visible : Visibility.Collapsed;
                 TestSurface.Visibility = Visibility.Collapsed;
@@ -1114,7 +1172,8 @@ namespace zavod
             var chatsMode = _selectedMode == AppMode.Chats;
             var projectsWebActiveFallback = !chatsMode && UseProjectsWebRenderer;
 
-            ChatsWebRendererView.Visibility = chatsMode ? Visibility.Visible : Visibility.Collapsed;
+            ChatsWebRendererView.Visibility = chatsMode && UseChatsWebRenderer ? Visibility.Visible : Visibility.Collapsed;
+            ChatsHostView.Visibility = chatsMode && !UseChatsWebRenderer ? Visibility.Visible : Visibility.Collapsed;
             ProjectsHostView.Visibility = chatsMode || projectsWebActiveFallback ? Visibility.Collapsed : Visibility.Visible;
             ProjectsWebRendererView.Visibility = projectsWebActiveFallback ? Visibility.Visible : Visibility.Collapsed;
 
@@ -1376,13 +1435,27 @@ namespace zavod
         {
             var projection = ProjectsShellProjection.Build(_projectRoot);
             if (!_projectsController.IsInitialized) await _projectsController.EnsureInitializedAsync(projection.ProjectId, projection.ProjectName);
-            PushProjectsWebSnapshot();
+            await PushProjectsWebSnapshotAsync();
         }
 
         private void PushProjectsWebSnapshot()
         {
+            _ = PushProjectsWebSnapshotAsync();
+        }
+
+        private async Task PushProjectsWebSnapshotAsync()
+        {
             var snapshot = _projectsWebSnapshotBuilder.Build();
-            _ = ProjectsWebRendererView.ApplySnapshotAsync(snapshot);
+            if (!string.IsNullOrWhiteSpace(_projectsWebSnapshotBuilder.SelectedProjectId))
+            {
+                var selected = ProjectRegistryStorage.Load().Projects
+                    .FirstOrDefault(p => string.Equals(p.Id, _projectsWebSnapshotBuilder.SelectedProjectId, StringComparison.Ordinal));
+                if (selected is not null)
+                {
+                    ProjectsWebRendererView.SetSelectedProjectFolder(selected.RootPath);
+                }
+            }
+            await ProjectsWebRendererView.ApplySnapshotAsync(snapshot);
         }
 
         // Pass 1 step 3b: navigation intents (navigate_screen, select_project).
@@ -1946,14 +2019,22 @@ namespace zavod
         {
             if (_verificationCaptureCompleted
                 || string.IsNullOrWhiteSpace(_verificationCapturePath)
-                || !string.Equals(_verificationCaptureMode, "projects-home", StringComparison.Ordinal))
+                || (!string.Equals(_verificationCaptureMode, "projects-home", StringComparison.Ordinal)
+                    && !string.Equals(_verificationCaptureMode, "chats", StringComparison.Ordinal)))
             {
                 return;
             }
 
             _verificationCaptureCompleted = true;
             await Task.Delay(250);
-            await SaveElementScreenshotAsync(WindowRoot, _verificationCapturePath);
+            if (_selectedMode == AppMode.Projects && UseProjectsWebRenderer)
+            {
+                await ProjectsWebRendererView.SavePreviewScreenshotAsync(_verificationCapturePath);
+            }
+            else
+            {
+                await SaveElementScreenshotAsync(WindowRoot, _verificationCapturePath);
+            }
             if (_verificationCaptureExit)
             {
                 Close();

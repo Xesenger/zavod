@@ -313,6 +313,11 @@ forbidden writer, `~` = conditional (see notes).
 3. **Apply cycle writes to C only if the act is project-shaping.**
    A routine Worker-result Accept produces a Layer D entry
    (task closure + journal), not a Layer C decision.
+4. **The external source scanner is not the `.zavod/` Truth
+   watcher.** Scanner / Importer ignores `.zavod/` while mapping
+   source project evidence. Truth-tier readers and writers must use
+   dedicated ProjectState / Project Truth services for `.zavod/`
+   documents, decisions, shifts, and journal records.
 
 ---
 

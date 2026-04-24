@@ -10,7 +10,14 @@ public static class WorkspaceScanner
     private sealed record ScanInventory(
         IReadOnlyList<string> RelevantFiles,
         int IgnoredNoiseFileCount,
-        IReadOnlyList<string> IgnoredNoiseRoots);
+        IReadOnlyList<string> IgnoredNoiseRoots,
+        IReadOnlyList<WorkspaceStructuralAnomaly> ScanAnomalies,
+        WorkspaceScanBudgetReport BudgetReport);
+
+    private sealed class ScanTraversalDiagnostics
+    {
+        public int SkippedSubtreeCount { get; set; }
+    }
 
     private static readonly HashSet<string> IgnoredDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -31,6 +38,11 @@ public static class WorkspaceScanner
         "dist",
         "out",
         "coverage"
+    };
+
+    private static readonly HashSet<string> NonPrimarySourceRootNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".github"
     };
 
     private static readonly HashSet<string> SourceExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -249,10 +261,10 @@ public static class WorkspaceScanner
         try
         {
             var scanRoots = ResolveScanRoots(workspaceRoot, request.IncludePaths);
-            var inventory = EnumerateRelevantFiles(workspaceRoot, scanRoots);
+            var inventory = EnumerateRelevantFiles(workspaceRoot, scanRoots, request.Budget ?? WorkspaceScanBudget.Default);
             var state = BuildState(workspaceRoot, scannedAt, inventory);
             var materialCandidates = BuildMaterialCandidates(workspaceRoot, inventory.RelevantFiles);
-            return new WorkspaceScanResult(state, inventory.RelevantFiles, materialCandidates);
+            return new WorkspaceScanResult(state, inventory.RelevantFiles, materialCandidates, inventory.BudgetReport);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -342,7 +354,7 @@ public static class WorkspaceScanner
         var nestedNonSourcePayloadRoots = FindNestedNonSourcePayloadRoots(workspaceRoot, relevantFiles);
         var nestedGitProjectRoots = FindNestedGitProjectRoots(workspaceRoot);
 
-        var anomalies = new List<WorkspaceStructuralAnomaly>();
+        var anomalies = new List<WorkspaceStructuralAnomaly>(inventory.ScanAnomalies);
         if (relevantFiles.Count == 0)
         {
             anomalies.Add(new WorkspaceStructuralAnomaly(
@@ -409,6 +421,14 @@ public static class WorkspaceScanner
                 workspaceRoot));
         }
 
+        if (inventory.BudgetReport.IsPartial)
+        {
+            anomalies.Add(new WorkspaceStructuralAnomaly(
+                "SCAN_BUDGET_PARTIAL",
+                "Scanner completed with budget-limited or skipped evidence; inspect budget report before treating absence as truth.",
+                workspaceRoot));
+        }
+
         var hasRecognizableProjectStructure = sourceFiles.Length > 0 || buildFiles.Length > 0;
         var importKind = DetermineImportKind(
             sourceFiles.Length,
@@ -418,7 +438,7 @@ public static class WorkspaceScanner
             assetFiles.Length,
             additionalMaterialFiles.Length,
             binaryFiles.Length);
-        var health = DetermineHealth(relevantFiles.Count, hasRecognizableProjectStructure);
+        var health = DetermineHealth(relevantFiles.Count, importKind, hasRecognizableProjectStructure, inventory.BudgetReport.IsPartial);
         var summary = new WorkspaceChangeSummary(
             relevantFiles.Count,
             sourceFiles.Length,
@@ -446,16 +466,30 @@ public static class WorkspaceScanner
             HasBuildFiles: buildFiles.Length > 0);
     }
 
-    private static WorkspaceHealthStatus DetermineHealth(int relevantFileCount, bool hasRecognizableProjectStructure)
+    private static WorkspaceHealthStatus DetermineHealth(
+        int relevantFileCount,
+        WorkspaceImportKind importKind,
+        bool hasRecognizableProjectStructure,
+        bool isPartialScan)
     {
+        if (isPartialScan)
+        {
+            return WorkspaceHealthStatus.ScanPending;
+        }
+
         if (relevantFileCount == 0)
         {
-            return WorkspaceHealthStatus.Healthy;
+            return WorkspaceHealthStatus.Missing;
+        }
+
+        if (importKind == WorkspaceImportKind.NonSourceImport)
+        {
+            return WorkspaceHealthStatus.MaterialOnly;
         }
 
         if (!hasRecognizableProjectStructure)
         {
-            return WorkspaceHealthStatus.Healthy;
+            return WorkspaceHealthStatus.Degraded;
         }
 
         return WorkspaceHealthStatus.Healthy;
@@ -501,7 +535,7 @@ public static class WorkspaceScanner
         var roots = includePaths
             .Where(static path => !string.IsNullOrWhiteSpace(path))
             .Select(path => Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(workspaceRoot, path)))
-            .Where(path => path.StartsWith(workspaceRoot, StringComparison.OrdinalIgnoreCase))
+            .Where(path => IsUnderRoot(workspaceRoot, path))
             .Where(Directory.Exists)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -509,21 +543,67 @@ public static class WorkspaceScanner
         return roots.Length > 0 ? roots : new[] { workspaceRoot };
     }
 
-    private static ScanInventory EnumerateRelevantFiles(string workspaceRoot, IReadOnlyList<string> scanRoots)
+    private static bool IsUnderRoot(string root, string path)
+    {
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var pathFull = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return string.Equals(pathFull, rootFull, comparison) ||
+               pathFull.StartsWith(rootFull + Path.DirectorySeparatorChar, comparison) ||
+               pathFull.StartsWith(rootFull + Path.AltDirectorySeparatorChar, comparison);
+    }
+
+    private static ScanInventory EnumerateRelevantFiles(string workspaceRoot, IReadOnlyList<string> scanRoots, WorkspaceScanBudget budget)
     {
         var relevantFiles = new List<string>();
         var ignoredNoiseRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var skips = new List<WorkspaceScanBudgetSkip>();
         var ignoredNoiseFileCount = 0;
+        var skippedLargeFileCount = 0;
+        var skippedRelevantFileCount = 0;
+        var skippedSubtreeCount = 0;
+        var visitedFileCount = 0;
+        var stoppedByVisitedBudget = false;
+        var scanAnomalies = new List<WorkspaceStructuralAnomaly>();
+        var relevantIgnoredRoots = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var root in scanRoots)
         {
-            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            var traversalDiagnostics = new ScanTraversalDiagnostics();
+            var skippedSubtreeCountBeforeRoot = skippedSubtreeCount;
+            foreach (var file in EnumerateFilesSafely(workspaceRoot, root, skips, scanAnomalies, traversalDiagnostics))
             {
+                visitedFileCount++;
+                if (visitedFileCount > budget.MaxVisitedFiles)
+                {
+                    stoppedByVisitedBudget = true;
+                    AddBudgetSkip(skips, workspaceRoot, file, "max_visited_files", $"Stopped after visiting {budget.MaxVisitedFiles} files.");
+                    break;
+                }
+
                 if (TryGetIgnoredNoiseRoot(workspaceRoot, file, out var ignoredNoiseRoot))
                 {
+                    if (ShouldTreatIgnoredRootAsRelevantWorkspaceRoot(workspaceRoot, ignoredNoiseRoot, relevantIgnoredRoots))
+                    {
+                        if (IsRelevantFile(file))
+                        {
+                            AddRelevantFile(workspaceRoot, budget, relevantFiles, skips, file, ref skippedLargeFileCount, ref skippedRelevantFileCount);
+                        }
+
+                        continue;
+                    }
+
+                    if (ShouldRecoverRelevantFileFromNoiseRoot(ignoredNoiseRoot, file))
+                    {
+                        AddRelevantFile(workspaceRoot, budget, relevantFiles, skips, file, ref skippedLargeFileCount, ref skippedRelevantFileCount);
+                        continue;
+                    }
+
                     if (IsBinaryEvidenceFile(file))
                     {
-                        relevantFiles.Add(file);
+                        AddRelevantFile(workspaceRoot, budget, relevantFiles, skips, file, ref skippedLargeFileCount, ref skippedRelevantFileCount);
                         continue;
                     }
 
@@ -534,15 +614,161 @@ public static class WorkspaceScanner
 
                 if (IsRelevantFile(file))
                 {
-                    relevantFiles.Add(file);
+                    AddRelevantFile(workspaceRoot, budget, relevantFiles, skips, file, ref skippedLargeFileCount, ref skippedRelevantFileCount);
                 }
             }
+            skippedSubtreeCount = skippedSubtreeCountBeforeRoot + traversalDiagnostics.SkippedSubtreeCount;
+
+            if (stoppedByVisitedBudget)
+            {
+                break;
+            }
         }
+
+        var isPartial = stoppedByVisitedBudget || skippedLargeFileCount > 0 || skippedRelevantFileCount > 0 || skippedSubtreeCount > 0;
+        var budgetReport = new WorkspaceScanBudgetReport(
+            budget,
+            Math.Min(visitedFileCount, budget.MaxVisitedFiles),
+            relevantFiles.Count,
+            skippedLargeFileCount,
+            skippedRelevantFileCount,
+            isPartial,
+            skips.OrderBy(static skip => skip.RelativePath, StringComparer.OrdinalIgnoreCase).Take(80).ToArray());
 
         return new ScanInventory(
             relevantFiles,
             ignoredNoiseFileCount,
-            ignoredNoiseRoots.OrderBy(static value => value, StringComparer.OrdinalIgnoreCase).ToArray());
+            ignoredNoiseRoots.OrderBy(static value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
+            scanAnomalies
+                .OrderBy(static anomaly => anomaly.Code, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(static anomaly => anomaly.Scope, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            budgetReport);
+    }
+
+    private static IEnumerable<string> EnumerateFilesSafely(
+        string workspaceRoot,
+        string scanRoot,
+        ICollection<WorkspaceScanBudgetSkip> skips,
+        ICollection<WorkspaceStructuralAnomaly> scanAnomalies,
+        ScanTraversalDiagnostics diagnostics)
+    {
+        var pending = new Stack<string>();
+        pending.Push(scanRoot);
+
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+            string[] directoryFiles;
+            string[] children;
+            try
+            {
+                directoryFiles = Directory.GetFiles(directory);
+                children = Directory.GetDirectories(directory);
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                diagnostics.SkippedSubtreeCount++;
+                AddSkippedSubtree(workspaceRoot, directory, "SUBTREE_ACCESS_DENIED", "subtree_access_denied", exception.Message, skips, scanAnomalies);
+                continue;
+            }
+            catch (IOException exception)
+            {
+                diagnostics.SkippedSubtreeCount++;
+                AddSkippedSubtree(workspaceRoot, directory, "SUBTREE_IO_FAILURE", "subtree_io_failure", exception.Message, skips, scanAnomalies);
+                continue;
+            }
+
+            foreach (var child in children.OrderByDescending(static path => path, StringComparer.OrdinalIgnoreCase))
+            {
+                pending.Push(child);
+            }
+
+            foreach (var file in directoryFiles.OrderBy(static path => path, StringComparer.OrdinalIgnoreCase))
+            {
+                yield return file;
+            }
+        }
+    }
+
+    private static void AddSkippedSubtree(
+        string workspaceRoot,
+        string directory,
+        string anomalyCode,
+        string skipReason,
+        string detail,
+        ICollection<WorkspaceScanBudgetSkip> skips,
+        ICollection<WorkspaceStructuralAnomaly> scanAnomalies)
+    {
+        var relativePath = Path.GetRelativePath(workspaceRoot, directory).Replace('/', '\\');
+        AddBudgetSkip(skips, workspaceRoot, directory, skipReason, $"Skipped inaccessible subtree '{relativePath}': {detail}");
+        scanAnomalies.Add(new WorkspaceStructuralAnomaly(
+            anomalyCode,
+            $"Skipped inaccessible subtree '{relativePath}' while continuing scan.",
+            directory));
+    }
+
+    private static void AddRelevantFile(
+        string workspaceRoot,
+        WorkspaceScanBudget budget,
+        ICollection<string> relevantFiles,
+        ICollection<WorkspaceScanBudgetSkip> skips,
+        string file,
+        ref int skippedLargeFileCount,
+        ref int skippedRelevantFileCount)
+    {
+        if (TryGetFileLength(file, out var length) && length > budget.MaxRelevantFileBytes)
+        {
+            skippedLargeFileCount++;
+            AddBudgetSkip(skips, workspaceRoot, file, "max_relevant_file_bytes", $"File size {length} bytes exceeds budget {budget.MaxRelevantFileBytes} bytes.");
+            return;
+        }
+
+        if (relevantFiles.Count >= budget.MaxRelevantFiles)
+        {
+            skippedRelevantFileCount++;
+            AddBudgetSkip(skips, workspaceRoot, file, "max_relevant_files", $"Relevant file budget {budget.MaxRelevantFiles} was exhausted.");
+            return;
+        }
+
+        relevantFiles.Add(file);
+    }
+
+    private static bool TryGetFileLength(string file, out long length)
+    {
+        try
+        {
+            length = new FileInfo(file).Length;
+            return true;
+        }
+        catch (IOException)
+        {
+            length = 0;
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            length = 0;
+            return false;
+        }
+    }
+
+    private static void AddBudgetSkip(
+        ICollection<WorkspaceScanBudgetSkip> skips,
+        string workspaceRoot,
+        string file,
+        string reason,
+        string detail)
+    {
+        if (skips.Count >= 80)
+        {
+            return;
+        }
+
+        skips.Add(new WorkspaceScanBudgetSkip(
+            Path.GetRelativePath(workspaceRoot, file).Replace('/', '\\'),
+            reason,
+            detail));
     }
 
     private static bool TryGetIgnoredNoiseRoot(string workspaceRoot, string path, out string ignoredNoiseRoot)
@@ -560,6 +786,81 @@ public static class WorkspaceScanner
 
         ignoredNoiseRoot = string.Empty;
         return false;
+    }
+
+    private static bool ShouldTreatIgnoredRootAsRelevantWorkspaceRoot(
+        string workspaceRoot,
+        string ignoredNoiseRoot,
+        IDictionary<string, bool> cache)
+    {
+        if (cache.TryGetValue(ignoredNoiseRoot, out var cached))
+        {
+            return cached;
+        }
+
+        var result = IsRelevantWorkspaceRoot(workspaceRoot, ignoredNoiseRoot);
+        cache[ignoredNoiseRoot] = result;
+        return result;
+    }
+
+    private static bool IsRelevantWorkspaceRoot(string workspaceRoot, string ignoredNoiseRoot)
+    {
+        if (!string.Equals(ignoredNoiseRoot, "bin", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var root = Path.Combine(workspaceRoot, ignoredNoiseRoot);
+        if (!Directory.Exists(root))
+        {
+            return false;
+        }
+
+        return ContainsManifest(root) ||
+               EnumerateImmediateDirectories(root).Any(ContainsManifest);
+    }
+
+    private static bool ContainsManifest(string directory)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(directory)
+                .Any(IsBuildFile);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static IEnumerable<string> EnumerateImmediateDirectories(string directory)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(directory);
+        }
+        catch (IOException)
+        {
+            return Array.Empty<string>();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static bool ShouldRecoverRelevantFileFromNoiseRoot(string ignoredNoiseRoot, string path)
+    {
+        if (!string.Equals(ignoredNoiseRoot, "bin", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return IsSourceFile(path) || IsBuildFile(path);
     }
 
     private static bool IsRelevantFile(string path)
@@ -750,16 +1051,17 @@ public static class WorkspaceScanner
             .Where(IsLikelyBuildDerivedRoot)
             .ToArray();
 
-        if (buildDerivedRoots.Length == 0)
-        {
-            return rawSourceRoots;
-        }
-
         var filtered = rawSourceRoots
             .Where(root => !buildDerivedRoots.Contains(root, StringComparer.OrdinalIgnoreCase))
+            .Where(static root => !IsNonPrimarySourceRoot(root))
             .ToArray();
 
         return filtered.Length == 0 ? rawSourceRoots : filtered;
+    }
+
+    private static bool IsNonPrimarySourceRoot(string root)
+    {
+        return NonPrimarySourceRootNames.Contains(root);
     }
 
     private static bool IsLikelyBuildDerivedRoot(string root)
