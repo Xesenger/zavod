@@ -9,4 +9,5 @@ public sealed record WelcomeStateInput(
     bool HasActiveShift,
     bool HasActiveTask,
     bool HasStaleSections,
-    bool HasImportFailure);
+    bool HasImportFailure,
+    bool HasThinMemoryModeConfirmed = false);

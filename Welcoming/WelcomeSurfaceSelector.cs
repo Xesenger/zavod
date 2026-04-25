@@ -31,7 +31,7 @@ public static class WelcomeSurfaceSelector
         var previewCount = CountAtLeastStage(statuses, ProjectDocumentStage.PreviewDocs);
 
         var rule = DetermineRule(input, canonicalCount, previewCount);
-        var primary = BuildPrimaryActions(rule, statuses);
+        var primary = BuildPrimaryActions(rule, statuses, input.HasThinMemoryModeConfirmed);
 
         // R6 overlay: stale sections add review_stale_sections to the set
         // (still subject to the 4-action cap; stale wins over lowest-priority entry).
@@ -131,7 +131,8 @@ public static class WelcomeSurfaceSelector
 
     private static List<WelcomeAction> BuildPrimaryActions(
         WelcomeSelectionRule rule,
-        Dictionary<ProjectDocumentKind, ProjectDocumentStage?> statuses)
+        Dictionary<ProjectDocumentKind, ProjectDocumentStage?> statuses,
+        bool hasThinMemoryModeConfirmed)
     {
         return rule switch
         {
@@ -142,12 +143,7 @@ public static class WelcomeSurfaceSelector
                 WelcomeAction.OpenRoadmap,
                 WelcomeAction.OpenDirection
             },
-            WelcomeSelectionRule.R3_Canonical_Partial => new List<WelcomeAction>
-            {
-                WelcomeAction.PromotePreviewToCanonical,
-                WelcomeAction.AuthorCanonicalDoc,
-                WelcomeAction.StartWorkCycle
-            },
+            WelcomeSelectionRule.R3_Canonical_Partial => BuildR3(hasThinMemoryModeConfirmed),
             WelcomeSelectionRule.R4_Canonical_Zero_PreviewPresent => new List<WelcomeAction>
             {
                 WelcomeAction.ReviewPreviewDocs,
@@ -162,6 +158,20 @@ public static class WelcomeSurfaceSelector
             },
             _ => throw new WelcomingException($"Unhandled WelcomeSelectionRule: {rule}.")
         };
+    }
+
+    private static List<WelcomeAction> BuildR3(bool hasThinMemoryModeConfirmed)
+    {
+        var actions = new List<WelcomeAction>
+        {
+            WelcomeAction.PromotePreviewToCanonical,
+            WelcomeAction.AuthorCanonicalDoc
+        };
+        if (hasThinMemoryModeConfirmed)
+        {
+            actions.Add(WelcomeAction.StartWorkCycle);
+        }
+        return actions;
     }
 
     // R1 defensively omits OpenRoadmap when the roadmap doc is entirely absent.

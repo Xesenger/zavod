@@ -562,6 +562,7 @@ var tests = new (string Name, Action Run)[]
     ("Welcome selector R1 offers continue when active shift", WelcomeSelectorR1OffersContinueWhenActiveShift),
     ("Welcome selector R2 offers start cycle on canonical 5 of 5", WelcomeSelectorR2OffersStartCycleOnCanonical5Of5),
     ("Welcome selector R3 offers promote and author on partial canonical", WelcomeSelectorR3OffersPromoteAndAuthorOnPartialCanonical),
+    ("Welcome selector R3 requires thin memory confirmation for start cycle", WelcomeSelectorR3RequiresThinMemoryConfirmationForStartCycle),
     ("Welcome selector R4 offers review and promote when preview only", WelcomeSelectorR4OffersReviewAndPromoteWhenPreviewOnly),
     ("Welcome selector R5 offers retry and author on empty state", WelcomeSelectorR5OffersRetryAndAuthorOnEmptyState),
     ("Welcome selector R6 overlays stale review when stale present", WelcomeSelectorR6OverlaysStaleReviewWhenStalePresent),
@@ -16475,6 +16476,42 @@ static void WelcomeSelectorR3OffersPromoteAndAuthorOnPartialCanonical()
     if (!result.Actions.Contains(WelcomeAction.AuthorCanonicalDoc))
     {
         throw new Exception("R3 must offer AuthorCanonicalDoc.");
+    }
+    if (result.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R3 must not offer StartWorkCycle until thin-memory mode is confirmed.");
+    }
+}
+
+static void WelcomeSelectorR3RequiresThinMemoryConfirmationForStartCycle()
+{
+    var selection = WelcomeSelection(
+        zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        project: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        direction: zavod.Persistence.ProjectDocumentStage.CanonicalDocs,
+        roadmap: zavod.Persistence.ProjectDocumentStage.PreviewDocs);
+
+    var unconfirmed = WelcomeSurfaceSelector.Select(new WelcomeStateInput(
+        selection,
+        HasActiveShift: false,
+        HasActiveTask: false,
+        HasStaleSections: false,
+        HasImportFailure: false));
+    var confirmed = WelcomeSurfaceSelector.Select(new WelcomeStateInput(
+        selection,
+        HasActiveShift: false,
+        HasActiveTask: false,
+        HasStaleSections: false,
+        HasImportFailure: false,
+        HasThinMemoryModeConfirmed: true));
+
+    if (unconfirmed.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R3 without thin-memory confirmation must not offer StartWorkCycle.");
+    }
+    if (!confirmed.Actions.Contains(WelcomeAction.StartWorkCycle))
+    {
+        throw new Exception("R3 with thin-memory confirmation must offer StartWorkCycle.");
     }
 }
 
