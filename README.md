@@ -150,10 +150,12 @@ limits.
 
 * Scanner v2 MVP evidence cartographer: structural inventory, manifests, symbols, edges, entrypoints, project units, run profiles, topology, budgets, uncertainty, and cold scan summaries
 * Importer alignment with scanner topology for MaterialOnly, Container / MultipleIndependentProjects, MixedSourceRelease, Decompilation, Legacy, Ambiguous, and ReleaseBundle modes
-* Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs, with 5/5 preview generation for Project / Direction / Roadmap / Canon / Capsule
+* Scanner v2 evidence artifacts: files, manifests, symbols, edges, entrypoints, modules, project_units, runprofiles, budget, uncertainty, topology, and summary
+* Scanner confidence discipline: Confirmed requires direct evidence; preview docs are not canonical truth
+* Document pipeline: ImportPreview → PreviewDocs → CanonicalDocs. Preview generation works for Project / Direction / Roadmap / Canon / Capsule; canonical promotion remains the next product capability to re-verify after Scanner v2.
 * Projects Home truth-doc status block for the five canonical document kinds
-* Per-document preview promotion into canonical docs, with Layer C decision records and Layer D journal events
-* Per-document preview rejection, with Layer D journal attribution
+* Per-document preview promotion primitives, with Layer C decision records and Layer D journal events
+* Per-document preview rejection primitives, with Layer D journal attribution
 * Role system: Lead, Worker, QC — all live via typed LLM contracts
 * End-to-end execution cycle: intent → Lead framing → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT) → SHA256 drift-blocking staged apply on user Accept
 * Revision loop carries forward structured feedback: prior QC rationale, user revision intake, staging skip reasons
@@ -169,14 +171,18 @@ limits.
 * No in-UI Sage surface yet; observations live in `.zavod.local/sage/observations.jsonl` for manual inspection
 * Pattern memory, deterministic Sage rules, and middle-truth correlation layer are deferred until real use justifies them
 * Scanner v2 is an MVP review candidate, not a production-grade full architecture map
+* Scanner v2 is not a full AST or semantic architecture map
 * Ambiguous layouts can still expose wording gaps, especially around "main entry" versus candidate entry surfaces
 * Decompilation and legacy repositories can still produce broad active-root candidates that need review
 * Canonical promotion has not yet been re-verified end-to-end after the Scanner v2 topology/importer alignment work
+* Scanner changes were verified through backend/build/probe/import checks, not UI visual verification
 
 ### Important note
 
 * Some architectural ideas have already evolved
 * Parts of the system exist as design, not full implementation
+* `.zavod/` is project truth: canonical docs, decisions, journal, and durable project state
+* `.zavod.local/` is local runtime state: lab telemetry, Sage observations, staging, and other ephemeral diagnostics
 * Local API credentials are machine-local, not repository truth. OpenRouter local config is read from `Documents/ZAVOD/openrouter.local.json` by default, or from `OPENROUTER_CONFIG_FILE`; secret files must not live in the source tree or clean exports.
 * Sage is designed to observe, not adjudicate — role boundaries (Sage observes, QC adjudicates) are enforced by construction
 

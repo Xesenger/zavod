@@ -1,8 +1,12 @@
 # Scanner v2 - Evidence Cartographer (v1)
 
-Status: **planning**
+Status: **frozen MVP contract**
 Created: 2026-04-24
+Frozen: 2026-04-25
 Scope: scanner / import evidence / project cartography / task scoping
+
+This document is preserved as the Scanner v2 MVP design contract. Active
+follow-up work now lives in `docs/plans/scanner-v2-followup-v1.md`.
 
 ---
 

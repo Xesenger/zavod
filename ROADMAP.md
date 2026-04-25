@@ -183,16 +183,18 @@ Goal:
 
 Strengthen the scanner from a file inventory tool into an evidence-based project cartographer.
 
-Planning reference: `docs/plans/scanner-v2-evidence-cartographer-v1.md`.
+Frozen MVP reference: `docs/_legacy/plans/scanner-v2-evidence-cartographer-v1.md`.
+Active follow-up: `docs/plans/scanner-v2-followup-v1.md`.
 
 MVP review candidate implemented:
 
 - Structural Project Index with files, manifests, symbols, edges, entrypoints, module candidates, project units, run profiles, uncertainty, budget status, topology, and human summary projections
+- evidence artifacts for files, manifests, symbols, edges, entrypoints, modules, project_units, runprofiles, budget, uncertainty, topology, and summary
 - deterministic entry point ranking from manifest/code evidence
 - topology modes for SingleProject, Container / MultipleIndependentProjects, MaterialOnly, MixedSourceRelease, Decompilation, Legacy, Ambiguous, and ReleaseBundle
 - safe import mode wording carried from scanner topology into preview docs
 - importer alignment that suppresses single-project identity for container, material-only, decompilation, legacy, mixed, and ambiguous layouts
-- confidence and wording discipline: scanner evidence remains distinct from Importer interpretation
+- confidence and wording discipline: Confirmed requires direct evidence, scanner evidence remains distinct from Importer interpretation, and preview docs are not canonical truth
 
 Still planned:
 
@@ -461,7 +463,7 @@ It is a factual snapshot, not a claim of completeness.
 | Area | Status | Notes |
 |------|--------|------|
 | Scanner / Import / Evidence | Functional (Scanner v2 MVP review candidate) | Scanner v2 maps external evidence through structural indexes, topology modes, run profiles, uncertainty, budget status, and safe import mode; Importer now preserves nonstandard topology boundaries. It is still not the `.zavod/` Truth watcher and not a production-grade full architecture map |
-| Preview → Canonical pipeline | Partial | 5/5 preview generation exists for Project / Direction / Roadmap / Canon / Capsule; per-kind promote and reject are wired with Layer C/D attribution; edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still upcoming |
+| Preview → Canonical pipeline | Partial | Preview generation works for Project / Direction / Roadmap / Canon / Capsule; canonical promotion remains the next product capability to re-verify after Scanner v2. Per-kind promote/reject primitives exist with Layer C/D attribution, but edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still upcoming |
 | Runtime / Tool Layer | Functional | Unified execution layer with governance and routing |
 | Role System (Lead / Worker / QC) | Functional | All three roles LLM-backed via OpenRouter with typed input/output contracts; QC decision is authoritative and drives phase + runtime transits (ACCEPT → Result/Ready, REVISE → Execution/Revision, REJECT → task abandoned); revision feedback loop passes prior QC rationale and user intake back to Worker |
 | Acceptance / Apply Boundary | Functional | SHA256 drift-blocking staged apply from staging sandbox to project on user Accept; quarantine on abandon preserves forensics under `.zavod.local/staging/_abandoned/<taskId>-<utc>/` |
@@ -517,14 +519,16 @@ It is a factual snapshot, not a claim of completeness.
 ### Summary
 
 - Core architectural layers are in place and interacting
+- `.zavod/` is project truth; `.zavod.local/` is ephemeral runtime, lab, Sage, staging, and diagnostic state
+- Preview generation works; canonical promotion remains the next product capability to re-verify after Scanner v2
 - Chats mode and Projects mode both run on the web renderer
 - Full end-to-end execution cycle is live: user intent → Lead validation → Preflight → Worker with real typed edits → sandbox staging → QC adjudication (ACCEPT / REVISE / REJECT drives phase transits) → drift-blocking staged apply on user Accept → commit recorded
-- Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, atomic copy to project on Accept, quarantine on abandon
+- Worker produces real execution artefacts (not plans): typed `edits` with `write_full` / `insert_after` operations, anchor-uniqueness guard, sandboxed staging under `.zavod.local/staging/`, hash-guarded staged apply to project on Accept, quarantine on abandon
 - Advisory layer runs in two coexisting modes: S0 (keyword-scored) still informs Lead/Worker framing; S1–S5a typed Sage pipeline emits `SageObservation` records (semantic_gap, attention_miss) into sage_only JSONL with zero prompt pollution. Field-verified on real tasks: `attention_miss` caught a missing-file reference ~1ms before Worker LLM dispatch, independently corroborated by Worker's own rationale
 - Pattern memory (`pattern_repeat`), middle-truth correlation layer, deterministic S3 rules, in-UI Sage surface, and richer "system doubt" memory are deferred until real use reveals the concrete pain that justifies them (grokking north star: observations should decrease over time, not proliferate)
 - Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
 - External changes detected via scan/baseline/acceptance; realtime file watching and scanner-driven stale invalidation are not implemented
-- Scanner v2 MVP is verified on weird import targets for preview honesty, but known limitations remain: ambiguous main entry wording, broad active roots in decompilation/legacy layouts, and canonical promotion not yet re-verified after the topology alignment pass
+- Scanner v2 MVP is verified on weird import targets for preview honesty, but known limitations remain: ambiguous main entry wording, broad active roots in decompilation/legacy layouts, no full AST/semantic architecture map, no canonical promotion verification yet, and no UI visual verification for scanner changes
 
 ZAVOD at this stage can be described as:
 
