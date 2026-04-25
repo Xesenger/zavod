@@ -38,12 +38,17 @@ in isolation:
 - Lead prompt assembly receives Work Packet truth-status fields
   (`canonical_docs_status`, `preview_status`, missing truth warnings, and
   first-cycle marker) through `LeadAgentInput`
+- Worker prompt assembly receives the same Work Packet truth-status fields
+  through `WorkerAgentInput`
 
 Remaining debt is now narrower:
 
 - first-cycle prompt assembly is not proven through the unified
   `PromptRequestPipeline`
 - Lead role production execution still uses `LeadAgentRuntime` directly
+  rather than the unified prompt pipeline, though its prompt now carries
+  Work Packet truth-status
+- Worker role production execution still uses `WorkerAgentRuntime` directly
   rather than the unified prompt pipeline, though its prompt now carries
   Work Packet truth-status
 - some Welcome actions are projected but not fully wired as product flows
@@ -86,8 +91,8 @@ model-facing runtime wiring is still incomplete:
   `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs`
 - Lead role currently bypasses `PromptRequestPipeline` entirely
   (direct OpenRouter call, per `docs/_legacy/projects-web-migration/07-pass1-handoff.md`)
-- Lead model-facing prompt now receives Work Packet truth-status, but no
-  production call site is proven to assemble a full Work Packet through
+- Lead and Worker model-facing prompts now receive Work Packet truth-status,
+  but no production call site is proven to assemble a full Work Packet through
   `PromptRequestPipeline`
 
 **Required:**
@@ -101,8 +106,9 @@ model-facing runtime wiring is still incomplete:
 **Canon reference:** `project_work_packet_v1.md` — "Work Packet is
 the only authorized channel from project memory to the model"
 
-**Status:** PARTIAL — project-home projection is wired; Lead prompt carries
-Work Packet truth-status; unified `PromptRequestPipeline` wiring remains open
+**Status:** PARTIAL — project-home projection is wired; Lead and Worker
+prompts carry Work Packet truth-status; unified `PromptRequestPipeline` wiring
+remains open
 **Risk tier when picked up:** HIGH (touching protocol contracts and
   existing Lead bypass, multi-file change)
 
@@ -215,7 +221,9 @@ plan for any section that becomes newly feasible.
 - 2026-04-25 — Partially resolved model-facing Work Packet visibility
   (§2): `LeadAgentInput` now carries canonical docs status, preview status,
   missing truth warnings, and first-cycle marker into the Lead prompt.
-  Remaining debt is still the unified `PromptRequestPipeline` path for
+- 2026-04-25 — Extended model-facing Work Packet visibility (§2):
+  `WorkerAgentInput` now carries the same truth-status fields into the Worker
+  prompt. Remaining debt is still the unified `PromptRequestPipeline` path for
   Lead/Worker/QC.
 
 ## Maintenance Rule

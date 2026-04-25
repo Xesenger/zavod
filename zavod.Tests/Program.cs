@@ -573,6 +573,7 @@ var tests = new (string Name, Action Run)[]
     ("Work Packet input carries first-cycle flag and preview status", WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus),
     ("Work Packet metadata defaults are null or false", WorkPacketMetadataDefaultsAreNullOrFalse),
     ("Lead agent prompt carries work packet status honestly", LeadAgentPromptCarriesWorkPacketStatusHonestly),
+    ("Worker agent prompt carries work packet status honestly", WorkerAgentPromptCarriesWorkPacketStatusHonestly),
     ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly),
     ("Work Packet builder maps selection to canonical status honestly", WorkPacketBuilderMapsSelectionToCanonicalStatusHonestly),
     ("Work Packet builder returns null preview status when 5 of 5 canonical", WorkPacketBuilderReturnsNullPreviewStatusWhen5Of5Canonical),
@@ -16784,6 +16785,56 @@ static void LeadAgentPromptCarriesWorkPacketStatusHonestly()
     AssertContains(prompt, "- at_least_preview_count: 3/5", "Lead prompt must expose at-least-preview count.");
     AssertContains(prompt, "- preview_docs: Direction", "Lead prompt must list preview doc kinds.");
     AssertContains(prompt, "roadmap.md absent: do not invent content for this kind.", "Lead prompt must carry missing truth warnings.");
+}
+
+static void WorkerAgentPromptCarriesWorkPacketStatusHonestly()
+{
+    var status = new CanonicalDocsStatus(
+        DocumentCanonicalState.Canonical,
+        DocumentCanonicalState.Preview,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Canonical);
+    var preview = new PreviewStatus(new[]
+    {
+        zavod.Persistence.ProjectDocumentKind.Direction
+    });
+    var client = new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+        true,
+        """
+        {"status":"failed","summary":"No edits for test.","plan":[],"actions":[],"modifications":[],"edits":[],"blockers":[],"risks":[],"warnings":[]}
+        """,
+        "openrouter/test",
+        200,
+        null,
+        "ok"));
+    var runtime = new WorkerAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new WorkerAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        TaskId: "TASK-001",
+        TaskDescription: "Check first task",
+        Scope: new[] { "src" },
+        AcceptanceCriteria: new[] { "Stay bounded." },
+        AdvisoryNotes: Array.Empty<string>(),
+        Anchors: Array.Empty<string>(),
+        RevisionNotes: null,
+        CanonicalDocsStatus: status,
+        PreviewStatus: preview,
+        MissingTruthWarnings: new[] { "canon.md absent: do not invent content for this kind." },
+        IsFirstCycle: true));
+
+    AssertTrue(result.Success, "Fake Worker response should parse successfully.");
+    var prompt = client.LastRequest?.UserPrompt ?? string.Empty;
+    AssertContains(prompt, "WORK PACKET (project truth status; preview is below canonical)", "Worker prompt must include model-facing Work Packet truth status.");
+    AssertContains(prompt, "- first_cycle: true", "Worker prompt must expose first-cycle status.");
+    AssertContains(prompt, "project=Canonical; direction=Preview; roadmap=Absent; canon=Absent; capsule=Canonical", "Worker prompt must preserve canonical doc status per kind.");
+    AssertContains(prompt, "- canonical_docs_count: 2/5", "Worker prompt must expose canonical count.");
+    AssertContains(prompt, "- at_least_preview_count: 3/5", "Worker prompt must expose at-least-preview count.");
+    AssertContains(prompt, "- preview_docs: Direction", "Worker prompt must list preview doc kinds.");
+    AssertContains(prompt, "canon.md absent: do not invent content for this kind.", "Worker prompt must carry missing truth warnings.");
 }
 
 static zavod.Persistence.ProjectDocumentSourceSelection BuildSelectionForBuilder(

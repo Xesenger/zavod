@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using zavod.Execution;
+using zavod.Orchestration;
 using zavod.Prompting;
 
 namespace zavod.Worker;
@@ -20,7 +21,11 @@ public sealed record WorkerAgentInput(
     IReadOnlyList<string> AcceptanceCriteria,
     IReadOnlyList<string> AdvisoryNotes,
     IReadOnlyList<string>? Anchors = null,
-    IReadOnlyList<string>? RevisionNotes = null);
+    IReadOnlyList<string>? RevisionNotes = null,
+    CanonicalDocsStatus? CanonicalDocsStatus = null,
+    PreviewStatus? PreviewStatus = null,
+    IReadOnlyList<string>? MissingTruthWarnings = null,
+    bool IsFirstCycle = false);
 
 public sealed record WorkerAgentModification(
     string Path,
@@ -185,6 +190,8 @@ public sealed class WorkerAgentRuntime
         AppendList(builder, input.AcceptanceCriteria);
         builder.AppendLine();
 
+        AppendWorkPacketBlock(builder, input);
+
         if (input.Anchors is { Count: > 0 })
         {
             builder.AppendLine("CODE ANCHORS (grounded file tree — use these paths as the basis for your plan)");
@@ -264,6 +271,53 @@ public sealed class WorkerAgentRuntime
         builder.AppendLine("- Each edit's content is written verbatim. No markdown fences, no \"...\" placeholders, no commentary.");
         builder.AppendLine("- If you cannot produce concrete edit content for a path, drop it from modifications and list the reason in blockers — do not pretend a plan equals a deliverable.");
         return builder.ToString();
+    }
+
+    private static void AppendWorkPacketBlock(StringBuilder builder, WorkerAgentInput input)
+    {
+        if (input.CanonicalDocsStatus is null
+            && input.PreviewStatus is null
+            && input.MissingTruthWarnings is null
+            && !input.IsFirstCycle)
+        {
+            return;
+        }
+
+        builder.AppendLine("WORK PACKET (project truth status; preview is below canonical)");
+        builder.AppendLine($"- first_cycle: {input.IsFirstCycle.ToString().ToLowerInvariant()}");
+
+        if (input.CanonicalDocsStatus is not null)
+        {
+            var status = input.CanonicalDocsStatus;
+            builder.AppendLine($"- canonical_docs_status: project={status.Project}; direction={status.Direction}; roadmap={status.Roadmap}; canon={status.Canon}; capsule={status.Capsule}");
+            builder.AppendLine($"- canonical_docs_count: {status.CanonicalCount}/5");
+            builder.AppendLine($"- at_least_preview_count: {status.AtLeastPreviewCount}/5");
+        }
+
+        if (input.PreviewStatus is { PreviewKinds.Count: > 0 } preview)
+        {
+            builder.AppendLine($"- preview_docs: {string.Join(", ", preview.PreviewKinds)}");
+        }
+        else
+        {
+            builder.AppendLine("- preview_docs: none");
+        }
+
+        if (input.MissingTruthWarnings is { Count: > 0 })
+        {
+            builder.AppendLine("- missing_truth_warnings:");
+            foreach (var warning in input.MissingTruthWarnings)
+            {
+                if (string.IsNullOrWhiteSpace(warning))
+                {
+                    continue;
+                }
+
+                builder.AppendLine($"  - {warning.Trim()}");
+            }
+        }
+
+        builder.AppendLine();
     }
 
     private static void AppendList(StringBuilder builder, IReadOnlyList<string>? items)

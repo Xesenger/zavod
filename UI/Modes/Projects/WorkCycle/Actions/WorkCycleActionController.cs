@@ -435,6 +435,7 @@ internal sealed class WorkCycleActionController
             }
         }
 
+        var workerCanonicalDocsStatus = WorkPacketBuilder.BuildCanonicalDocsStatus(queryState.DocumentSelection);
         var workerInput = new WorkerAgentInput(
             ProjectName: queryState.ProjectName,
             ProjectRoot: queryState.ProjectRoot,
@@ -445,7 +446,11 @@ internal sealed class WorkCycleActionController
             AcceptanceCriteria: executionContext.TaskState.AcceptanceCriteria,
             AdvisoryNotes: workerAdvisory.HasNotes ? workerAdvisory.Notes : Array.Empty<string>(),
             Anchors: anchorPack,
-            RevisionNotes: revisionNotes);
+            RevisionNotes: revisionNotes,
+            CanonicalDocsStatus: workerCanonicalDocsStatus,
+            PreviewStatus: WorkPacketBuilder.BuildPreviewStatus(queryState.DocumentSelection),
+            MissingTruthWarnings: WorkPacketBuilder.BuildMissingTruthWarnings(workerCanonicalDocsStatus),
+            IsFirstCycle: executionContext.ShiftState.Tasks.Count <= 1);
 
         _sageHooks.OnBeforeExecution(new SageBeforeExecutionContext(
             ProjectId: queryState.ProjectId,
