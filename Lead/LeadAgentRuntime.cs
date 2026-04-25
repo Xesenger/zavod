@@ -275,6 +275,11 @@ public sealed class LeadAgentRuntime
 
         builder.AppendLine("WORK PACKET (project truth status; preview is below canonical)");
         builder.AppendLine($"- first_cycle: {input.IsFirstCycle.ToString().ToLowerInvariant()}");
+        if (input.IsFirstCycle)
+        {
+            builder.AppendLine("- first_cycle_guidance: determine whether project memory is mature enough for direct execution; if memory is thin, prefer orientation, clarification, or doc-promotion guidance.");
+            builder.AppendLine("- first_cycle_guardrail: do not pretend the project is fully understood when only preview material or missing truth sections are present.");
+        }
 
         if (input.CanonicalDocsStatus is not null)
         {

@@ -38,6 +38,8 @@ in isolation:
 - Lead prompt assembly receives Work Packet truth-status fields
   (`canonical_docs_status`, `preview_status`, missing truth warnings, and
   first-cycle marker) through `LeadAgentInput`
+- Lead first-cycle prompt now includes a state-derived guidance/guardrail
+  when `IsFirstCycle=true`
 - Worker prompt assembly receives the same Work Packet truth-status fields
   through `WorkerAgentInput`
 - QC prompt assembly receives the same Work Packet truth-status fields
@@ -46,7 +48,8 @@ in isolation:
 Remaining debt is now narrower:
 
 - first-cycle prompt assembly is not proven through the unified
-  `PromptRequestPipeline`
+  `PromptRequestPipeline`, though Lead direct prompt now carries the
+  first-cycle guidance/guardrail
 - Lead role production execution still uses `LeadAgentRuntime` directly
   rather than the unified prompt pipeline, though its prompt now carries
   Work Packet truth-status
@@ -80,6 +83,9 @@ current `ShiftState`. First-cycle open
 **Canon reference:** `project_work_packet_v1.md` First-Cycle Variant
 
 **Status:** NOT IMPLEMENTED
+**Partial mitigation:** Lead direct prompt now carries a state-derived
+first-cycle guidance/guardrail when `IsFirstCycle=true`; this does not close
+the unified pipeline gap.
 **Risk tier when picked up:** HIGH (touching protocol contracts)
 
 ---
@@ -234,6 +240,10 @@ plan for any section that becomes newly feasible.
   `QcAgentInput` now carries the same truth-status fields into the QC prompt.
   Remaining debt is still the unified `PromptRequestPipeline` path for
   Lead/Worker/QC.
+- 2026-04-25 — Partially mitigated First-Cycle Path (§1): Lead direct prompt
+  now receives state-derived first-cycle guidance/guardrail when
+  `IsFirstCycle=true`. Remaining debt is still the unified
+  `PromptRequestPipeline` first-cycle mode.
 
 ## Maintenance Rule
 

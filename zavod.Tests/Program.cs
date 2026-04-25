@@ -16781,6 +16781,8 @@ static void LeadAgentPromptCarriesWorkPacketStatusHonestly()
     var prompt = client.LastRequest?.UserPrompt ?? string.Empty;
     AssertContains(prompt, "WORK PACKET (project truth status; preview is below canonical)", "Lead prompt must include model-facing Work Packet truth status.");
     AssertContains(prompt, "- first_cycle: true", "Lead prompt must expose first-cycle status.");
+    AssertContains(prompt, "first_cycle_guidance: determine whether project memory is mature enough for direct execution", "Lead prompt must include first-cycle guidance.");
+    AssertContains(prompt, "first_cycle_guardrail: do not pretend the project is fully understood", "Lead prompt must include first-cycle honesty guardrail.");
     AssertContains(prompt, "project=Canonical; direction=Preview; roadmap=Absent; canon=Absent; capsule=Canonical", "Lead prompt must preserve canonical doc status per kind.");
     AssertContains(prompt, "- canonical_docs_count: 2/5", "Lead prompt must expose canonical count.");
     AssertContains(prompt, "- at_least_preview_count: 3/5", "Lead prompt must expose at-least-preview count.");
