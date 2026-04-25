@@ -8,6 +8,7 @@ using zavod.Contexting;
 using zavod.Execution;
 using zavod.Flow;
 using zavod.Lead;
+using zavod.Orchestration;
 using zavod.Qc;
 using zavod.Worker;
 using zavod.Tooling;
@@ -214,6 +215,7 @@ internal sealed class WorkCycleActionController
         var leadAdvisory = _sage.BuildLeadAdvisory(context.QueryState.ProjectRoot, context.QueryState.ProjectId, executionInput.PromptText);
         var recentTurns = BuildLeadRecentTurns(ProjectsAdapter);
         var isOrientationRequest = OrientationIntentDetector.IsOrientationRequest(normalizedText);
+        var leadCanonicalDocsStatus = WorkPacketBuilder.BuildCanonicalDocsStatus(context.QueryState.DocumentSelection);
         var leadAgentInput = new LeadAgentInput(
             ProjectName: context.QueryState.ProjectName,
             ProjectRoot: context.QueryState.ProjectRoot,
@@ -224,7 +226,11 @@ internal sealed class WorkCycleActionController
             AdvisoryNotes: leadAdvisory.HasNotes ? leadAdvisory.Notes : Array.Empty<string>(),
             RecentTurns: recentTurns,
             IsOrientationRequest: isOrientationRequest,
-            ProjectStackSummary: BuildProjectStackSummary(context.QueryState.ProjectRoot));
+            ProjectStackSummary: BuildProjectStackSummary(context.QueryState.ProjectRoot),
+            CanonicalDocsStatus: leadCanonicalDocsStatus,
+            PreviewStatus: WorkPacketBuilder.BuildPreviewStatus(context.QueryState.DocumentSelection),
+            MissingTruthWarnings: WorkPacketBuilder.BuildMissingTruthWarnings(leadCanonicalDocsStatus),
+            IsFirstCycle: !context.QueryState.HasActiveShift);
         var leadAgentResult = await Task.Run(() => _leadAgentRuntime.Run(leadAgentInput));
 
         string leadMessageContent;

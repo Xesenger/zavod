@@ -35,13 +35,17 @@ in isolation:
 - Projects web snapshot calls `WorkPacketBuilder` and
   `WelcomeSurfaceSelector` to render project-home next actions and missing
   truth warnings
+- Lead prompt assembly receives Work Packet truth-status fields
+  (`canonical_docs_status`, `preview_status`, missing truth warnings, and
+  first-cycle marker) through `LeadAgentInput`
 
 Remaining debt is now narrower:
 
 - first-cycle prompt assembly is not proven through the unified
   `PromptRequestPipeline`
 - Lead role production execution still uses `LeadAgentRuntime` directly
-  rather than the unified prompt pipeline
+  rather than the unified prompt pipeline, though its prompt now carries
+  Work Packet truth-status
 - some Welcome actions are projected but not fully wired as product flows
 
 ---
@@ -82,8 +86,9 @@ model-facing runtime wiring is still incomplete:
   `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs`
 - Lead role currently bypasses `PromptRequestPipeline` entirely
   (direct OpenRouter call, per `docs/_legacy/projects-web-migration/07-pass1-handoff.md`)
-- No model-facing production call site is proven to assemble a full Work
-  Packet through `PromptRequestPipeline`
+- Lead model-facing prompt now receives Work Packet truth-status, but no
+  production call site is proven to assemble a full Work Packet through
+  `PromptRequestPipeline`
 
 **Required:**
 
@@ -96,8 +101,8 @@ model-facing runtime wiring is still incomplete:
 **Canon reference:** `project_work_packet_v1.md` — "Work Packet is
 the only authorized channel from project memory to the model"
 
-**Status:** PARTIAL — project-home projection is wired; model-facing Work
-Packet pipeline remains open
+**Status:** PARTIAL — project-home projection is wired; Lead prompt carries
+Work Packet truth-status; unified `PromptRequestPipeline` wiring remains open
 **Risk tier when picked up:** HIGH (touching protocol contracts and
   existing Lead bypass, multi-file change)
 
@@ -207,6 +212,11 @@ plan for any section that becomes newly feasible.
   truth warnings are production-projected. Remaining debt is model-facing
   Work Packet assembly through `PromptRequestPipeline` and completion of
   projected Welcome action flows.
+- 2026-04-25 — Partially resolved model-facing Work Packet visibility
+  (§2): `LeadAgentInput` now carries canonical docs status, preview status,
+  missing truth warnings, and first-cycle marker into the Lead prompt.
+  Remaining debt is still the unified `PromptRequestPipeline` path for
+  Lead/Worker/QC.
 
 ## Maintenance Rule
 

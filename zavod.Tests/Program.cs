@@ -572,6 +572,7 @@ var tests = new (string Name, Action Run)[]
     ("Work Packet input carries canonical docs status when provided", WorkPacketInputCarriesCanonicalDocsStatusWhenProvided),
     ("Work Packet input carries first-cycle flag and preview status", WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus),
     ("Work Packet metadata defaults are null or false", WorkPacketMetadataDefaultsAreNullOrFalse),
+    ("Lead agent prompt carries work packet status honestly", LeadAgentPromptCarriesWorkPacketStatusHonestly),
     ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly),
     ("Work Packet builder maps selection to canonical status honestly", WorkPacketBuilderMapsSelectionToCanonicalStatusHonestly),
     ("Work Packet builder returns null preview status when 5 of 5 canonical", WorkPacketBuilderReturnsNullPreviewStatusWhen5Of5Canonical),
@@ -16733,6 +16734,56 @@ static void WorkPacketMetadataDefaultsAreNullOrFalse()
     {
         throw new Exception("Default metadata IsFirstCycle must be false.");
     }
+}
+
+static void LeadAgentPromptCarriesWorkPacketStatusHonestly()
+{
+    var status = new CanonicalDocsStatus(
+        DocumentCanonicalState.Canonical,
+        DocumentCanonicalState.Preview,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Canonical);
+    var preview = new PreviewStatus(new[]
+    {
+        zavod.Persistence.ProjectDocumentKind.Direction
+    });
+    var client = new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+        true,
+        """
+        {"intent_state":"refining","reply":"ok","scope_notes":"","task_brief":"","warnings":[]}
+        """,
+        "openrouter/test",
+        200,
+        null,
+        "ok"));
+    var runtime = new LeadAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new LeadAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        UserMessage: "what next?",
+        PreClassifierIntentState: "Candidate",
+        CurrentIntentSummary: string.Empty,
+        AdvisoryNotes: Array.Empty<string>(),
+        RecentTurns: Array.Empty<LeadAgentTurn>(),
+        IsOrientationRequest: false,
+        ProjectStackSummary: Array.Empty<string>(),
+        CanonicalDocsStatus: status,
+        PreviewStatus: preview,
+        MissingTruthWarnings: new[] { "roadmap.md absent: do not invent content for this kind." },
+        IsFirstCycle: true));
+
+    AssertTrue(result.Success, "Fake Lead response should parse successfully.");
+    var prompt = client.LastRequest?.UserPrompt ?? string.Empty;
+    AssertContains(prompt, "WORK PACKET (project truth status; preview is below canonical)", "Lead prompt must include model-facing Work Packet truth status.");
+    AssertContains(prompt, "- first_cycle: true", "Lead prompt must expose first-cycle status.");
+    AssertContains(prompt, "project=Canonical; direction=Preview; roadmap=Absent; canon=Absent; capsule=Canonical", "Lead prompt must preserve canonical doc status per kind.");
+    AssertContains(prompt, "- canonical_docs_count: 2/5", "Lead prompt must expose canonical count.");
+    AssertContains(prompt, "- at_least_preview_count: 3/5", "Lead prompt must expose at-least-preview count.");
+    AssertContains(prompt, "- preview_docs: Direction", "Lead prompt must list preview doc kinds.");
+    AssertContains(prompt, "roadmap.md absent: do not invent content for this kind.", "Lead prompt must carry missing truth warnings.");
 }
 
 static zavod.Persistence.ProjectDocumentSourceSelection BuildSelectionForBuilder(

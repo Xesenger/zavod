@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using zavod.Execution;
+using zavod.Orchestration;
 using zavod.Prompting;
 
 namespace zavod.Lead;
@@ -24,7 +25,11 @@ public sealed record LeadAgentInput(
     IReadOnlyList<string> AdvisoryNotes,
     IReadOnlyList<LeadAgentTurn> RecentTurns,
     bool IsOrientationRequest,
-    IReadOnlyList<string> ProjectStackSummary);
+    IReadOnlyList<string> ProjectStackSummary,
+    CanonicalDocsStatus? CanonicalDocsStatus = null,
+    PreviewStatus? PreviewStatus = null,
+    IReadOnlyList<string>? MissingTruthWarnings = null,
+    bool IsFirstCycle = false);
 
 public sealed record LeadAgentParsedReply(
     string IntentState,
@@ -184,6 +189,8 @@ public sealed class LeadAgentRuntime
             builder.AppendLine();
         }
 
+        AppendWorkPacketBlock(builder, input);
+
         builder.AppendLine("PRE-CLASSIFIER HINT");
         builder.AppendLine($"- intent_state: {Safe(input.PreClassifierIntentState)}");
         builder.AppendLine($"- current_summary: {Safe(input.CurrentIntentSummary)}");
@@ -254,6 +261,53 @@ public sealed class LeadAgentRuntime
         builder.AppendLine("When intent_state is ready_for_validation, task_brief must be a concrete imperative task summary (e.g. \"Add an FPS counter to the top-right corner of the cssDOOM browser game HUD\"), NOT the raw user reply.");
         builder.AppendLine("Stay concise. Do not promise execution. Do not invent files or APIs.");
         return builder.ToString();
+    }
+
+    private static void AppendWorkPacketBlock(StringBuilder builder, LeadAgentInput input)
+    {
+        if (input.CanonicalDocsStatus is null
+            && input.PreviewStatus is null
+            && input.MissingTruthWarnings is null
+            && !input.IsFirstCycle)
+        {
+            return;
+        }
+
+        builder.AppendLine("WORK PACKET (project truth status; preview is below canonical)");
+        builder.AppendLine($"- first_cycle: {input.IsFirstCycle.ToString().ToLowerInvariant()}");
+
+        if (input.CanonicalDocsStatus is not null)
+        {
+            var status = input.CanonicalDocsStatus;
+            builder.AppendLine($"- canonical_docs_status: project={status.Project}; direction={status.Direction}; roadmap={status.Roadmap}; canon={status.Canon}; capsule={status.Capsule}");
+            builder.AppendLine($"- canonical_docs_count: {status.CanonicalCount}/5");
+            builder.AppendLine($"- at_least_preview_count: {status.AtLeastPreviewCount}/5");
+        }
+
+        if (input.PreviewStatus is { PreviewKinds.Count: > 0 } preview)
+        {
+            builder.AppendLine($"- preview_docs: {string.Join(", ", preview.PreviewKinds)}");
+        }
+        else
+        {
+            builder.AppendLine("- preview_docs: none");
+        }
+
+        if (input.MissingTruthWarnings is { Count: > 0 })
+        {
+            builder.AppendLine("- missing_truth_warnings:");
+            foreach (var warning in input.MissingTruthWarnings)
+            {
+                if (string.IsNullOrWhiteSpace(warning))
+                {
+                    continue;
+                }
+
+                builder.AppendLine($"  - {warning.Trim()}");
+            }
+        }
+
+        builder.AppendLine();
     }
 
     private static LeadAgentParsedReply ParseReply(string raw)
