@@ -253,6 +253,11 @@ plan for any section that becomes newly feasible.
   keeps Worker first-cycle requests gated. Remaining debt moved to runtime
   call-site wiring (§2), because production Lead execution still bypasses the
   unified pipeline.
+- 2026-04-25 — Partially resolved Welcome action-flow completion (§3):
+  preview-only imports (R4: 0/5 canonical, preview present) now include a
+  wired `start_work_cycle` action alongside review/promote/audit, so imported
+  projects keep a visible path into first-cycle work without making preview
+  docs canonical.
 
 ## Maintenance Rule
 

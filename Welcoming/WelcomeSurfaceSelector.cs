@@ -147,6 +147,7 @@ public static class WelcomeSurfaceSelector
             WelcomeSelectionRule.R4_Canonical_Zero_PreviewPresent => new List<WelcomeAction>
             {
                 WelcomeAction.ReviewPreviewDocs,
+                WelcomeAction.StartWorkCycle,
                 WelcomeAction.PromotePreviewToCanonical,
                 WelcomeAction.ReviewProjectAudit
             },

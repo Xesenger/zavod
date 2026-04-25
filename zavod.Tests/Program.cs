@@ -16539,9 +16539,9 @@ static void WelcomeSelectorR4OffersReviewAndPromoteWhenPreviewOnly()
     {
         throw new Exception("R4 must offer PromotePreviewToCanonical.");
     }
-    if (result.Actions.Contains(WelcomeAction.StartWorkCycle))
+    if (!result.Actions.Contains(WelcomeAction.StartWorkCycle))
     {
-        throw new Exception("R4 must not offer StartWorkCycle as primary action on preview-only state.");
+        throw new Exception("R4 must offer StartWorkCycle so preview-only imports still have a safe path into first-cycle work.");
     }
 }
 

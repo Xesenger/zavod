@@ -178,7 +178,8 @@ preview kind), `author_canonical_doc` (per missing kind),
 
 **R4 — Canonical 0/5, preview ≥ 1 of 5**:
 Offered actions: `review_preview_docs`,
-`promote_preview_to_canonical`, `review_project_audit`
+`start_work_cycle`, `promote_preview_to_canonical`,
+`review_project_audit`
 
 **R5 — Canonical 0/5, preview 0/5 (empty / failed import)**:
 Offered actions: `import_retry`, `author_canonical_doc`,
