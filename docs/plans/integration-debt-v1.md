@@ -20,20 +20,29 @@ note; do not delete). When a new gap appears, append it.
 
 ---
 
-## Current State (as of 2026-04-22)
+## Current State (as of 2026-04-25)
 
-The following components **exist in isolation** but are **not wired
-into the runtime execution path**:
+The original Welcome Surface and Work Packet primitives no longer exist only
+in isolation:
 
-- Welcome Surface selector (pure function, 9 tests passing)
+- Welcome Surface selector (pure function, covered by tests)
 - Work Packet types: `DocumentCanonicalState`, `CanonicalDocsStatus`,
   `PreviewStatus`
 - `WorkPacketBuilder` — pure-function mapper from
   `ProjectDocumentSourceSelection` to Work Packet fields
 - `PromptRequestInput` extended with optional Work Packet fields
   (backward-compatible)
+- Projects web snapshot calls `WorkPacketBuilder` and
+  `WelcomeSurfaceSelector` to render project-home next actions and missing
+  truth warnings
 
-None of these are called from production code today.
+Remaining debt is now narrower:
+
+- first-cycle prompt assembly is not proven through the unified
+  `PromptRequestPipeline`
+- Lead role production execution still uses `LeadAgentRuntime` directly
+  rather than the unified prompt pipeline
+- some Welcome actions are projected but not fully wired as product flows
 
 ---
 
@@ -63,13 +72,18 @@ current `ShiftState`. First-cycle open
 
 ### 2. Runtime Wiring Gap
 
-**Gap:** three producers exist, zero consumers:
+**Gap:** the original zero-consumer state is partially resolved. Projects web
+snapshot now consumes `WorkPacketBuilder` and `WelcomeSurfaceSelector`, but
+model-facing runtime wiring is still incomplete:
 
-- `WorkPacketBuilder` is not called from any production site
-- `WelcomeSurfaceSelector` is not called from any production site
+- `WorkPacketBuilder` is called from
+  `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs`
+- `WelcomeSurfaceSelector` is called from
+  `UI/Modes/Projects/Bridge/ProjectsWebSnapshotBuilder.cs`
 - Lead role currently bypasses `PromptRequestPipeline` entirely
   (direct OpenRouter call, per `docs/_legacy/projects-web-migration/07-pass1-handoff.md`)
-- No call site in production assembles a real Work Packet
+- No model-facing production call site is proven to assemble a full Work
+  Packet through `PromptRequestPipeline`
 
 **Required:**
 
@@ -82,7 +96,8 @@ current `ShiftState`. First-cycle open
 **Canon reference:** `project_work_packet_v1.md` — "Work Packet is
 the only authorized channel from project memory to the model"
 
-**Status:** NOT IMPLEMENTED
+**Status:** PARTIAL — project-home projection is wired; model-facing Work
+Packet pipeline remains open
 **Risk tier when picked up:** HIGH (touching protocol contracts and
   existing Lead bypass, multi-file change)
 
@@ -90,20 +105,24 @@ the only authorized channel from project memory to the model"
 
 ### 3. UI Gap — Welcome Surface
 
-**Gap:** the first project screen is still empty chat. Welcome
-Surface is not rendered anywhere in the UI.
+**Gap:** the original empty project-home state is partially resolved.
+Projects web snapshot renders Welcome actions and missing truth warnings, but
+not every projected action is fully wired as a product flow.
 
 **Required:**
 
-- replace initial project screen with a welcome/start surface
+- keep project-home welcome/start surface wired to current project state
 - show project state (canonical_docs_status, preview_status, 2–4
   next actions from `WelcomeSurfaceSelector`)
 - honor `source_stage` marker on capsule_snapshot (preview-sourced
   capsule must render as below-canonical)
+- finish remaining action flows such as author-from-scratch and open
+  roadmap/direction actions
 
 **Canon reference:** `project_welcome_surface_v1.md`
 
-**Status:** NOT STARTED
+**Status:** PARTIAL — selector is production-consumed by Projects web snapshot;
+remaining work is action-flow completion and visual/product hardening
 **Risk tier when picked up:** HIGH (WinUI 3 + Projects-Web integration,
   user-visible surface)
 
@@ -164,6 +183,16 @@ plan for any section that becomes newly feasible.
 
 ---
 
+## 2026-04-25 Priority Update
+
+- Primary: verify Scanner v2 canonical promotion path, then continue the
+  remaining 5/5 canonical docs product capabilities.
+- Secondary: B3 first-cycle path (§1), model-facing Work Packet runtime
+  wiring (§2), and Welcome action-flow completion (§3).
+- Closed: prompt file drift (§4).
+
+---
+
 ## Resolution Log
 
 *(Entries appended as gaps close. Keep resolved items for audit.)*
@@ -172,8 +201,12 @@ plan for any section that becomes newly feasible.
   files now expose machine-readable `Role`, `Stack`, `Style`,
   `[Rules]`, `[Response Contract]`, and `[Constraints]` blocks while
   preserving their richer markdown guidance. Prompt loader tests pass.
-
----
+- 2026-04-25 — Partially resolved Runtime Wiring / Welcome Surface
+  (§2-§3): `ProjectsWebSnapshotBuilder` now calls `WorkPacketBuilder`
+  and `WelcomeSurfaceSelector`, so project-home next actions and missing
+  truth warnings are production-projected. Remaining debt is model-facing
+  Work Packet assembly through `PromptRequestPipeline` and completion of
+  projected Welcome action flows.
 
 ## Maintenance Rule
 

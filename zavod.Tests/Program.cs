@@ -204,6 +204,7 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence artifact runtime writes preview docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly),
     ("Project document runtime writes bounded container project preview honestly", ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly),
     ("Project document runtime preserves nonstandard topology in project preview honestly", ProjectDocumentRuntimePreservesNonstandardTopologyInProjectPreviewHonestly),
+    ("Project document runtime promotes nonstandard topology preview honestly", ProjectDocumentRuntimePromotesNonstandardTopologyPreviewHonestly),
     ("Project document runtime keeps project preview identity stable on reimport honestly", ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHonestly),
     ("Project document runtime writes observed canon preview honestly", ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly),
     ("Project document runtime writes candidate direction preview honestly", ProjectDocumentRuntimeWritesCandidateDirectionPreviewHonestly),
@@ -11390,6 +11391,7 @@ static void ScannerV2PlanForbidsSmokeRepoSpecializationHonestly()
     var planPath = Path.Combine(
         Directory.GetCurrentDirectory(),
         "docs",
+        "_legacy",
         "plans",
         "scanner-v2-evidence-cartographer-v1.md");
     var plan = File.ReadAllText(planPath, Encoding.UTF8);
@@ -14241,6 +14243,72 @@ static void ProjectDocumentRuntimePreservesNonstandardTopologyInProjectPreviewHo
         AssertContains(previewProjectText, "normal single-application assumptions are not confirmed", "Nonstandard topology should block normal app assumptions.");
         AssertContains(previewProjectText, "Candidate entry surface: `main.asm`", "Likely nonstandard entry should not be labeled as Main Entry.");
         AssertFalse(previewProjectText.Contains("- Current preview looks bounded enough", StringComparison.OrdinalIgnoreCase), "Nonstandard topology should not look promotion-ready by default.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimePromotesNonstandardTopologyPreviewHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\trgbasm -o main.o main.asm");
+        File.WriteAllText(Path.Combine(root, "main.asm"), "SECTION \"start\", ROM0\nnop");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Normal application summary should stay bounded.",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation("main.asm", "main", "assembly entry candidate") },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        _ = documentRuntime.WritePreviewDocs(run, root);
+        var promotion = documentRuntime.PromotePreviewDoc(root, ProjectDocumentKind.Project, "test-contributor");
+        var canonicalProjectText = File.ReadAllText(promotion.CanonicalDocumentPath);
+        var decisionText = File.ReadAllText(promotion.DecisionPath);
+        var journalText = File.ReadAllText(promotion.JournalPath);
+
+        AssertContains(canonicalProjectText, "# Project", "Promoted nonstandard project doc should use canonical heading.");
+        AssertContains(canonicalProjectText, "Confirmed canonical project base materialized from `preview_project.md`.", "Promoted nonstandard project doc should expose promotion provenance.");
+        AssertContains(canonicalProjectText, "Scanner Topology: `Legacy`", "Promoted nonstandard project doc should preserve scanner topology.");
+        AssertContains(canonicalProjectText, "Safe Import Mode: `legacy-low-level-source-review", "Promoted nonstandard project doc should preserve safe import mode.");
+        AssertContains(canonicalProjectText, "normal single-application assumptions are not confirmed", "Promoted nonstandard topology must not become a normal application claim.");
+        AssertContains(canonicalProjectText, "Candidate entry surface: `main.asm`", "Promoted likely nonstandard entry should not be relabeled as Main Entry.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "direction.md")), "Promoting project alone must not create unrelated canonical direction.md.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "roadmap.md")), "Promoting project alone must not create unrelated canonical roadmap.md.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "canon.md")), "Promoting project alone must not create unrelated canonical canon.md.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "capsule.md")), "Promoting project alone must not create unrelated canonical capsule.md.");
+        AssertContains(decisionText, "type: canonical_promotion", "Nonstandard topology promotion should write a canonical_promotion decision.");
+        AssertContains(decisionText, "# Promote project.md", "Promotion decision should identify project.md.");
+        AssertContains(decisionText, "contributor: test-contributor", "Promotion decision should preserve contributor attribution.");
+        AssertContains(decisionText, promotion.PreviewSha256, "Promotion decision should record the promoted preview hash.");
+        AssertContains(journalText, "\"event_type\":\"decision_recorded\"", "Promotion journal should record decision_recorded.");
+        AssertContains(journalText, "\"event_type\":\"canonical_promoted\"", "Promotion journal should record canonical_promoted.");
+        AssertContains(journalText, "\"kind\":\"project\"", "Promotion journal should identify the promoted project kind.");
+        AssertContains(journalText, promotion.PreviewSha256, "Promotion journal should record the promoted preview hash.");
     }
     finally
     {
