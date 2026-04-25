@@ -573,6 +573,8 @@ var tests = new (string Name, Action Run)[]
     ("Work Packet input carries canonical docs status when provided", WorkPacketInputCarriesCanonicalDocsStatusWhenProvided),
     ("Work Packet input carries first-cycle flag and preview status", WorkPacketInputCarriesFirstCycleFlagAndPreviewStatus),
     ("Work Packet metadata defaults are null or false", WorkPacketMetadataDefaultsAreNullOrFalse),
+    ("Prompt request pipeline opens first-cycle lead packet honestly", PromptRequestPipelineOpensFirstCycleLeadPacketHonestly),
+    ("Prompt request pipeline keeps first-cycle worker gated honestly", PromptRequestPipelineKeepsFirstCycleWorkerGatedHonestly),
     ("Lead agent prompt carries work packet status honestly", LeadAgentPromptCarriesWorkPacketStatusHonestly),
     ("Worker agent prompt carries work packet status honestly", WorkerAgentPromptCarriesWorkPacketStatusHonestly),
     ("QC agent prompt carries work packet status honestly", QcAgentPromptCarriesWorkPacketStatusHonestly),
@@ -16660,9 +16662,8 @@ static void WelcomeSelectorIsDeterministicForIdenticalInput()
 // ---------------------------------------------------------------------------
 // Work Packet bridge tests (project_work_packet_v1.md, B2)
 //
-// Integration tests through PromptRequestPipeline.Execute are currently
-// blocked by a pre-existing prompt file drift ('worker.system.md' does not
-// contain 'Role:'). These tests verify record-level contract only.
+// These tests cover both record-level Work Packet contract and the current
+// unified prompt pipeline boundary for first-cycle Shift Lead packets.
 // ---------------------------------------------------------------------------
 
 static void WorkPacketInputDefaultsPreservePreB2CallShape()
@@ -16773,6 +16774,90 @@ static void WorkPacketMetadataDefaultsAreNullOrFalse()
     {
         throw new Exception("Default metadata IsFirstCycle must be false.");
     }
+}
+
+static void PromptRequestPipelineOpensFirstCycleLeadPacketHonestly()
+{
+    var capsule = CreateCapsule();
+    var firstCycleTask = CreateTaskState(ContextIntentState.Candidate, TaskStateStatus.Active, PromptRole.ShiftLead)
+        with
+        {
+            TaskId = "FIRST-CYCLE",
+            Description = "Inspect project memory and choose the first bounded action.",
+            Scope = new[] { "project-root" },
+            AcceptanceCriteria = Array.Empty<string>()
+        };
+    var emptyShift = new ShiftState(
+        "SHIFT-001",
+        "Start project work safely",
+        null,
+        ShiftStateStatus.Active,
+        Array.Empty<StateTaskState>(),
+        new[] { "Project has preview docs only" },
+        Array.Empty<string>(),
+        new[] { "Do not treat preview docs as canonical truth." });
+    var status = new CanonicalDocsStatus(
+        DocumentCanonicalState.Preview,
+        DocumentCanonicalState.Preview,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Absent,
+        DocumentCanonicalState.Preview);
+    var preview = new PreviewStatus(new[]
+    {
+        ProjectDocumentKind.Project,
+        ProjectDocumentKind.Direction,
+        ProjectDocumentKind.Capsule
+    });
+
+    var result = PromptRequestPipeline.Execute(new PromptRequestInput(
+        PromptRole.ShiftLead,
+        capsule,
+        emptyShift,
+        firstCycleTask,
+        CanonicalDocsStatus: status,
+        PreviewStatus: preview,
+        MissingTruthWarnings: new[] { "roadmap.md absent: do not invent content for this kind." },
+        IsFirstCycle: true));
+
+    AssertEqual(PromptTruthMode.Anchored, result.TruthMode, "First-cycle Lead packet must still be anchored to structured project truth.");
+    AssertTrue(result.Metadata.IsFirstCycle, "First-cycle metadata must remain observable.");
+    AssertEqual("FIRST-CYCLE", result.Metadata.TaskId, "Synthetic first-cycle task id must be preserved as runtime metadata.");
+    AssertContains(result.FinalPrompt, "CurrentStep: First work cycle", "First-cycle Lead prompt must expose first-cycle shift context.");
+    AssertContains(result.FinalPrompt, "WorkPacket: first_cycle=true", "First-cycle Lead prompt must expose Work Packet first-cycle state.");
+    AssertContains(result.FinalPrompt, "FirstCycleGuardrail: do not pretend the project is fully understood", "First-cycle Lead prompt must carry the honesty guardrail.");
+    AssertContains(result.FinalPrompt, "WorkPacket: canonical_docs_count=0/5", "First-cycle Lead prompt must expose canonical doc count.");
+    AssertContains(result.FinalPrompt, "WorkPacket: at_least_preview_count=3/5", "First-cycle Lead prompt must expose at-least-preview doc count.");
+    AssertContains(result.FinalPrompt, "WorkPacketWarning: roadmap.md absent: do not invent content for this kind.", "First-cycle Lead prompt must carry missing truth warnings.");
+}
+
+static void PromptRequestPipelineKeepsFirstCycleWorkerGatedHonestly()
+{
+    var capsule = CreateCapsule();
+    var firstCycleTask = CreateTaskState(ContextIntentState.Candidate, TaskStateStatus.Active, PromptRole.Worker)
+        with
+        {
+            TaskId = "FIRST-CYCLE",
+            Description = "Inspect project memory and choose the first bounded action.",
+            Scope = new[] { "project-root" }
+        };
+    var emptyShift = new ShiftState(
+        "SHIFT-001",
+        "Start project work safely",
+        null,
+        ShiftStateStatus.Active,
+        Array.Empty<StateTaskState>(),
+        Array.Empty<string>(),
+        Array.Empty<string>(),
+        new[] { "Do not execute without a validated task." });
+
+    AssertThrows<PromptRequestPipelineException>(
+        () => PromptRequestPipeline.Execute(new PromptRequestInput(
+            PromptRole.Worker,
+            capsule,
+            emptyShift,
+            firstCycleTask,
+            IsFirstCycle: true)),
+        "First-cycle mode must not relax Worker validated-task requirements.");
 }
 
 static void LeadAgentPromptCarriesWorkPacketStatusHonestly()

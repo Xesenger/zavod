@@ -47,9 +47,9 @@ in isolation:
 
 Remaining debt is now narrower:
 
-- first-cycle prompt assembly is not proven through the unified
-  `PromptRequestPipeline`, though Lead direct prompt now carries the
-  first-cycle guidance/guardrail
+- first-cycle prompt assembly is now proven through the unified
+  `PromptRequestPipeline` for the Shift Lead first-cycle packet, but
+  production Lead execution still uses `LeadAgentRuntime` directly
 - Lead role production execution still uses `LeadAgentRuntime` directly
   rather than the unified prompt pipeline, though its prompt now carries
   Work Packet truth-status
@@ -67,10 +67,10 @@ Remaining debt is now narrower:
 
 ### 1. B3 — First-Cycle Path (Pipeline Gap)
 
-**Gap:** `PromptRequestPipeline.Execute` hard-requires
+**Gap:** `PromptRequestPipeline.Execute` previously hard-required
 `IntentState == Validated` and a `TaskState` that belongs to the
-current `ShiftState`. First-cycle open
-(`IsFirstCycle=true, task=null`) cannot pass that validation.
+current `ShiftState`. First-cycle open needs a runtime packet before
+canonical task truth exists.
 
 **Required change:**
 
@@ -82,10 +82,13 @@ current `ShiftState`. First-cycle open
 
 **Canon reference:** `project_work_packet_v1.md` First-Cycle Variant
 
-**Status:** NOT IMPLEMENTED
-**Partial mitigation:** Lead direct prompt now carries a state-derived
-first-cycle guidance/guardrail when `IsFirstCycle=true`; this does not close
-the unified pipeline gap.
+**Status:** IMPLEMENTED for unified Shift Lead prompt assembly on
+2026-04-25. The pipeline now accepts `ShiftLead + IsFirstCycle` with a
+synthetic bounded task placeholder, keeps Worker first-cycle gated, and
+emits Work Packet first-cycle state / guardrail lines into the assembled
+prompt.
+**Remaining:** production Lead execution still bypasses
+`PromptRequestPipeline`, so runtime call-site wiring is tracked under §2.
 **Risk tier when picked up:** HIGH (touching protocol contracts)
 
 ---
@@ -209,8 +212,8 @@ plan for any section that becomes newly feasible.
 
 - Primary: verify Scanner v2 canonical promotion path, then continue the
   remaining 5/5 canonical docs product capabilities.
-- Secondary: B3 first-cycle path (§1), model-facing Work Packet runtime
-  wiring (§2), and Welcome action-flow completion (§3).
+- Secondary: model-facing Work Packet runtime wiring (§2) and Welcome
+  action-flow completion (§3).
 - Closed: prompt file drift (§4).
 
 ---
@@ -244,6 +247,12 @@ plan for any section that becomes newly feasible.
   now receives state-derived first-cycle guidance/guardrail when
   `IsFirstCycle=true`. Remaining debt is still the unified
   `PromptRequestPipeline` first-cycle mode.
+- 2026-04-25 — Resolved unified First-Cycle Path (§1): `PromptRequestPipeline`
+  now accepts a Shift Lead first-cycle packet with a synthetic bounded task
+  placeholder, emits first-cycle Work Packet state and honesty guardrails, and
+  keeps Worker first-cycle requests gated. Remaining debt moved to runtime
+  call-site wiring (§2), because production Lead execution still bypasses the
+  unified pipeline.
 
 ## Maintenance Rule
 

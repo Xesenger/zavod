@@ -15,8 +15,13 @@ public static class PromptRequestPipeline
 
         ValidateInput(input);
 
-        var shiftContext = ShiftContextBuilder.Build(input.ShiftState, input.TaskState);
+        var shiftContext = IsShiftLeadFirstCycle(input)
+            ? BuildFirstCycleShiftContext(input)
+            : ShiftContextBuilder.Build(input.ShiftState, input.TaskState);
         var projectedContext = ShiftContextBuilder.ProjectForRole(shiftContext, input.Capsule, input.Role);
+        var promptShiftContext = AddWorkPacketState(
+            input,
+            PromptContextAdapter.ToPromptShiftContext(projectedContext));
         var taskBlock = BuildTaskBlock(input);
         var anchors = PromptAnchorProvider.Build(
             input.Role,
@@ -33,7 +38,7 @@ public static class PromptRequestPipeline
         var request = new PromptAssemblyRequest(
             input.Role,
             truthMode,
-            PromptContextAdapter.ToPromptShiftContext(projectedContext),
+            promptShiftContext,
             taskBlock,
             anchors,
             BuildCandidateIntent(input.TaskState),
@@ -67,6 +72,23 @@ public static class PromptRequestPipeline
 
     private static void ValidateInput(PromptRequestInput input)
     {
+        if (input.IsFirstCycle)
+        {
+            Require(input.Role == PromptRole.ShiftLead,
+                input.Role,
+                "first-cycle role",
+                "Only Shift Lead may open a first-cycle Work Packet.");
+            Require(input.ShiftState.Status == ShiftStateStatus.Active,
+                input.Role,
+                "active shift",
+                "First-cycle Work Packet requires an active shift.");
+            Require(input.TaskState.Scope.Count > 0,
+                input.Role,
+                "first-cycle scope",
+                "First-cycle Work Packet requires bounded project scope.");
+            return;
+        }
+
         Require(input.ShiftState.Tasks.Any(task => task.TaskId == input.TaskState.TaskId),
             input.Role,
             "task membership",
@@ -128,6 +150,11 @@ public static class PromptRequestPipeline
 
     private static string BuildTaskDescription(PromptRequestInput input)
     {
+        if (IsShiftLeadFirstCycle(input))
+        {
+            return $"Open first work cycle: {input.TaskState.Description}";
+        }
+
         return input.Role switch
         {
             PromptRole.Worker => $"Implement active task: {input.TaskState.Description}",
@@ -140,11 +167,24 @@ public static class PromptRequestPipeline
 
     private static CandidateIntentBlock? BuildCandidateIntent(TaskState taskState)
     {
-        return null;
+        if (taskState.IntentState == ContextIntentState.Validated)
+        {
+            return null;
+        }
+
+        return new CandidateIntentBlock(
+            taskState.Description,
+            new ScopeBlock(taskState.Scope, Array.Empty<string>()),
+            taskState.AcceptanceCriteria);
     }
 
     private static ValidatedIntentBlock? BuildValidatedIntent(TaskState taskState)
     {
+        if (taskState.IntentState != ContextIntentState.Validated)
+        {
+            return null;
+        }
+
         return new ValidatedIntentBlock(
             taskState.Description,
             new ScopeBlock(taskState.Scope, Array.Empty<string>()),
@@ -154,14 +194,98 @@ public static class PromptRequestPipeline
 
     private static string BuildIntentFact(TaskState taskState)
     {
+        if (taskState.IntentState != ContextIntentState.Validated)
+        {
+            return $"Candidate intent: {taskState.Description}";
+        }
+
         return $"Validated intent: {taskState.Description}";
     }
 
     private static PromptTruthMode DetermineTruthMode(PromptRequestInput input)
     {
+        if (IsShiftLeadFirstCycle(input))
+        {
+            return PromptTruthMode.Anchored;
+        }
+
         return input.TaskState.IntentState == ContextIntentState.Validated
             ? PromptTruthMode.Anchored
             : PromptTruthMode.Unknown;
+    }
+
+    private static bool IsShiftLeadFirstCycle(PromptRequestInput input)
+    {
+        return input.IsFirstCycle && input.Role == PromptRole.ShiftLead;
+    }
+
+    private static ShiftContext BuildFirstCycleShiftContext(PromptRequestInput input)
+    {
+        return ShiftContextBuilder.Build(new ShiftContextSourceInput(
+            input.ShiftState.ShiftId,
+            input.ShiftState.Goal,
+            "First work cycle",
+            $"{input.ShiftState.Status}/FirstCycle",
+            input.TaskState.Scope,
+            input.ShiftState.AcceptedResults,
+            input.ShiftState.Constraints,
+            input.ShiftState.OpenIssues,
+            input.TaskState.IntentState,
+            new[]
+            {
+                "shift_state",
+                "work_packet",
+                "project_truth_status"
+            },
+            new[]
+            {
+                $"TaskId: {input.TaskState.TaskId}",
+                "IsFirstCycle: true"
+            },
+            "Assess project memory honestly; if thin or preview-only, propose review, clarification, or a bounded first task."));
+    }
+
+    private static ShiftContextBlock AddWorkPacketState(PromptRequestInput input, ShiftContextBlock context)
+    {
+        if (!input.IsFirstCycle
+            && input.CanonicalDocsStatus is null
+            && input.PreviewStatus is null
+            && input.MissingTruthWarnings is null)
+        {
+            return context;
+        }
+
+        var state = context.State.ToList();
+        state.Add($"WorkPacket: first_cycle={input.IsFirstCycle.ToString().ToLowerInvariant()}");
+
+        if (input.IsFirstCycle)
+        {
+            state.Add("FirstCycleGuidance: determine whether project memory is mature enough for direct execution.");
+            state.Add("FirstCycleGuardrail: do not pretend the project is fully understood when truth is preview-only, stale, or absent.");
+        }
+
+        if (input.CanonicalDocsStatus is not null)
+        {
+            var status = input.CanonicalDocsStatus;
+            state.Add($"WorkPacket: canonical_docs_status project={status.Project}; direction={status.Direction}; roadmap={status.Roadmap}; canon={status.Canon}; capsule={status.Capsule}");
+            state.Add($"WorkPacket: canonical_docs_count={status.CanonicalCount}/5");
+            state.Add($"WorkPacket: at_least_preview_count={status.AtLeastPreviewCount}/5");
+        }
+
+        if (input.PreviewStatus is { PreviewKinds.Count: > 0 } preview)
+        {
+            state.Add($"WorkPacket: preview_docs={string.Join(", ", preview.PreviewKinds)}");
+        }
+
+        if (input.MissingTruthWarnings is { Count: > 0 })
+        {
+            foreach (var warning in input.MissingTruthWarnings.Where(static warning => !string.IsNullOrWhiteSpace(warning)))
+            {
+                state.Add($"WorkPacketWarning: {warning.Trim()}");
+            }
+        }
+
+        return context with { State = state };
     }
 
     private static void Require(bool condition, PromptRole role, string missingRequirement, string reason)

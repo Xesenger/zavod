@@ -10,10 +10,10 @@ namespace zavod.Orchestration;
 // the input to the canonical Work Packet shape without forcing
 // callers to populate them. Defaults preserve prior behavior.
 //
-// When IsFirstCycle is true, TaskState may carry a synthetic
-// first-cycle placeholder per first-cycle variant rules; the
-// pipeline still validates TaskState membership and intent state
-// against the surrounding ShiftState.
+// When IsFirstCycle is true for ShiftLead, TaskState may carry a synthetic
+// first-cycle placeholder per first-cycle variant rules. That placeholder
+// is runtime input for opening the first Work Packet; it is not required to
+// already exist as shift task truth.
 public sealed record PromptRequestInput(
     PromptRole Role,
     Capsule Capsule,
