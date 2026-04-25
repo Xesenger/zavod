@@ -204,7 +204,7 @@ const zavodProjectsBridge = (() => {
     }
 
     renderComposerAttachments(state.conversation?.composer?.pendingAttachments);
-    renderMessages(state.conversation?.messages);
+    renderMessages(state.conversation, state.selectedProject, state.currentScreen);
     renderProjectList(state.list);
 
     // Project home headline (if state provides selected project)
@@ -636,10 +636,14 @@ const zavodProjectsBridge = (() => {
   // ── Conversation feed: User = bubble (right), Lead/Worker/QC = doc-block (left).
   // Slice A (lab MVP): full rerender per snapshot. Pass 2 polish will switch to
   // keyed DOM patch per the streaming canon.
-  function renderMessages(items) {
+  function renderMessages(conversation, selectedProject, currentScreen) {
     if (!feed) return;
     while (feed.firstChild) feed.removeChild(feed.firstChild);
-    if (!Array.isArray(items) || items.length === 0) return;
+    const items = conversation?.messages;
+    if (!Array.isArray(items) || items.length === 0) {
+      renderEmptyWorkCycle(conversation?.emptyState, selectedProject, currentScreen);
+      return;
+    }
 
     items.forEach((m) => {
       if (!m || typeof m !== 'object') return;
@@ -673,6 +677,39 @@ const zavodProjectsBridge = (() => {
     });
 
     feed.scrollTop = feed.scrollHeight;
+  }
+
+  function renderEmptyWorkCycle(emptyState, selectedProject, currentScreen) {
+    if (currentScreen !== 'work-cycle' || !selectedProject) {
+      return;
+    }
+
+    const doc = document.createElement('div');
+    doc.className = 'doc-block';
+    doc.dataset.role = 'system';
+    doc.dataset.kind = 'empty-state';
+
+    const lines = [];
+    const headline = emptyState?.headline || `${selectedProject.name || 'Project'}: no conversation yet`;
+    lines.push(headline);
+    const status = `${selectedProject.canonicalDocCount || 0}/5 canonical · ${selectedProject.previewDocCount || 0}/5 preview · ${selectedProject.welcomeRule || 'welcome'}`;
+    lines.push(status);
+    if (emptyState?.subtitle) {
+      lines.push(emptyState.subtitle);
+    }
+
+    const warnings = Array.isArray(selectedProject.missingTruthWarnings)
+      ? selectedProject.missingTruthWarnings.filter((warning) => typeof warning === 'string' && warning.trim())
+      : [];
+    if (warnings.length > 0) {
+      lines.push('');
+      lines.push('Missing truth:');
+      warnings.slice(0, 5).forEach((warning) => lines.push(`- ${warning.trim()}`));
+    }
+
+    doc.textContent = lines.join('\n');
+    feed.appendChild(doc);
+    feed.appendChild(mk('gap'));
   }
 
   // ── Action wiring (always on; emit to C# when bridged) ────────
