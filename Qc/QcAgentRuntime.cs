@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using zavod.Execution;
+using zavod.Orchestration;
 using zavod.Prompting;
 
 namespace zavod.Qc;
@@ -22,7 +23,11 @@ public sealed record QcAgentInput(
     IReadOnlyList<string> WorkerBlockers,
     IReadOnlyList<string> WorkerWarnings,
     IReadOnlyList<string> WorkerModifications,
-    IReadOnlyList<string>? StagedArtifacts = null);
+    IReadOnlyList<string>? StagedArtifacts = null,
+    CanonicalDocsStatus? CanonicalDocsStatus = null,
+    PreviewStatus? PreviewStatus = null,
+    IReadOnlyList<string>? MissingTruthWarnings = null,
+    bool IsFirstCycle = false);
 
 public sealed record QcAgentParsedReply(
     string Decision,
@@ -174,6 +179,8 @@ public sealed class QcAgentRuntime
         AppendList(builder, input.AcceptanceCriteria);
         builder.AppendLine();
 
+        AppendWorkPacketBlock(builder, input);
+
         builder.AppendLine("WORKER RESULT TO REVIEW");
         builder.AppendLine($"- status: {Safe(input.WorkerStatus)}");
         builder.AppendLine($"- summary: {Safe(input.WorkerSummary)}");
@@ -208,6 +215,53 @@ public sealed class QcAgentRuntime
         builder.AppendLine("  \"next_action\": \"<one short sentence describing what should happen next>\"");
         builder.AppendLine("}");
         return builder.ToString();
+    }
+
+    private static void AppendWorkPacketBlock(StringBuilder builder, QcAgentInput input)
+    {
+        if (input.CanonicalDocsStatus is null
+            && input.PreviewStatus is null
+            && input.MissingTruthWarnings is null
+            && !input.IsFirstCycle)
+        {
+            return;
+        }
+
+        builder.AppendLine("WORK PACKET (project truth status; preview is below canonical)");
+        builder.AppendLine($"- first_cycle: {input.IsFirstCycle.ToString().ToLowerInvariant()}");
+
+        if (input.CanonicalDocsStatus is not null)
+        {
+            var status = input.CanonicalDocsStatus;
+            builder.AppendLine($"- canonical_docs_status: project={status.Project}; direction={status.Direction}; roadmap={status.Roadmap}; canon={status.Canon}; capsule={status.Capsule}");
+            builder.AppendLine($"- canonical_docs_count: {status.CanonicalCount}/5");
+            builder.AppendLine($"- at_least_preview_count: {status.AtLeastPreviewCount}/5");
+        }
+
+        if (input.PreviewStatus is { PreviewKinds.Count: > 0 } preview)
+        {
+            builder.AppendLine($"- preview_docs: {string.Join(", ", preview.PreviewKinds)}");
+        }
+        else
+        {
+            builder.AppendLine("- preview_docs: none");
+        }
+
+        if (input.MissingTruthWarnings is { Count: > 0 })
+        {
+            builder.AppendLine("- missing_truth_warnings:");
+            foreach (var warning in input.MissingTruthWarnings)
+            {
+                if (string.IsNullOrWhiteSpace(warning))
+                {
+                    continue;
+                }
+
+                builder.AppendLine($"  - {warning.Trim()}");
+            }
+        }
+
+        builder.AppendLine();
     }
 
     private static void AppendList(StringBuilder builder, IReadOnlyList<string>? items)

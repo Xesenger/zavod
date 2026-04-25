@@ -631,6 +631,7 @@ internal sealed class WorkCycleActionController
                         : $"SKIPPED {r.Operation}: {r.Path} — {r.SkipReason}")
                     .ToArray();
 
+            var qcCanonicalDocsStatus = WorkPacketBuilder.BuildCanonicalDocsStatus(queryState.DocumentSelection);
             var qcAgentInput = new QcAgentInput(
                 ProjectName: queryState.ProjectName,
                 ProjectRoot: queryState.ProjectRoot,
@@ -645,7 +646,11 @@ internal sealed class WorkCycleActionController
                 WorkerModifications: workerLlmResult.Parsed?.Modifications?
                     .Select(m => $"{m.Kind}: {m.Path} — {m.Summary}")
                     .ToArray() ?? Array.Empty<string>(),
-                StagedArtifacts: stagedArtifactDescriptors);
+                StagedArtifacts: stagedArtifactDescriptors,
+                CanonicalDocsStatus: qcCanonicalDocsStatus,
+                PreviewStatus: WorkPacketBuilder.BuildPreviewStatus(queryState.DocumentSelection),
+                MissingTruthWarnings: WorkPacketBuilder.BuildMissingTruthWarnings(qcCanonicalDocsStatus),
+                IsFirstCycle: executionContext.ShiftState.Tasks.Count <= 1);
 
             _sageHooks.OnBeforeResult(new SageBeforeResultContext(
                 ProjectId: queryState.ProjectId,
