@@ -12,6 +12,7 @@ const zavodProjectsBridge = (() => {
   const homeCrumbName = document.getElementById('home-crumb-name');
   const homeProjName = document.getElementById('home-proj-name');
   const homeProjDesc = document.getElementById('home-proj-desc');
+  const homeEnterBtn = document.querySelector('[data-action="enter-work"]');
   const hsFiles = document.getElementById('hs-files');
   const hsAnchors = document.getElementById('hs-anchors');
   const hsTasks = document.getElementById('hs-tasks');
@@ -231,11 +232,13 @@ const zavodProjectsBridge = (() => {
 
       renderHomeAnchors(p.anchorRows);
       renderWelcomeSurface(p);
+      syncHomeEnterButton(p);
       renderCanonicalDocs(p.canonicalDocs);
       renderHomeDocuments(p.documentRows);
     } else {
       renderHomeAnchors(null);
       renderWelcomeSurface(null);
+      syncHomeEnterButton(null);
       renderCanonicalDocs(null);
       renderHomeDocuments(null);
     }
@@ -358,6 +361,20 @@ const zavodProjectsBridge = (() => {
         homeWelcomeWarningList.appendChild(item);
       });
     }
+  }
+
+  function canEnterWorkFromHome(project) {
+    const actions = Array.isArray(project?.welcomeActions) ? project.welcomeActions : [];
+    return actions.some((row) => row
+      && row.isWired === true
+      && (row.action === 'start_work_cycle' || row.action === 'continue_work_cycle'));
+  }
+
+  function syncHomeEnterButton(project) {
+    if (!homeEnterBtn) return;
+    const canEnter = canEnterWorkFromHome(project);
+    homeEnterBtn.hidden = !canEnter;
+    homeEnterBtn.disabled = !canEnter;
   }
 
   function runWelcomeAction(action) {
@@ -696,6 +713,9 @@ const zavodProjectsBridge = (() => {
             }
             break;
           case 'enter-work':
+            if (!canEnterWorkFromHome(renderedState?.selectedProject)) {
+              break;
+            }
             emit({ type: 'navigate_screen', payload: { screen: 'work-cycle' } });
             if (!bridge) {
               showScreen('work-cycle');
