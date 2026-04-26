@@ -14,7 +14,7 @@ namespace zavod.Worker;
 /// </summary>
 public static class WorkerAnchorPackBuilder
 {
-    private const int DefaultMaxEntries = 80;
+    private const int DefaultMaxEntries = 50;
 
     private static readonly HashSet<string> SourceExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -32,9 +32,9 @@ public static class WorkerAnchorPackBuilder
         "next.config.js", "CMakeLists.txt"
     };
 
-    private const int DefaultSnippetFileCount = 6;
-    private const int DefaultSnippetMaxLines = 80;
-    private const int DefaultSnippetMaxBytes = 16384;
+    private const int DefaultSnippetFileCount = 5;
+    private const int DefaultSnippetMaxLines = 45;
+    private const int DefaultSnippetMaxBytes = 10000;
 
     // Semantic expansion: when the user says "FPS counter" they mean HUD/render
     // territory even though "hud" is not in their task phrase. Worker refuses
@@ -84,12 +84,12 @@ public static class WorkerAnchorPackBuilder
 
         if (summary.SourceRoots is { Count: > 0 } sourceRoots)
         {
-            lines.Add($"source roots: {string.Join(", ", sourceRoots)}");
+            lines.Add($"source roots: {string.Join(", ", sourceRoots.Select(ToPromptPath))}");
         }
 
         if (summary.EntryCandidates is { Count: > 0 } entryCandidates)
         {
-            lines.Add($"entry candidates: {string.Join(", ", entryCandidates.Take(6))}");
+            lines.Add($"entry candidates: {string.Join(", ", entryCandidates.Take(6).Select(ToPromptPath))}");
         }
 
         var entryPathSet = new HashSet<string>(summary.EntryCandidates ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
@@ -101,12 +101,13 @@ public static class WorkerAnchorPackBuilder
                 && !relative.StartsWith("..", StringComparison.Ordinal))
             .ToArray();
 
-        var sources = relativePaths
+        var keywords = ExtractKeywords(taskDescription);
+        var allSources = relativePaths
             .Where(IsSourceLike)
             .OrderBy(PathDepth)
             .ThenBy(static p => p, StringComparer.OrdinalIgnoreCase)
-            .Take(maxEntries)
             .ToArray();
+        var sources = PickSourceEntries(allSources, entryPathSet, keywords, maxEntries);
 
         var builds = relativePaths
             .Where(IsBuildMarker)
@@ -125,7 +126,7 @@ public static class WorkerAnchorPackBuilder
             lines.Add($"build/config markers ({builds.Length}):");
             foreach (var build in builds)
             {
-                lines.Add($"- {build}");
+                lines.Add($"- {ToPromptPath(build)}");
             }
         }
 
@@ -133,20 +134,19 @@ public static class WorkerAnchorPackBuilder
         {
             var totalSourceCount = relativePaths.Count(IsSourceLike);
             var header = sources.Length < totalSourceCount
-                ? $"source files (showing top {sources.Length} of {totalSourceCount}):"
-                : $"source files ({sources.Length}):";
+                ? $"usable source file paths (relative to project root, forward slashes; showing top {sources.Length} of {totalSourceCount}):"
+                : $"usable source file paths (relative to project root, forward slashes; {sources.Length}):";
             lines.Add(header);
             foreach (var source in sources)
             {
                 var entryTag = entryPathSet.Contains(source) ? "  (entry)" : string.Empty;
-                lines.Add($"- {source}{entryTag}");
+                lines.Add($"- {ToPromptPath(source)}{entryTag}");
             }
         }
 
         if (snippetFileCount > 0 && sources.Length > 0)
         {
-            var keywords = ExtractKeywords(taskDescription);
-            var initialCandidates = PickSnippetCandidates(sources, entryPathSet, keywords, snippetFileCount);
+            var initialCandidates = PickSnippetCandidates(normalizedRoot, sources, entryPathSet, keywords, snippetFileCount);
 
             // Import-follow: after picking top-K by score, read those snippets
             // and harvest their local import targets. Lets Worker see hud.js
@@ -195,7 +195,7 @@ public static class WorkerAnchorPackBuilder
                 }
 
                 lines.Add(string.Empty);
-                lines.Add($"--- snippet: {candidate} (first {snippetMaxLines} lines) ---");
+                lines.Add($"--- snippet path: {ToPromptPath(candidate)} (first {snippetMaxLines} lines) ---");
                 foreach (var snippetLine in snippet.Split('\n'))
                 {
                     lines.Add(snippetLine.TrimEnd('\r'));
@@ -321,13 +321,14 @@ public static class WorkerAnchorPackBuilder
     }
 
     private static IReadOnlyList<string> PickSnippetCandidates(
+        string projectRoot,
         IReadOnlyList<string> sources,
         HashSet<string> entryPathSet,
         IReadOnlyList<string> keywords,
         int count)
     {
         var scored = sources
-            .Select(path => new { path, score = ScoreSnippetCandidate(path, entryPathSet, keywords) })
+            .Select(path => new { path, score = ScoreSnippetCandidate(path, entryPathSet, keywords) + ScoreSnippetContent(projectRoot, path, keywords) })
             .OrderByDescending(item => item.score)
             .ThenBy(item => PathDepth(item.path))
             .ThenBy(item => item.path, StringComparer.OrdinalIgnoreCase)
@@ -335,6 +336,22 @@ public static class WorkerAnchorPackBuilder
             .Select(item => item.path)
             .ToArray();
         return scored;
+    }
+
+    private static string[] PickSourceEntries(
+        IReadOnlyList<string> sources,
+        HashSet<string> entryPathSet,
+        IReadOnlyList<string> keywords,
+        int count)
+    {
+        return sources
+            .Select(path => new { path, score = ScoreSnippetCandidate(path, entryPathSet, keywords) })
+            .OrderByDescending(item => item.score)
+            .ThenBy(item => PathDepth(item.path))
+            .ThenBy(item => item.path, StringComparer.OrdinalIgnoreCase)
+            .Take(count)
+            .Select(item => item.path)
+            .ToArray();
     }
 
     private static int ScoreSnippetCandidate(string relativePath, HashSet<string> entryPathSet, IReadOnlyList<string> keywords)
@@ -363,6 +380,65 @@ public static class WorkerAnchorPackBuilder
         // prefer shallower paths
         score -= PathDepth(relativePath) * 2;
         return score;
+    }
+
+    private static int ScoreSnippetContent(string projectRoot, string relativePath, IReadOnlyList<string> keywords)
+    {
+        if (!ShouldPreferFrameLoopAnchors(keywords))
+        {
+            return 0;
+        }
+
+        var snippet = ReadSnippet(Path.Combine(projectRoot, relativePath), DefaultSnippetMaxLines, DefaultSnippetMaxBytes);
+        if (string.IsNullOrWhiteSpace(snippet))
+        {
+            return 0;
+        }
+
+        var text = snippet.ToLowerInvariant();
+        var score = 0;
+        if (text.Contains("requestanimationframe", StringComparison.Ordinal))
+        {
+            score += 120;
+        }
+
+        if (text.Contains("function gameloop", StringComparison.Ordinal)
+            || text.Contains("function loop", StringComparison.Ordinal)
+            || text.Contains("const gameloop", StringComparison.Ordinal)
+            || text.Contains("const loop", StringComparison.Ordinal))
+        {
+            score += 45;
+        }
+
+        if (text.Contains("updatehud(", StringComparison.Ordinal))
+        {
+            score += 50;
+        }
+
+        if (text.Contains("updategame(", StringComparison.Ordinal))
+        {
+            score += 40;
+        }
+
+        if (text.Contains("timestamp", StringComparison.Ordinal))
+        {
+            score += 20;
+        }
+
+        if (text.Contains("performance.now", StringComparison.Ordinal))
+        {
+            score += 20;
+        }
+
+        return Math.Min(score, 220);
+    }
+
+    private static bool ShouldPreferFrameLoopAnchors(IReadOnlyList<string> keywords)
+    {
+        return keywords.Contains("fps", StringComparer.OrdinalIgnoreCase)
+            || keywords.Contains("frame", StringComparer.OrdinalIgnoreCase)
+            || keywords.Contains("loop", StringComparer.OrdinalIgnoreCase)
+            || keywords.Contains("timer", StringComparer.OrdinalIgnoreCase);
     }
 
     private static string ReadSnippet(string absolutePath, int maxLines, int maxBytes)
@@ -413,5 +489,12 @@ public static class WorkerAnchorPackBuilder
     private static int PathDepth(string relativePath)
     {
         return relativePath.Count(c => c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar);
+    }
+
+    private static string ToPromptPath(string path)
+    {
+        return path
+            .Replace(Path.DirectorySeparatorChar, '/')
+            .Replace(Path.AltDirectorySeparatorChar, '/');
     }
 }

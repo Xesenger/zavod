@@ -18,12 +18,20 @@ public sealed record RolesConfiguration(
 {
     public const string DefaultConfigRelativePath = @"app\config\roles.json";
 
-    public static RoleProfile DefaultLead { get; } = new("openai/gpt-4.1-mini", 0.3, 60, 800);
-    public static RoleProfile DefaultWorker { get; } = new("deepseek/deepseek-chat-v3", 0.2, 120, 2000);
-    public static RoleProfile DefaultQc { get; } = new("anthropic/claude-haiku-4.5", 0.0, 45, 800);
+    public static RoleProfile DefaultLead => ModelRoutingConfiguration.DefaultLead;
+    public static RoleProfile DefaultWorker => ModelRoutingConfiguration.DefaultWorker;
+    public static RoleProfile DefaultQc => ModelRoutingConfiguration.DefaultQc;
 
     public static RolesConfiguration LoadOrDefault()
     {
+        var modelRoutingFile = Environment.GetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE");
+        if (!string.IsNullOrWhiteSpace(modelRoutingFile)
+            || File.Exists(Path.Combine(Environment.CurrentDirectory, ModelRoutingConfiguration.DefaultConfigRelativePath)))
+        {
+            var routing = ModelRoutingConfiguration.LoadOrDefault();
+            return new RolesConfiguration(routing.Lead, routing.Worker, routing.Qc, routing.Source);
+        }
+
         var configuredPath = Environment.GetEnvironmentVariable("ZAVOD_ROLES_CONFIG_FILE");
         var candidatePath = string.IsNullOrWhiteSpace(configuredPath)
             ? Path.Combine(Environment.CurrentDirectory, DefaultConfigRelativePath)

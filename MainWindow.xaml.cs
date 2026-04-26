@@ -1579,7 +1579,7 @@ namespace zavod
                     break;
 
                 case "import_project":
-                    _ = HandleProjectsWebImportAsync();
+                    _ = HandleProjectsWebImportAsync(payload);
                     break;
 
                 case "create_project":
@@ -1717,12 +1717,27 @@ namespace zavod
         // Picks a folder, runs Bootstrap + Scanner + Importer (gpt-4.1-nano) off the UI
         // thread, opens the generated preview.html on success. No registry persistence yet
         // — the project sits on disk with its own .zavod/, user can re-open via OS.
-        private async Task HandleProjectsWebImportAsync()
+        private async Task HandleProjectsWebImportAsync(JsonElement payload)
         {
             string? folderPath;
+            ProjectRegistryEntry? existingEntry = null;
             try
             {
-                folderPath = await PickFolderAsync();
+                if (IsReimportRequest(payload))
+                {
+                    existingEntry = TryResolveReimportEntry(payload);
+                    if (existingEntry is null)
+                    {
+                        Debug.WriteLine("[ProjectsWeb import] reimport requested but selected project could not be resolved");
+                        return;
+                    }
+
+                    folderPath = existingEntry.RootPath;
+                }
+                else
+                {
+                    folderPath = await PickFolderAsync();
+                }
             }
             catch (Exception ex)
             {
@@ -1753,13 +1768,14 @@ namespace zavod
 
                 var entry = ProjectRegistryStorage.Add(new DirectoryInfo(resolvedFolder).Name, resolvedFolder);
                 Debug.WriteLine($"[ProjectsWeb import] registry entry id={entry.Id} name={entry.Name}");
+                ProjectsWebRendererView.SetSelectedProjectFolder(entry.RootPath);
+                _projectsWebSnapshotBuilder.SelectProject(entry.Id);
                 PushProjectsWebSnapshot();
 
                 var previewPath = Path.Combine(resolvedFolder, ".zavod", "preview.html");
                 if (File.Exists(previewPath))
                 {
-                    Debug.WriteLine($"[ProjectsWeb import] opening preview at {previewPath}");
-                    Process.Start(new ProcessStartInfo(previewPath) { UseShellExecute = true });
+                    Debug.WriteLine($"[ProjectsWeb import] preview ready at {previewPath}");
                 }
                 else
                 {
@@ -1770,6 +1786,42 @@ namespace zavod
             {
                 Debug.WriteLine($"[ProjectsWeb import] FAILED: {ex}");
             }
+        }
+
+        private static ProjectRegistryEntry? TryResolveReimportEntry(JsonElement payload)
+        {
+            if (!IsReimportRequest(payload))
+            {
+                return null;
+            }
+
+            if (!payload.TryGetProperty("projectId", out var projectIdProp) ||
+                projectIdProp.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            var projectId = projectIdProp.GetString();
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return null;
+            }
+
+            var entry = ProjectRegistryStorage.Load().Projects
+                .FirstOrDefault(item => string.Equals(item.Id, projectId, StringComparison.Ordinal));
+            return entry is not null && Directory.Exists(entry.RootPath) ? entry : null;
+        }
+
+        private static bool IsReimportRequest(JsonElement payload)
+        {
+            if (payload.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            return payload.TryGetProperty("mode", out var modeProp) &&
+                modeProp.ValueKind == JsonValueKind.String &&
+                string.Equals(modeProp.GetString(), "reimport", StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<string?> PickFolderAsync()

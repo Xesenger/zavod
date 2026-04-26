@@ -47,7 +47,7 @@
     }
 
     .page {
-      max-width: 1140px;
+      max-width: 1520px;
       margin: 0 auto;
     }
 
@@ -84,8 +84,8 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 292px minmax(0, 1fr);
-      gap: 28px;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      gap: 34px;
       align-items: start;
     }
 
@@ -117,7 +117,8 @@
     }
 
     .content-card {
-      padding: 32px 34px 30px;
+      padding: 34px 38px 32px;
+      min-width: 0;
     }
 
     .section-title {
@@ -177,12 +178,14 @@
     .quick-value {
       font-size: 18px;
       font-weight: 700;
+      overflow-wrap: anywhere;
     }
 
     .quick-sub {
       margin-top: 5px;
       color: var(--muted);
       font-size: 13px;
+      overflow-wrap: anywhere;
     }
 
     .lead {
@@ -268,6 +271,8 @@
       border: 1px solid var(--line-soft);
       border-radius: var(--radius-md);
       padding: 18px 18px 16px;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .mini-title {
@@ -321,6 +326,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
+      table-layout: fixed;
     }
 
     th, td {
@@ -328,6 +334,12 @@
       padding: 14px 0;
       border-bottom: 1px solid var(--line-soft);
       vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    code {
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     th {

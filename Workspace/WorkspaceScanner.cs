@@ -26,6 +26,7 @@ public static class WorkspaceScanner
         ".idea",
         ".vscode",
         ".zavod",
+        ".zavod.local",
         ".cache",
         ".next",
         ".nuxt",

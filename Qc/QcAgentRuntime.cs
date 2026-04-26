@@ -77,7 +77,9 @@ public sealed class QcAgentRuntime
             ModelId: _profile.Model,
             Temperature: _profile.Temperature,
             Attachments: null,
-            MaxTokens: _profile.MaxTokens);
+            MaxTokens: _profile.MaxTokens,
+            ResponseFormatJsonObject: true,
+            ReasoningEffort: "none");
 
         var stopwatch = Stopwatch.StartNew();
         var response = client.Execute(request);
@@ -204,16 +206,17 @@ public sealed class QcAgentRuntime
             AppendList(builder, stagedArtifacts);
             builder.AppendLine();
             builder.AppendLine("Absence of staged artefacts when the Worker claims real modifications is a REVISE signal; presence with concrete byte deltas is evidence you may cite.");
+            builder.AppendLine("Staged artefacts are not applied to the project yet. Even on ACCEPT, next_action must say to surface the candidate result for user review/acceptance, not to apply it automatically.");
             builder.AppendLine();
         }
 
-        builder.AppendLine("OUTPUT — reply with a single strict JSON object only, no code fences, no prose around it:");
-        builder.AppendLine("{");
-        builder.AppendLine("  \"decision\": \"ACCEPT\" | \"REVISE\" | \"REJECT\",");
-        builder.AppendLine("  \"rationale\": \"<one short paragraph grounded in the Worker result>\",");
-        builder.AppendLine("  \"issues\": [\"<specific issue, empty array if none>\"],");
-        builder.AppendLine("  \"next_action\": \"<one short sentence describing what should happen next>\"");
-        builder.AppendLine("}");
+        builder.AppendLine("OUTPUT - reply with a single strict JSON object only, no code fences, no prose around it.");
+        builder.AppendLine("Return a JSON object with exactly these top-level keys:");
+        builder.AppendLine("- decision: string; allowed values are ACCEPT, REVISE, REJECT.");
+        builder.AppendLine("- rationale: non-empty string grounded in Worker result and staged artefacts.");
+        builder.AppendLine("- issues: array of strings; empty when no issue is found.");
+        builder.AppendLine("- next_action: one short sentence describing what should happen next.");
+        builder.AppendLine("Do not output pipe-separated alternatives. Do not copy placeholder values.");
         return builder.ToString();
     }
 
@@ -306,7 +309,7 @@ public sealed class QcAgentRuntime
         var issues = ReadStringArray(root, "issues");
         var nextAction = ReadString(root, "next_action") ?? string.Empty;
 
-        var normalizedDecision = decision.Trim().ToUpperInvariant();
+        var normalizedDecision = NormalizeDecision(decision);
         if (normalizedDecision is not ("ACCEPT" or "REVISE" or "REJECT"))
         {
             throw new InvalidOperationException($"QC reply 'decision' must be ACCEPT|REVISE|REJECT (got '{decision}').");
@@ -318,6 +321,11 @@ public sealed class QcAgentRuntime
         }
 
         return new QcAgentParsedReply(normalizedDecision, rationale.Trim(), issues, nextAction.Trim());
+    }
+
+    private static string NormalizeDecision(string decision)
+    {
+        return decision.Trim().Trim(':', '"', '\'').Trim().ToUpperInvariant();
     }
 
     private static string StripCodeFence(string value)

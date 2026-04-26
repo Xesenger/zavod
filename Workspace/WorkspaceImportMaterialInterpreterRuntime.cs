@@ -1,16 +1,30 @@
 using System;
+using System.Net.Http;
 using zavod.Execution;
 
 namespace zavod.Workspace;
 
-public sealed class WorkspaceImportMaterialInterpreterRuntime(
-    WorkspaceMaterialRuntimeFront? runtimeFront = null,
-    IOpenRouterExecutionClient? openRouterExecutionClient = null,
-    WorkspaceEvidenceArtifactRuntimeService? artifactRuntimeService = null)
+public sealed class WorkspaceImportMaterialInterpreterRuntime
 {
-    private readonly WorkspaceMaterialRuntimeFront _runtimeFront = runtimeFront ?? new WorkspaceMaterialRuntimeFront();
-    private readonly IOpenRouterExecutionClient _openRouterExecutionClient = openRouterExecutionClient ?? new OpenRouterExecutionClient();
-    private readonly WorkspaceEvidenceArtifactRuntimeService _artifactRuntimeService = artifactRuntimeService ?? new WorkspaceEvidenceArtifactRuntimeService();
+    private readonly WorkspaceMaterialRuntimeFront _runtimeFront;
+    private readonly IOpenRouterExecutionClient? _openRouterExecutionClient;
+    private readonly WorkspaceEvidenceArtifactRuntimeService _artifactRuntimeService;
+    private readonly RoleProfile _profile;
+    private readonly Func<RoleProfile, IOpenRouterExecutionClient> _clientFactory;
+
+    public WorkspaceImportMaterialInterpreterRuntime(
+        WorkspaceMaterialRuntimeFront? runtimeFront = null,
+        IOpenRouterExecutionClient? openRouterExecutionClient = null,
+        WorkspaceEvidenceArtifactRuntimeService? artifactRuntimeService = null,
+        ModelRoutingConfiguration? modelRoutingConfiguration = null,
+        Func<RoleProfile, IOpenRouterExecutionClient>? clientFactory = null)
+    {
+        _runtimeFront = runtimeFront ?? new WorkspaceMaterialRuntimeFront();
+        _openRouterExecutionClient = openRouterExecutionClient;
+        _artifactRuntimeService = artifactRuntimeService ?? new WorkspaceEvidenceArtifactRuntimeService();
+        _profile = (modelRoutingConfiguration ?? ModelRoutingConfiguration.LoadOrDefault()).Importer;
+        _clientFactory = clientFactory ?? DefaultClientFactory;
+    }
 
     public WorkspaceImportMaterialInterpreterRunResult Interpret(
         WorkspaceScanResult scanResult,
@@ -22,8 +36,16 @@ public sealed class WorkspaceImportMaterialInterpreterRuntime(
 
         var previewPacket = _runtimeFront.BuildPreviewPacket(scanResult, maxMaterials, maxCharsPerMaterial);
         var promptRequest = WorkspaceImportMaterialPromptRequestBuilder.Build(previewPacket);
-        var executionRequest = new OpenRouterExecutionRequest("workspace.import.interpreter", promptRequest.SystemPrompt, promptRequest.UserPrompt);
-        var executionResponse = _openRouterExecutionClient.Execute(executionRequest);
+        var executionRequest = new OpenRouterExecutionRequest(
+            "workspace.import.interpreter",
+            promptRequest.SystemPrompt,
+            promptRequest.UserPrompt,
+            _profile.Model,
+            _profile.Temperature,
+            Attachments: null,
+            MaxTokens: _profile.MaxTokens);
+        var client = _openRouterExecutionClient ?? _clientFactory(_profile);
+        var executionResponse = client.Execute(executionRequest);
         var interpretation = executionResponse.Success
             ? WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(previewPacket, WorkspaceImportMaterialPromptResponseParser.Parse(executionResponse.Content))
             : WorkspaceImportMaterialInterpretationResultBuilder.BuildEmpty(previewPacket);
@@ -52,5 +74,15 @@ public sealed class WorkspaceImportMaterialInterpreterRuntime(
             interpretation,
             artifactBundle,
             summaryLine);
+    }
+
+    private static IOpenRouterExecutionClient DefaultClientFactory(RoleProfile profile)
+    {
+        var configuration = OpenRouterConfiguration.FromEnvironment();
+        var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(profile.TimeoutSeconds)
+        };
+        return new OpenRouterExecutionClient(configuration, httpClient, allowEnvironmentFallback: false);
     }
 }

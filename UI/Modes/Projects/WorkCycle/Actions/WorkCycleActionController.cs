@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using zavod.Acceptance;
 using zavod.Bootstrap;
 using zavod.Contexting;
 using zavod.Execution;
@@ -34,6 +35,8 @@ internal sealed class WorkCycleActionController
     private readonly LeadAgentRuntime _leadAgentRuntime;
     private readonly WorkerAgentRuntime _workerAgentRuntime;
     private readonly QcAgentRuntime _qcAgentRuntime;
+    private readonly RunProfileExecutionService _runProfileExecutionService;
+    private bool _hasLiveExecutionInProcess;
 
     private sealed record ActiveExecutionContext(
         ProjectState ProjectState,
@@ -58,7 +61,8 @@ internal sealed class WorkCycleActionController
         Action updateDiscussionPreview,
         LeadAgentRuntime? leadAgentRuntime = null,
         WorkerAgentRuntime? workerAgentRuntime = null,
-        QcAgentRuntime? qcAgentRuntime = null)
+        QcAgentRuntime? qcAgentRuntime = null,
+        RunProfileExecutionService? runProfileExecutionService = null)
     {
         _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
         _getProjectsAdapter = getProjectsAdapter ?? throw new ArgumentNullException(nameof(getProjectsAdapter));
@@ -67,6 +71,7 @@ internal sealed class WorkCycleActionController
         _leadAgentRuntime = leadAgentRuntime ?? new LeadAgentRuntime();
         _workerAgentRuntime = workerAgentRuntime ?? new WorkerAgentRuntime();
         _qcAgentRuntime = qcAgentRuntime ?? new QcAgentRuntime();
+        _runProfileExecutionService = runProfileExecutionService ?? new RunProfileExecutionService();
     }
 
     private ProjectsAdapter ProjectsAdapter => _getProjectsAdapter();
@@ -122,6 +127,25 @@ internal sealed class WorkCycleActionController
             ConversationAttachmentPromptBuilder.Load(submission.Attachments));
         var context = BuildContext();
         if (context.WorkCycle.PhaseState.Phase == SurfacePhase.Execution
+            && context.WorkCycle.PhaseState.ExecutionSubphase == ExecutionSubphase.Interrupted)
+        {
+            var returned = StepPhaseMachine.OpenInterruptedDiscussion(context.WorkCycle.PhaseState);
+            await ProjectsAdapter.AddMessageAsync(
+                ConversationItemKind.Status,
+                AppText.Current.Get("role.qc"),
+                AppText.Current.Get("projects.message.interrupted_returned_to_chat"),
+                metadata: BuildProjectConversationMetadata("discussion", context.QueryState.ActiveTaskId));
+            SaveWorkCycleSnapshot(
+                context.QueryState.ProjectRoot,
+                returned,
+                context.WorkCycle.IntentSummary,
+                isClarificationActive: false,
+                clarificationDraft: string.Empty,
+                runtimeState: null);
+            context = BuildContext();
+        }
+
+        if (context.WorkCycle.PhaseState.Phase == SurfacePhase.Execution
             && context.WorkCycle.PhaseState.ExecutionSubphase == ExecutionSubphase.Revision
             && context.WorkCycle.PhaseState.ResultSubphase == ResultSubphase.RevisionRequested
             && context.QueryState.ResumeSnapshot?.RuntimeState is not null)
@@ -145,22 +169,53 @@ internal sealed class WorkCycleActionController
                 context.QueryState.ProjectId,
                 executionInput.PromptText);
 
+            SaveWorkCycleSnapshot(
+                context.QueryState.ProjectRoot,
+                runningState,
+                normalizedText,
+                isClarificationActive: false,
+                clarificationDraft: string.Empty,
+                runtimeState: runtime,
+                revisionIntakeText: normalizedText);
+
             await ProjectsAdapter.AddMessageAsync(
                 ConversationItemKind.Status,
                 AppText.Current.Get("role.worker"),
                 AppText.Current.Get("projects.message.revision_input_received"),
                 metadata: BuildProjectConversationMetadata("execution", context.QueryState.ActiveTaskId));
+            await ProjectsAdapter.AddMessageAsync(
+                ConversationItemKind.Status,
+                AppText.Current.Get("role.worker"),
+                AppText.Current.Get("projects.message.worker_working"),
+                metadata: BuildProjectConversationMetadata("execution", context.QueryState.ActiveTaskId));
             await InvokeProgressAsync();
+            await _refreshShellAsync();
 
-            var outcome = await ExecuteWorkerQcCycleAsync(
-                runtime,
-                executionContext,
-                context.QueryState,
-                runningState,
-                workerAdvisory,
-                attachments: executionInput.Attachments,
-                isRevision: true,
-                revisionIntakeText: normalizedText);
+            WorkerQcCycleOutcome outcome;
+            _hasLiveExecutionInProcess = true;
+            try
+            {
+                outcome = await ExecuteWorkerQcCycleAsync(
+                    runtime,
+                    executionContext,
+                    context.QueryState,
+                    runningState,
+                    workerAdvisory,
+                    attachments: executionInput.Attachments,
+                    isRevision: true,
+                    revisionIntakeText: normalizedText);
+            }
+            catch (Exception exception)
+            {
+                outcome = await RecoverFailedExecutionCycleAsync(
+                    runtime,
+                    context.QueryState,
+                    exception);
+            }
+            finally
+            {
+                _hasLiveExecutionInProcess = false;
+            }
 
             SaveWorkCycleSnapshot(
                 context.QueryState.ProjectRoot,
@@ -214,6 +269,7 @@ internal sealed class WorkCycleActionController
 
         var leadAdvisory = _sage.BuildLeadAdvisory(context.QueryState.ProjectRoot, context.QueryState.ProjectId, executionInput.PromptText);
         var recentTurns = BuildLeadRecentTurns(ProjectsAdapter);
+        var recentTaskContext = BuildLeadRecentTaskContext(ProjectsAdapter);
         var isOrientationRequest = OrientationIntentDetector.IsOrientationRequest(normalizedText);
         var leadCanonicalDocsStatus = WorkPacketBuilder.BuildCanonicalDocsStatus(context.QueryState.DocumentSelection);
         var leadAgentInput = new LeadAgentInput(
@@ -225,6 +281,7 @@ internal sealed class WorkCycleActionController
             CurrentIntentSummary: intentSummary,
             AdvisoryNotes: leadAdvisory.HasNotes ? leadAdvisory.Notes : Array.Empty<string>(),
             RecentTurns: recentTurns,
+            RecentTaskContext: recentTaskContext,
             IsOrientationRequest: isOrientationRequest,
             ProjectStackSummary: BuildProjectStackSummary(context.QueryState.ProjectRoot),
             CanonicalDocsStatus: leadCanonicalDocsStatus,
@@ -259,14 +316,39 @@ internal sealed class WorkCycleActionController
             && TryMapLeadIntentState(leadAgentResult.Parsed.IntentState, out var leadDecidedIntent)
             && leadDecidedIntent != nextState.IntentState)
         {
-            nextState = StepPhaseMachine.RecordIntent(baseState, leadDecidedIntent);
-            if (leadDecidedIntent == ContextIntentState.ReadyForValidation)
+            var preserveReadyIntent = nextState.IntentState == ContextIntentState.ReadyForValidation
+                && leadDecidedIntent == ContextIntentState.Refining
+                && ShouldPreserveReadyIntentAgainstLeadRefinement(normalizedText);
+            if (preserveReadyIntent)
             {
-                var taskBrief = leadAgentResult.Parsed?.TaskBrief;
-                intentSummary = !string.IsNullOrWhiteSpace(taskBrief)
-                    ? taskBrief!.Trim()
-                    : BuildIntentSummary(normalizedText);
+                leadMessageContent = AppendLeadWarnings(
+                    AppText.Current.Get("projects.message.agreement_ready_with_defaults"),
+                    leadAgentResult.Parsed.Warnings);
+                if (!string.IsNullOrWhiteSpace(leadAgentResult.Parsed.TaskBrief))
+                {
+                    intentSummary = leadAgentResult.Parsed.TaskBrief.Trim();
+                }
             }
+            else
+            {
+                nextState = StepPhaseMachine.RecordIntent(baseState, leadDecidedIntent);
+                if (leadDecidedIntent == ContextIntentState.ReadyForValidation)
+                {
+                    var taskBrief = leadAgentResult.Parsed?.TaskBrief;
+                    intentSummary = !string.IsNullOrWhiteSpace(taskBrief)
+                        ? taskBrief!.Trim()
+                        : BuildIntentSummary(normalizedText);
+                }
+            }
+        }
+        else if (leadAgentResult.Success
+            && leadAgentResult.Parsed is not null
+            && TryMapLeadIntentState(leadAgentResult.Parsed.IntentState, out var matchingLeadIntent)
+            && matchingLeadIntent == ContextIntentState.ReadyForValidation
+            && nextState.IntentState == ContextIntentState.ReadyForValidation
+            && !string.IsNullOrWhiteSpace(leadAgentResult.Parsed.TaskBrief))
+        {
+            intentSummary = leadAgentResult.Parsed.TaskBrief.Trim();
         }
 
         var leadMetadata = BuildProjectConversationMetadata("discussion", context.QueryState.ActiveTaskId);
@@ -374,16 +456,39 @@ internal sealed class WorkCycleActionController
             AppText.Current.Get("role.worker"),
             AppText.Current.Get("projects.message.worker_working"),
             metadata: executionMetadata);
+        SaveWorkCycleSnapshot(
+            refreshedContext.QueryState.ProjectRoot,
+            runningState,
+            refreshedContext.WorkCycle.IntentSummary,
+            isClarificationActive: false,
+            clarificationDraft: string.Empty,
+            runtimeState: runtime);
         await InvokeProgressAsync();
 
-        var outcome = await ExecuteWorkerQcCycleAsync(
-            runtime,
-            executionContext,
-            refreshedContext.QueryState,
-            runningState,
-            workerAdvisory,
-            attachments: null,
-            isRevision: false);
+        WorkerQcCycleOutcome outcome;
+        _hasLiveExecutionInProcess = true;
+        try
+        {
+            outcome = await ExecuteWorkerQcCycleAsync(
+                runtime,
+                executionContext,
+                refreshedContext.QueryState,
+                runningState,
+                workerAdvisory,
+                attachments: null,
+                isRevision: false);
+        }
+        catch (Exception exception)
+        {
+            outcome = await RecoverFailedExecutionCycleAsync(
+                runtime,
+                refreshedContext.QueryState,
+                exception);
+        }
+        finally
+        {
+            _hasLiveExecutionInProcess = false;
+        }
 
         SaveWorkCycleSnapshot(
             refreshedContext.QueryState.ProjectRoot,
@@ -412,6 +517,9 @@ internal sealed class WorkCycleActionController
             queryState.Scan,
             queryState.ProjectRoot,
             taskDescription: executionContext.TaskState.Description);
+        var editSlots = WorkerEditSlotMapBuilder.Build(
+            queryState.ProjectRoot,
+            anchorPack);
 
         // In revision cycles, feed back: user's revision text + prior QC
         // rationale + prior staging skip reasons. Without this, Worker keeps
@@ -446,6 +554,7 @@ internal sealed class WorkCycleActionController
             AcceptanceCriteria: executionContext.TaskState.AcceptanceCriteria,
             AdvisoryNotes: workerAdvisory.HasNotes ? workerAdvisory.Notes : Array.Empty<string>(),
             Anchors: anchorPack,
+            EditSlots: editSlots,
             RevisionNotes: revisionNotes,
             CanonicalDocsStatus: workerCanonicalDocsStatus,
             PreviewStatus: WorkPacketBuilder.BuildPreviewStatus(queryState.DocumentSelection),
@@ -463,6 +572,24 @@ internal sealed class WorkCycleActionController
             IsRevision: isRevision,
             RevisionNoteCount: revisionNotes?.Count ?? 0,
             Anchors: anchorPack));
+
+        if (!isRevision && RunProfileExecutionService.LooksLikeRunProfileTask(executionContext.TaskState.Description))
+        {
+            var commandOutcome = await Task.Run(() => _runProfileExecutionService.ExecuteFirstSupported(
+                queryState.ProjectRoot,
+                executionContext.TaskState.Description));
+            if (commandOutcome.Attempted)
+            {
+                return await CompleteRunProfileExecutionAsync(
+                    runtime,
+                    executionContext,
+                    queryState,
+                    runningState,
+                    workerAdvisory,
+                    commandOutcome,
+                    attachments);
+            }
+        }
 
         var workerLlmResult = await Task.Run(() => _workerAgentRuntime.Run(workerInput));
 
@@ -848,6 +975,156 @@ internal sealed class WorkCycleActionController
         return new WorkerQcCycleOutcome(finalPhaseState, finalRuntimeState);
     }
 
+    private async Task<WorkerQcCycleOutcome> RecoverFailedExecutionCycleAsync(
+        ExecutionRuntimeState runtime,
+        ProjectWorkCycleQueryState queryState,
+        Exception exception)
+    {
+        var summary = $"Execution runtime failed before result production: {exception.GetType().Name}: {exception.Message}";
+        var interruptedRuntime = ExecutionRuntimeController.InterruptByWatchdog(
+            runtime,
+            new RuntimeInterruptionRecord(
+                StopReason.PolicyViolation,
+                DateTimeOffset.UtcNow,
+                GracefulStopAttempted: true,
+                HardKillRequired: false,
+                summary));
+        var metadata = BuildProjectConversationMetadata("execution", queryState.ActiveTaskId);
+        metadata["execution.diagnostic"] = exception.GetType().Name;
+        await ProjectsAdapter.AddMessageAsync(
+            ConversationItemKind.Status,
+            AppText.Current.Get("role.system"),
+            AppText.Current.Format("projects.message.execution_runtime_failed", exception.GetType().Name, exception.Message),
+            metadata: metadata);
+        return new WorkerQcCycleOutcome(StepPhaseMachine.ResumeInterrupted(), interruptedRuntime);
+    }
+
+    private async Task<WorkerQcCycleOutcome> CompleteRunProfileExecutionAsync(
+        ExecutionRuntimeState runtime,
+        ActiveExecutionContext executionContext,
+        ProjectWorkCycleQueryState queryState,
+        StepPhaseState runningState,
+        ProjectSageAdvisory workerAdvisory,
+        RunProfileExecutionOutcome commandOutcome,
+        IReadOnlyList<OpenRouterAttachment>? attachments)
+    {
+        var summary = BuildRunProfileResultSummary(commandOutcome);
+        var warnings = commandOutcome.Success
+            ? Array.Empty<ToolWarning>()
+            : new[] { new ToolWarning(commandOutcome.Diagnostic ?? "COMMAND_FAILED", summary) };
+        var result = new WorkerExecutionResult(
+            $"RESULT-{executionContext.TaskState.TaskId}-001",
+            executionContext.TaskState.TaskId,
+            commandOutcome.Success ? WorkerExecutionStatus.Success : WorkerExecutionStatus.Partial,
+            summary,
+            Array.Empty<IntakeArtifact>(),
+            Array.Empty<WorkerExecutionModification>(),
+            warnings,
+            commandOutcome.Success ? null : new ToolDiagnostic(commandOutcome.Diagnostic ?? "COMMAND_FAILED", summary));
+
+        runtime = ExecutionRuntimeController.ProduceProvidedResult(runtime, result);
+        var qcPhaseState = StepPhaseMachine.MoveToQc(runningState);
+        StepPhaseState finalPhaseState;
+        ExecutionRuntimeState? finalRuntimeState;
+        string followUpText;
+        if (commandOutcome.Success)
+        {
+            runtime = ExecutionRuntimeController.RequestQcReview(runtime);
+            runtime = ExecutionRuntimeController.AcceptQcReview(runtime);
+            finalPhaseState = StepPhaseMachine.AcceptQc(qcPhaseState);
+            finalRuntimeState = runtime;
+            followUpText = AppText.Current.Get("projects.message.run_profile_completed");
+        }
+        else
+        {
+            runtime = ExecutionRuntimeController.RequestQcReview(runtime);
+            runtime = ExecutionRuntimeController.RejectQcReview(runtime, needsRevision: true, summary);
+            runtime = ExecutionRuntimeController.RestartRevision(runtime);
+            var chainedAccept = StepPhaseMachine.AcceptQc(qcPhaseState);
+            finalPhaseState = StepPhaseMachine.ReturnForRevision(chainedAccept);
+            finalRuntimeState = runtime;
+            followUpText = AppText.Current.Get("projects.message.run_profile_failed_revision");
+        }
+
+        var executionMetadata = BuildProjectConversationMetadata("execution", queryState.ActiveTaskId);
+        executionMetadata["execution.kind"] = "run_profile";
+        if (commandOutcome.Profile is not null)
+        {
+            executionMetadata["run_profile.id"] = commandOutcome.Profile.Id;
+            executionMetadata["run_profile.command"] = commandOutcome.Profile.Command;
+            executionMetadata["run_profile.working_directory"] = commandOutcome.Profile.WorkingDirectory;
+        }
+
+        await ProjectsAdapter.AddMessageAsync(
+            ConversationItemKind.Worker,
+            AppText.Current.Get("role.worker"),
+            summary,
+            metadata: executionMetadata);
+        await ProjectsAdapter.AddLogAsync(
+            AppText.Current.Get("role.worker"),
+            BuildWorkerLog(queryState, runtime, workerAdvisory, attachments),
+            preview: AppText.Current.Get("projects.message.worker_log_prepared"),
+            metadata: executionMetadata);
+        await ProjectsAdapter.AddArtifactAsync(
+            AppText.Current.Get("role.worker"),
+            AppText.Current.Get("conversation.execution_brief_label"),
+            BuildWorkerArtifact(queryState, runtime, workerAdvisory, attachments),
+            "md",
+            preview: AppText.Current.Get("projects.message.execution_brief_prepared"),
+            metadata: executionMetadata);
+        await ProjectsAdapter.AddMessageAsync(
+            ConversationItemKind.Status,
+            AppText.Current.Get("role.system"),
+            followUpText,
+            metadata: BuildProjectConversationMetadata(finalPhaseState.Phase == SurfacePhase.Result ? "result" : "execution", queryState.ActiveTaskId));
+
+        return new WorkerQcCycleOutcome(finalPhaseState, finalRuntimeState);
+    }
+
+    private static string BuildRunProfileResultSummary(RunProfileExecutionOutcome outcome)
+    {
+        var lines = new List<string> { outcome.Summary };
+        if (outcome.Profile is not null)
+        {
+            lines.Add($"profile={outcome.Profile.Id}");
+            lines.Add($"command={outcome.Profile.Command}");
+            lines.Add($"workingDirectory={outcome.Profile.WorkingDirectory}");
+        }
+
+        if (outcome.ProcessResult is not null)
+        {
+            lines.Add($"exitCode={outcome.ProcessResult.ExitCode}");
+            lines.Add($"timedOut={outcome.ProcessResult.TimedOut.ToString().ToLowerInvariant()}");
+            AppendProcessOutput(lines, "stdout", outcome.ProcessResult.StdOut);
+            AppendProcessOutput(lines, "stderr", outcome.ProcessResult.StdErr);
+        }
+
+        if (!string.IsNullOrWhiteSpace(outcome.Diagnostic))
+        {
+            lines.Add($"diagnostic={outcome.Diagnostic}");
+        }
+
+        return string.Join(Environment.NewLine, lines.Where(static line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    private static void AppendProcessOutput(List<string> lines, string label, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        const int MaxChars = 1800;
+        var normalized = text.Trim();
+        if (normalized.Length > MaxChars)
+        {
+            normalized = normalized[..MaxChars] + "...";
+        }
+
+        lines.Add($"{label}:");
+        lines.Add(normalized);
+    }
+
     private static bool IsReviewableWorkerStatus(string status)
     {
         // Worker vocabulary drifted between worker.system.md (Partial/Complete)
@@ -893,6 +1170,47 @@ internal sealed class WorkCycleActionController
         }
     }
 
+    private static bool ShouldPreserveReadyIntentAgainstLeadRefinement(string userText)
+    {
+        if (string.IsNullOrWhiteSpace(userText))
+        {
+            return false;
+        }
+
+        var normalized = ProductIntentClassifier.NormalizeInput(userText);
+        var asksForBuildOrRun = normalized.Contains("собер", StringComparison.Ordinal)
+            || normalized.Contains("запуст", StringComparison.Ordinal)
+            || normalized.Contains("поигр", StringComparison.Ordinal)
+            || normalized.Contains("build", StringComparison.Ordinal)
+            || normalized.Contains("run", StringComparison.Ordinal)
+            || normalized.Contains("launch", StringComparison.Ordinal)
+            || normalized.Contains("play", StringComparison.Ordinal);
+        if (!asksForBuildOrRun)
+        {
+            return false;
+        }
+
+        return normalized.Contains("давай", StringComparison.Ordinal)
+            || normalized.Contains("помоги", StringComparison.Ordinal)
+            || normalized.Contains("хочу", StringComparison.Ordinal)
+            || normalized.Contains("не знаю", StringComparison.Ordinal)
+            || normalized.Contains("help", StringComparison.Ordinal)
+            || normalized.Contains("want", StringComparison.Ordinal)
+            || normalized.Contains("just", StringComparison.Ordinal);
+    }
+
+    private static string AppendLeadWarnings(string message, IReadOnlyList<string> warnings)
+    {
+        if (warnings.Count == 0)
+        {
+            return message;
+        }
+
+        return message
+            + Environment.NewLine + Environment.NewLine
+            + "Warnings: " + string.Join("; ", warnings);
+    }
+
     private static IReadOnlyList<LeadAgentTurn> BuildLeadRecentTurns(ProjectsAdapter adapter)
     {
         if (adapter?.Items is not { Count: > 0 } items)
@@ -933,6 +1251,58 @@ internal sealed class WorkCycleActionController
         }
 
         return selected;
+    }
+
+    private static IReadOnlyList<string> BuildLeadRecentTaskContext(ProjectsAdapter adapter)
+    {
+        if (adapter?.Items is not { Count: > 0 } items)
+        {
+            return Array.Empty<string>();
+        }
+
+        const int MaxNotes = 6;
+        var selected = new List<string>(MaxNotes);
+        for (var index = items.Count - 1; index >= 0 && selected.Count < MaxNotes; index--)
+        {
+            var item = items[index];
+            if (item is null || !IsTaskContextKind(item.Kind))
+            {
+                continue;
+            }
+
+            var text = item.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text) || !LooksLikeTaskContext(text))
+            {
+                continue;
+            }
+
+            selected.Add(text);
+        }
+
+        selected.Reverse();
+        return selected;
+    }
+
+    private static bool IsTaskContextKind(ConversationItemKind kind)
+    {
+        return kind is ConversationItemKind.Status
+            or ConversationItemKind.Worker
+            or ConversationItemKind.Qc
+            or ConversationItemKind.System;
+    }
+
+    private static bool LooksLikeTaskContext(string text)
+    {
+        return text.Contains("TASK-", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Abandoned earlier:", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Worker returned", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Worker LLM", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Worker staged", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Execution runtime", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("QC decision", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Решение QC", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Исполнитель", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Ворк", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? MapLeadTurnRole(ConversationItemKind kind)
@@ -1049,18 +1419,34 @@ internal sealed class WorkCycleActionController
     public async Task<bool> ReturnToChatAsync()
     {
         var context = BuildContext();
-        if (context.WorkCycle.PhaseState.ExecutionSubphase != ExecutionSubphase.Preflight)
+        if (context.WorkCycle.PhaseState.Phase != SurfacePhase.Execution)
         {
             return false;
         }
 
-        var returned = StepPhaseMachine.CancelPreflight(context.WorkCycle.PhaseState);
+        StepPhaseState returned;
+        string messageKey;
+        if (context.WorkCycle.PhaseState.ExecutionSubphase == ExecutionSubphase.Preflight)
+        {
+            returned = StepPhaseMachine.CancelPreflight(context.WorkCycle.PhaseState);
+            messageKey = "projects.message.returned_to_chat";
+        }
+        else if (context.WorkCycle.PhaseState.ExecutionSubphase == ExecutionSubphase.Interrupted)
+        {
+            returned = StepPhaseMachine.OpenInterruptedDiscussion(context.WorkCycle.PhaseState);
+            messageKey = "projects.message.interrupted_returned_to_chat";
+        }
+        else
+        {
+            return false;
+        }
+
         await ProjectsAdapter.AddMessageAsync(
             ConversationItemKind.Status,
             AppText.Current.Get("role.qc"),
-            AppText.Current.Get("projects.message.returned_to_chat"),
+            AppText.Current.Get(messageKey),
             metadata: BuildProjectConversationMetadata("discussion", context.QueryState.ActiveTaskId));
-        SaveWorkCycleSnapshot(context.QueryState.ProjectRoot, returned, context.WorkCycle.IntentSummary, isClarificationActive: false, clarificationDraft: string.Empty);
+        SaveWorkCycleSnapshot(context.QueryState.ProjectRoot, returned, context.WorkCycle.IntentSummary, isClarificationActive: false, clarificationDraft: string.Empty, runtimeState: null);
         await _refreshShellAsync();
         return true;
     }
@@ -1074,13 +1460,23 @@ internal sealed class WorkCycleActionController
         }
 
         var executionContext = LoadActiveExecutionContext(context.QueryState);
+        var runtimeState = context.QueryState.ResumeSnapshot.RuntimeState;
         try
         {
+            if (runtimeState.AcceptanceEvaluation is null)
+            {
+                runtimeState = ExecutionRuntimeController.ObserveAcceptanceAfterQc(
+                    runtimeState,
+                    context.QueryState.ProjectRoot,
+                    new AcceptanceProcessEvidence(0, "ok", string.Empty, TimedOut: false, WasCanceled: false),
+                    "workspace unchanged");
+            }
+
             AcceptedResultApplyProcessor.ValidateCanApply(
                 executionContext.ProjectState,
                 executionContext.ShiftState,
                 executionContext.TaskState,
-                context.QueryState.ResumeSnapshot.RuntimeState);
+                runtimeState);
         }
         catch (InvalidOperationException ex)
         {
@@ -1138,7 +1534,7 @@ internal sealed class WorkCycleActionController
             executionContext.ProjectState,
             executionContext.ShiftState,
             executionContext.TaskState,
-            context.QueryState.ResumeSnapshot.RuntimeState,
+            runtimeState,
             DateTimeOffset.Now);
 
         // Aggressive cleanup policy: staged tree is disposable once state
@@ -1289,7 +1685,146 @@ internal sealed class WorkCycleActionController
             // best effort
         }
 
+        try
+        {
+            var topologyPath = Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "topology.index.json");
+            if (File.Exists(topologyPath))
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(topologyPath));
+                var root = document.RootElement;
+                AppendStringLine(lines, root, "Kind", "topology");
+                AppendStringLine(lines, root, "SafeImportMode", "safe_import_mode");
+            }
+        }
+        catch
+        {
+            // best effort
+        }
+
+        AppendEvidenceRows(
+            lines,
+            Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "entrypoints.index.json"),
+            "entrypoints",
+            5,
+            static item =>
+            {
+                var path = GetString(item, "RelativePath");
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return null;
+                }
+
+                var role = GetString(item, "Role");
+                var score = GetInt(item, "Score");
+                var confidence = GetMarkerConfidence(item);
+                return $"{path} ({role}, score={score}, confidence={confidence})";
+            });
+
+        AppendEvidenceRows(
+            lines,
+            Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "project_units.index.json"),
+            "project_units",
+            5,
+            static item =>
+            {
+                var path = GetString(item, "RootPath");
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    return null;
+                }
+
+                return $"{path} ({GetString(item, "Kind")}, confidence={FormatConfidence(GetInt(item, "Confidence"))})";
+            });
+
+        AppendEvidenceRows(
+            lines,
+            Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "runprofiles.index.json"),
+            "run_profiles",
+            5,
+            static item =>
+            {
+                var command = GetString(item, "Command");
+                if (string.IsNullOrWhiteSpace(command))
+                {
+                    return null;
+                }
+
+                return $"{GetString(item, "Kind")}: {command} @ {GetString(item, "WorkingDirectory")} ({FormatConfidence(GetInt(item, "Confidence"))})";
+            });
+
         return lines;
+    }
+
+    private static void AppendEvidenceRows(
+        List<string> lines,
+        string path,
+        string label,
+        int max,
+        Func<System.Text.Json.JsonElement, string?> formatter)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var values = document.RootElement
+                .EnumerateArray()
+                .Select(formatter)
+                .Where(static value => !string.IsNullOrWhiteSpace(value))
+                .Take(max)
+                .ToArray();
+            if (values.Length > 0)
+            {
+                lines.Add($"{label}: {string.Join("; ", values)}");
+            }
+        }
+        catch
+        {
+            // best effort
+        }
+    }
+
+    private static string? GetString(System.Text.Json.JsonElement root, string property)
+    {
+        return root.TryGetProperty(property, out var node) && node.ValueKind == System.Text.Json.JsonValueKind.String
+            ? node.GetString()
+            : null;
+    }
+
+    private static int GetInt(System.Text.Json.JsonElement root, string property)
+    {
+        return root.TryGetProperty(property, out var node) && node.TryGetInt32(out var value)
+            ? value
+            : -1;
+    }
+
+    private static string GetMarkerConfidence(System.Text.Json.JsonElement root)
+    {
+        if (!root.TryGetProperty("EvidenceMarker", out var marker) || marker.ValueKind != System.Text.Json.JsonValueKind.Object)
+        {
+            return "Unknown";
+        }
+
+        return FormatConfidence(GetInt(marker, "Confidence"));
+    }
+
+    private static string FormatConfidence(int value)
+    {
+        return value switch
+        {
+            1 => "Likely",
+            2 => "Confirmed",
+            3 => "Conflict",
+            _ => "Unknown"
+        };
     }
 
     private static void AppendArrayLine(List<string> lines, System.Text.Json.JsonElement root, string property, string label)
@@ -1333,6 +1868,18 @@ internal sealed class WorkCycleActionController
         if (root.TryGetProperty(property, out var node) && node.TryGetInt32(out var value))
         {
             lines.Add($"{label}: {value}");
+        }
+    }
+
+    private static void AppendStringLine(List<string> lines, System.Text.Json.JsonElement root, string property, string label)
+    {
+        if (root.TryGetProperty(property, out var node) && node.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            var value = node.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                lines.Add($"{label}: {value.Trim()}");
+            }
         }
     }
 
@@ -1487,7 +2034,9 @@ internal sealed class WorkCycleActionController
     private (ProjectWorkCycleQueryState QueryState, ProjectsShellProjection ShellProjection, ProjectWorkCycleProjection WorkCycle) BuildContext()
     {
         var normalizedRoot = Path.GetFullPath(_projectRoot);
-        var queryState = ProjectWorkCycleQueryStateBuilder.Build(normalizedRoot);
+        var queryState = ProjectWorkCycleQueryStateBuilder.Build(
+            normalizedRoot,
+            preserveLiveRuntimePhase: _hasLiveExecutionInProcess);
         var shellProjection = ProjectsShellProjection.Build(queryState);
         var workCycle = ProjectWorkCycleProjection.Build(queryState, shellProjection);
         return (queryState, shellProjection, workCycle);

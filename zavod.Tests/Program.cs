@@ -52,10 +52,15 @@ using zavod.Tooling;
 using zavod.Worker;
 using zavod.UI.Modes.Chats;
 using zavod.UI.Modes.Projects;
+using zavod.UI.Modes.Projects.Projections;
 using zavod.UI.Modes.Projects.WorkCycle.Actions;
 using zavod.UI.Rendering.Conversation;
+using zavod.UI.Text;
 using zavod.Welcoming;
 using zavod.Workspace;
+
+CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
 
 var tests = new (string Name, Action Run)[]
 {
@@ -122,6 +127,7 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence pack maps project units honestly", WorkspaceEvidencePackMapsProjectUnitsHonestly),
     ("Workspace evidence pack applies scanner config unit overrides honestly", WorkspaceEvidencePackAppliesScannerConfigUnitOverridesHonestly),
     ("Workspace evidence pack maps run profiles honestly", WorkspaceEvidencePackMapsRunProfilesHonestly),
+    ("Workspace evidence pack maps Makefile run profiles honestly", WorkspaceEvidencePackMapsMakefileRunProfilesHonestly),
     ("Workspace evidence pack detects package json entry and run profiles honestly", WorkspaceEvidencePackDetectsPackageJsonEntryAndRunProfilesHonestly),
     ("Workspace evidence pack detects python pyproject entries honestly", WorkspaceEvidencePackDetectsPythonPyprojectEntriesHonestly),
     ("Workspace evidence pack does not promote readme narrative to entrypoint honestly", WorkspaceEvidencePackDoesNotPromoteReadmeNarrativeToEntrypointHonestly),
@@ -156,6 +162,10 @@ var tests = new (string Name, Action Run)[]
     ("Workspace import material interpretation preserves scanner module confidence honestly", WorkspaceImportMaterialInterpretationPreservesScannerModuleConfidenceHonestly),
     ("Workspace import preview labels package surface without main entry claim honestly", WorkspaceImportPreviewLabelsPackageSurfaceWithoutMainEntryClaimHonestly),
     ("Workspace import preview suppresses unsupported extra entries beside confirmed main honestly", WorkspaceImportPreviewSuppressesUnsupportedExtraEntriesBesideConfirmedMainHonestly),
+    ("Workspace import preview labels ambiguous entries as candidate surfaces honestly", WorkspaceImportPreviewLabelsAmbiguousEntriesAsCandidateSurfacesHonestly),
+    ("Project document runtime writes unified preview status block honestly", ProjectDocumentRuntimeWritesUnifiedPreviewStatusBlockHonestly),
+    ("Workspace evidence artifact runtime renders topology map for nonstandard previews honestly", WorkspaceEvidenceArtifactRuntimeRendersTopologyMapForNonstandardPreviewsHonestly),
+    ("UI language resolver follows current UI culture honestly", UiLanguageResolverFollowsCurrentUiCultureHonestly),
     ("Workspace import material interpretation suppresses generic modules from weak cold evidence honestly", WorkspaceImportMaterialInterpretationSuppressesGenericModulesFromWeakColdEvidenceHonestly),
     ("Workspace import material interpretation degrades unsupported broad summary honestly", WorkspaceImportMaterialInterpretationDegradesUnsupportedBroadSummaryHonestly),
     ("Workspace import material interpretation filters unsupported narrative details honestly", WorkspaceImportMaterialInterpretationFiltersUnsupportedNarrativeDetailsHonestly),
@@ -179,10 +189,17 @@ var tests = new (string Name, Action Run)[]
     ("Archive inspection service prefers bundled 7za honestly", ArchiveInspectionServicePrefersBundled7zaHonestly),
     ("Image inspection service uses windows image metadata honestly", ImageInspectionServiceUsesWindowsImageMetadataHonestly),
     ("External process runner drains stdout and stderr honestly", ExternalProcessRunnerDrainsStdoutAndStderrHonestly),
+    ("External process runner resolves Windows PATHEXT command honestly", ExternalProcessRunnerResolvesWindowsPathExtCommandHonestly),
     ("Architecture diagram runtime renders bounded png honestly", ArchitectureDiagramRuntimeRendersBoundedPngHonestly),
     ("OpenRouter client fails fast on missing config honestly", OpenRouterClientFailsFastOnMissingConfigHonestly),
+    ("OpenRouter client preserves provided HTTP timeout honestly", OpenRouterClientPreservesProvidedHttpTimeoutHonestly),
+    ("OpenRouter client sends JSON response format when requested honestly", OpenRouterClientSendsJsonResponseFormatWhenRequestedHonestly),
+    ("OpenRouter client parses streaming SSE deltas honestly", OpenRouterClientParsesStreamingSseDeltasHonestly),
     ("OpenRouter configuration defaults import model honestly", OpenRouterConfigurationDefaultsImportModelHonestly),
     ("OpenRouter configuration can load local file honestly", OpenRouterConfigurationCanLoadLocalFileHonestly),
+    ("Model routing defaults keep Lead modest and route Worker QC to Nemotron honestly", ModelRoutingDefaultsKeepLeadModestAndRouteWorkerQcToNemotronHonestly),
+    ("Model routing local file overrides routes without secrets honestly", ModelRoutingLocalFileOverridesRoutesWithoutSecretsHonestly),
+    ("Workspace import material interpreter runtime uses importer route honestly", WorkspaceImportMaterialInterpreterRuntimeUsesImporterRouteHonestly),
     ("Brave search runtime fails fast on missing config honestly", BraveSearchRuntimeFailsFastOnMissingConfigHonestly),
     ("Brave search runtime respects broker denial honestly", BraveSearchRuntimeRespectsBrokerDenialHonestly),
     ("Web search tool returns structured results through brave runtime honestly", WebSearchToolReturnsStructuredResultsThroughBraveRuntimeHonestly),
@@ -203,6 +220,7 @@ var tests = new (string Name, Action Run)[]
     ("Workspace evidence artifact runtime writes preview html from canonical docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlFromCanonicalDocsHonestly),
     ("Workspace evidence artifact runtime writes preview docs honestly", WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly),
     ("Project document runtime writes bounded container project preview honestly", ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly),
+    ("Project document runtime refuses container preview promotion honestly", ProjectDocumentRuntimeRefusesContainerPreviewPromotionHonestly),
     ("Project document runtime preserves nonstandard topology in project preview honestly", ProjectDocumentRuntimePreservesNonstandardTopologyInProjectPreviewHonestly),
     ("Project document runtime promotes nonstandard topology preview honestly", ProjectDocumentRuntimePromotesNonstandardTopologyPreviewHonestly),
     ("Project document runtime keeps project preview identity stable on reimport honestly", ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHonestly),
@@ -239,8 +257,12 @@ var tests = new (string Name, Action Run)[]
     ("Acceptance guard allows safe apply for unchanged touched scope", AcceptanceGuardAllowsSafeApplyForUnchangedTouchedScope),
     ("Acceptance guard blocks touched file conflict", AcceptanceGuardBlocksTouchedFileConflict),
     ("Acceptance guard rejects sibling path prefix escape honestly", AcceptanceGuardRejectsSiblingPathPrefixEscapeHonestly),
+    ("Worker edit slot map builder emits DSL slots honestly", WorkerEditSlotMapBuilderEmitsDslSlotsHonestly),
     ("Staging task id path segment accepts safe ids honestly", StagingTaskIdPathSegmentAcceptsSafeIdsHonestly),
     ("Staging task id path segment rejects unsafe ids honestly", StagingTaskIdPathSegmentRejectsUnsafeIdsHonestly),
+    ("Staging writer stages insert at slot honestly", StagingWriterStagesInsertAtSlotHonestly),
+    ("Staging writer skips unknown insert slot honestly", StagingWriterSkipsUnknownInsertSlotHonestly),
+    ("Staging writer keeps insert after compatibility honestly", StagingWriterKeepsInsertAfterCompatibilityHonestly),
     ("Staging writer rejects sibling path prefix escape honestly", StagingWriterRejectsSiblingPathPrefixEscapeHonestly),
     ("Staging applier blocks hash drift honestly", StagingApplierBlocksHashDriftHonestly),
     ("Staging applier ignores manifest absolute staged path honestly", StagingApplierIgnoresManifestAbsoluteStagedPathHonestly),
@@ -433,11 +455,13 @@ var tests = new (string Name, Action Run)[]
     ("Conversation composer draft store stages long text as artifact honestly", ConversationComposerDraftStoreStagesLongTextAsArtifactHonestly),
     ("Conversation log storage writes readable utf8 honestly", ConversationLogStorageWritesReadableUtf8Honestly),
     ("Chats web assets keep utf8 and plain text rendering honestly", ChatsWebAssetsKeepUtf8AndPlainTextRenderingHonestly),
+    ("Projects web keeps execution evidence in chat honestly", ProjectsWebKeepsExecutionEvidenceInChatHonestly),
     ("Chats runtime controller includes attachment content in execution request honestly", ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHonestly),
+    ("Chats runtime controller publishes OpenRouter streaming deltas honestly", ChatsRuntimeControllerPublishesOpenRouterStreamingDeltasHonestly),
     ("Projects flow consumes attachments before work-cycle send honestly", ProjectsFlowConsumesAttachmentsBeforeWorkCycleSendHonestly),
     ("Projects work cycle confirm preflight creates runtime-backed result honestly", ProjectsWorkCycleConfirmPreflightCreatesRuntimeBackedResultHonestly),
     ("Projects work cycle QC unavailable does not open result surface honestly", ProjectsWorkCycleQcUnavailableDoesNotOpenResultSurfaceHonestly),
-    ("Projects work cycle blocks physical apply before acceptance gate honestly", ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly),
+    ("Projects work cycle observes acceptance before physical apply honestly", ProjectsWorkCycleObservesAcceptanceBeforePhysicalApplyHonestly),
     ("Projects work cycle blocks truth apply when staging apply skips files honestly", ProjectsWorkCycleBlocksTruthApplyWhenStagingApplySkipsFilesHonestly),
     ("Projects work cycle accept result updates truth honestly", ProjectsWorkCycleAcceptResultUpdatesTruthHonestly),
     ("Project sage finds relevant history honestly", ProjectSageFindsRelevantHistoryHonestly),
@@ -526,7 +550,9 @@ var tests = new (string Name, Action Run)[]
     ("Step phase machine forbidden transitions fail fast", StepPhaseMachineForbiddenTransitionsFailFast),
     ("Step phase projection matrix prevents impossible action sets", StepPhaseProjectionMatrixPreventsImpossibleActionSets),
     ("Resume stage normalizer keeps live running phase when runtime is active", ResumeStageNormalizerKeepsLiveRunningPhaseWhenRuntimeIsActive),
+    ("Resume stage normalizer interrupts stale running runtime by watchdog", ResumeStageNormalizerInterruptsStaleRunningRuntimeByWatchdog),
     ("Resume stage normalizer degrades running without runtime to interrupted", ResumeStageNormalizerDegradesRunningWithoutRuntimeToInterrupted),
+    ("Project work cycle query state treats persisted running as restart recovery by default", ProjectWorkCycleQueryStateTreatsPersistedRunningAsRestartRecoveryByDefault),
     ("Resume stage normalizer keeps result review when backed by runtime", ResumeStageNormalizerKeepsResultReviewWhenBackedByRuntime),
     ("Resume stage normalizer keeps clean preflight without active truth", ResumeStageNormalizerKeepsCleanPreflightWithoutActiveTruth),
     ("Resume stage normalizer collapses dirty active discussion to reopened refinement", ResumeStageNormalizerCollapsesDirtyActiveDiscussionToReopenedRefinement),
@@ -550,6 +576,17 @@ var tests = new (string Name, Action Run)[]
     ("Product intent classifier is deterministic", ProductIntentClassifierIsDeterministic),
     ("Product ready draft exposes validate CTA through projection", ProductReadyDraftExposesValidateCtaThroughProjection),
     ("Product pipeline builds ready projection without UI events", ProductPipelineBuildsReadyProjectionWithoutUiEvents),
+    ("Projects work cycle preserves novice build intent against lead clarification honestly", ProjectsWorkCyclePreservesNoviceBuildIntentAgainstLeadClarificationHonestly),
+    ("Projects work cycle uses lead task brief for ready novice execution honestly", ProjectsWorkCycleUsesLeadTaskBriefForReadyNoviceExecutionHonestly),
+    ("Run profile execution service uses Makefile fallback honestly", RunProfileExecutionServiceUsesMakefileFallbackHonestly),
+    ("Projects work cycle routes build intent through run profile honestly", ProjectsWorkCycleRoutesBuildIntentThroughRunProfileHonestly),
+    ("Run profile execution service prefers task matched package honestly", RunProfileExecutionServicePrefersTaskMatchedPackageHonestly),
+    ("Run profile execution service surfaces missing tool honestly", RunProfileExecutionServiceSurfacesMissingToolHonestly),
+    ("Projects work cycle persists running before run profile command honestly", ProjectsWorkCyclePersistsRunningBeforeRunProfileCommandHonestly),
+    ("Projects work cycle recovers run profile crash without running softlock", ProjectsWorkCycleRecoversRunProfileCrashWithoutRunningSoftlock),
+    ("Projects work cycle returns failed run profile output for revision honestly", ProjectsWorkCycleReturnsFailedRunProfileOutputForRevisionHonestly),
+    ("Projects work cycle stack summary carries scanner review facts honestly", ProjectsWorkCycleStackSummaryCarriesScannerReviewFactsHonestly),
+    ("Projects work cycle carries recent task context to Lead honestly", ProjectsWorkCycleCarriesRecentTaskContextToLeadHonestly),
     ("Active shift ready discussion enters preflight without active task", ActiveShiftReadyDiscussionEntersPreflightWithoutActiveTask),
     ("Active shift preflight cancel preserves ready discussion without active task", ActiveShiftPreflightCancelPreservesReadyDiscussionWithoutActiveTask),
     ("Product ready draft can enter and cancel preflight without losing CTA", ProductReadyDraftCanEnterAndCancelPreflightWithoutLosingCta),
@@ -576,8 +613,14 @@ var tests = new (string Name, Action Run)[]
     ("Prompt request pipeline opens first-cycle lead packet honestly", PromptRequestPipelineOpensFirstCycleLeadPacketHonestly),
     ("Prompt request pipeline keeps first-cycle worker gated honestly", PromptRequestPipelineKeepsFirstCycleWorkerGatedHonestly),
     ("Lead agent prompt carries work packet status honestly", LeadAgentPromptCarriesWorkPacketStatusHonestly),
+    ("Worker anchor pack stays bounded for real project execution honestly", WorkerAnchorPackStaysBoundedForRealProjectExecutionHonestly),
+    ("Worker anchor pack surfaces frame loop for FPS tasks honestly", WorkerAnchorPackSurfacesFrameLoopForFpsTasksHonestly),
     ("Worker agent prompt carries work packet status honestly", WorkerAgentPromptCarriesWorkPacketStatusHonestly),
+    ("Worker agent parses insert at slot DSL honestly", WorkerAgentParsesInsertAtSlotDslHonestly),
+    ("Worker agent normalizes colon-prefixed status honestly", WorkerAgentNormalizesColonPrefixedStatusHonestly),
+    ("Worker agent retries malformed JSON once honestly", WorkerAgentRetriesMalformedJsonOnceHonestly),
     ("QC agent prompt carries work packet status honestly", QcAgentPromptCarriesWorkPacketStatusHonestly),
+    ("QC agent normalizes colon-prefixed decision honestly", QcAgentNormalizesColonPrefixedDecisionHonestly),
     ("Canonical docs status counts canonical and at-least-preview honestly", CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly),
     ("Work Packet builder maps selection to canonical status honestly", WorkPacketBuilderMapsSelectionToCanonicalStatusHonestly),
     ("Work Packet builder returns null preview status when 5 of 5 canonical", WorkPacketBuilderReturnsNullPreviewStatusWhen5Of5Canonical),
@@ -6652,6 +6695,47 @@ static void ResumeStageNormalizerDegradesRunningWithoutRuntimeToInterrupted()
     AssertEqual<ExecutionRuntimeState?>(null, normalized.RuntimeState, "Interrupted recovery must not keep phantom runtime.");
 }
 
+static void ProjectWorkCycleQueryStateTreatsPersistedRunningAsRestartRecoveryByDefault()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-persisted-running-restart";
+        var projectState = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Persisted Running Restart");
+        var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+        var shift = CreateShiftState(task) with { CurrentTaskId = task.TaskId };
+        ProjectStateStorage.Save(projectState with { ActiveShiftId = shift.ShiftId, ActiveTaskId = task.TaskId });
+        ShiftStateStorage.Save(workspaceRoot, shift);
+        var runtime = ExecutionRuntimeController.Begin(task, shift);
+        ResumeStageStorage.Save(
+            workspaceRoot,
+            new ResumeStageSnapshot(
+                Version: "1.0",
+                PhaseState: StepPhaseMachine.ResumeWork(),
+                IntentState: ContextIntentState.Validated,
+                IntentSummary: "Persisted running after restart",
+                IsExecutionPreflightActive: false,
+                IsPreflightClarificationActive: false,
+                IsResultAccepted: false,
+                ExecutionRefinement: null,
+                PreflightClarificationText: string.Empty,
+                RevisionIntakeText: string.Empty,
+                RuntimeState: runtime,
+                DemoState: null));
+
+        var queryState = ProjectWorkCycleQueryStateBuilder.Build(workspaceRoot);
+        var resume = queryState.ResumeSnapshot ?? throw new InvalidOperationException("Expected recovery snapshot.");
+
+        AssertEqual(SurfacePhase.Execution, resume.PhaseState.Phase, "Restart recovery should stay on execution surface.");
+        AssertEqual(ExecutionSubphase.Interrupted, resume.PhaseState.ExecutionSubphase, "Persisted Running must not be treated as live after app restart.");
+        AssertEqual<ExecutionRuntimeState?>(null, resume.RuntimeState, "Restart recovery must not preserve phantom live runtime state.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
 static void ResumeStageNormalizerKeepsLiveRunningPhaseWhenRuntimeIsActive()
 {
     var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
@@ -6676,6 +6760,35 @@ static void ResumeStageNormalizerKeepsLiveRunningPhaseWhenRuntimeIsActive()
     AssertEqual(SurfacePhase.Execution, normalized.PhaseState.Phase, "Live running must stay in execution phase.");
     AssertEqual(ExecutionSubphase.Running, normalized.PhaseState.ExecutionSubphase, "Live running must keep running subphase.");
     AssertTrue(normalized.RuntimeState is not null, "Live running must keep active runtime.");
+}
+
+static void ResumeStageNormalizerInterruptsStaleRunningRuntimeByWatchdog()
+{
+    var task = CreateTaskState(ContextIntentState.Validated, TaskStateStatus.Active, PromptRole.Worker);
+    var shift = CreateShiftState(task) with { CurrentTaskId = task.TaskId };
+    var runtime = ExecutionRuntimeController.Begin(task, shift) with
+    {
+        Watchdog = ExecutionWatchdog.Start(startedAt: DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(5)))
+    };
+    var snapshot = new ResumeStageSnapshot(
+        Version: "1.0",
+        PhaseState: StepPhaseMachine.ResumeWork(),
+        IntentState: ContextIntentState.Validated,
+        IntentSummary: "Stale running",
+        IsExecutionPreflightActive: false,
+        IsPreflightClarificationActive: false,
+        IsResultAccepted: false,
+        ExecutionRefinement: null,
+        PreflightClarificationText: string.Empty,
+        RevisionIntakeText: string.Empty,
+        RuntimeState: runtime,
+        DemoState: null);
+
+    var normalized = ResumeStageNormalizer.Normalize(snapshot, hasActiveWork: true, preserveLiveRuntimePhase: true)!;
+
+    AssertEqual(SurfacePhase.Execution, normalized.PhaseState.Phase, "Stale running must remain on explicit execution recovery surface.");
+    AssertEqual(ExecutionSubphase.Interrupted, normalized.PhaseState.ExecutionSubphase, "Stale running must not survive watchdog no-progress bounds.");
+    AssertEqual<ExecutionRuntimeState?>(null, normalized.RuntimeState, "Interrupted stale running must not keep a phantom live runtime.");
 }
 
 static void ResumeStageNormalizerKeepsResultReviewWhenBackedByRuntime()
@@ -7066,7 +7179,11 @@ static void ProductIntentClassifierMarksReadyCasesAsReady()
     {
         "\u0438\u0441\u043f\u0440\u0430\u0432\u044c \u043a\u043d\u043e\u043f\u043a\u0443 \u0432 project home",
         "\u0434\u043e\u0431\u0430\u0432\u044c \u0441\u0438\u043d\u0438\u0439 \u0444\u043e\u043d \u043d\u0430 \u044d\u043a\u0440\u0430\u043d \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u0430",
-        "update button layout in xaml"
+        "update button layout in xaml",
+        "\u0434\u0430\u0432\u0430\u0439 \u0441\u043e\u0431\u0435\u0440\u0435\u043c \u0431\u0438\u043d\u0430\u0440\u043d\u0438\u043a \u0438\u0437 \u044d\u0442\u043e\u0433\u043e",
+        "\u043f\u043e\u043c\u043e\u0433\u0438 \u0441\u043e\u0431\u0440\u0430\u0442\u044c \u0438\u0433\u0440\u0443",
+        "build binary",
+        "run game"
     };
 
     foreach (var text in readyCases)
@@ -7296,6 +7413,556 @@ static void ProductPipelineBuildsReadyProjectionWithoutUiEvents()
     AssertTrue(discussion.HasActiveShift, "Direct sync path must preserve active shift truth.");
     AssertFalse(discussion.HasActiveTask, "Direct sync path must keep task slot empty.");
     AssertTrue(projection.CanStartIntentValidation, "Ready direct-sync draft must expose validate CTA.");
+}
+
+static void ProjectsWorkCyclePreservesNoviceBuildIntentAgainstLeadClarificationHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-novice-build";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Novice Build");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "build:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"refining","reply":"Уточните, Docker или make использовать?","scope_notes":"","task_brief":"","warnings":["toolchain unknown"]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime);
+
+        AssertTrue(controller.SendProjectsMessageAsync("давай соберем бинарник из этого").GetAwaiter().GetResult(), "Novice build request should be accepted by work-cycle send.");
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertTrue(resume is not null, "Work-cycle send should persist resume state.");
+        AssertEqual(ContextIntentState.ReadyForValidation, resume!.PhaseState.IntentState, "Concrete novice build intent must not be demoted into repeated Lead clarification.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Kind == ConversationItemKind.Lead
+                && item.Text.Contains("bounded first pass", StringComparison.OrdinalIgnoreCase)),
+            "Lead message should frame a safe first pass instead of asking another toolchain questionnaire.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleUsesLeadTaskBriefForReadyNoviceExecutionHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-novice-play";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Novice Play");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "build:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"ready_for_validation","reply":"Оформляю задачу на первый безопасный проход сборки.","scope_notes":"Windows host, observed make build evidence.","task_brief":"Inspect the sm64 build evidence and prepare the safest first-pass Windows build/run path without claiming that a binary already exists.","warnings":["assets may be required before a playable binary can be produced"]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime);
+
+        AssertTrue(controller.SendProjectsMessageAsync("почему ты ничего не сделал я хочу играть").GetAwaiter().GetResult(), "Novice play complaint should still be accepted as concrete build/run intent.");
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertTrue(resume is not null, "Work-cycle send should persist resume state.");
+        AssertEqual(ContextIntentState.ReadyForValidation, resume!.PhaseState.IntentState, "Concrete novice play request should remain ready for validation.");
+        AssertContains(resume.IntentSummary, "safest first-pass Windows build/run path", "Execution intent summary must use Lead task_brief instead of raw complaint text.");
+        AssertFalse(resume.IntentSummary.Contains("почему ты ничего не сделал", StringComparison.OrdinalIgnoreCase), "Raw emotional complaint must not become the Worker task description.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void RunProfileExecutionServiceUsesMakefileFallbackHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "all:\n\t@echo build\n", Encoding.UTF8);
+        var runner = new FakeExternalProcessRunner(_ => new ExternalProcessResult(0, "build ok", string.Empty, TimedOut: false));
+        var service = new RunProfileExecutionService(runner);
+
+        var outcome = service.ExecuteFirstSupported(workspaceRoot, "собери бинарник для игры");
+
+        AssertTrue(outcome.Attempted, "Makefile fallback should give build/run requests an execution path instead of edit-worker fallback.");
+        AssertTrue(outcome.Success, "Successful external process result should surface as successful run profile execution.");
+        AssertTrue(outcome.Profile is not null, "Run profile execution should expose the selected profile.");
+        AssertEqual("make", outcome.Profile!.Command, "Root Makefile fallback should select the make command.");
+        AssertEqual(1, runner.Requests.Count, "Run profile execution should invoke the process runner exactly once.");
+        AssertEqual("make", runner.Requests[0].FileName, "Process request should execute make without shell wrapping.");
+        AssertEqual(Path.GetFullPath(workspaceRoot), runner.Requests[0].WorkingDirectory, "Process request should run from the imported project root.");
+        AssertEqual("run_profile:profile-root-make-build-fallback", runner.Requests[0].Purpose, "Process request should preserve the selected scanner/fallback profile id.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleRoutesBuildIntentThroughRunProfileHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-run-profile-build";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Run Profile Build");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "all:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"ready_for_validation","reply":"Оформляю безопасный первый проход сборки.","scope_notes":"Observed Makefile build evidence.","task_brief":"Build the game binary using observed run profile evidence; do not claim a playable binary exists unless the command succeeds.","warnings":["assets or toolchain may still be missing"]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var workerRuntime = new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("Edit worker should not run for build/run profile execution.")));
+        var qcRuntime = new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("LLM QC should not run for deterministic run profile execution.")));
+        var runner = new FakeExternalProcessRunner(_ => new ExternalProcessResult(0, "binary built", string.Empty, TimedOut: false));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime,
+            workerAgentRuntime: workerRuntime,
+            qcAgentRuntime: qcRuntime,
+            runProfileExecutionService: new RunProfileExecutionService(runner));
+
+        AssertTrue(controller.SendProjectsMessageAsync("я хочу собрать игру").GetAwaiter().GetResult(), "Build/play request should enter ready discussion.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Ready build intent should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Preflight confirm should execute the selected run profile.");
+
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertEqual(1, runner.Requests.Count, "Build/run intent should route through run profile execution instead of edit Worker.");
+        AssertTrue(resume is not null, "Run profile execution should persist a resume snapshot.");
+        AssertTrue(resume!.RuntimeState is not null, "Run profile execution should persist typed runtime result state.");
+        AssertEqual(SurfacePhase.Result, resume.PhaseState.Phase, "Successful run profile execution should open result review.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Kind == ConversationItemKind.Worker
+                && item.Text.Contains("command=make", StringComparison.OrdinalIgnoreCase)
+                && item.Text.Contains("stdout:", StringComparison.OrdinalIgnoreCase)
+                && item.Text.Contains("binary built", StringComparison.OrdinalIgnoreCase)),
+            "Conversation should show the command result instead of asking the edit Worker to create instructions.");
+        AssertFalse(
+            adapter.Items.Any(item => item.Text.Contains("execution basis", StringComparison.OrdinalIgnoreCase)),
+            "Run profile path should avoid the edit-worker refusal about missing file anchors.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void RunProfileExecutionServicePrefersTaskMatchedPackageHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var projectRoot = Path.Combine(workspaceRoot, "opencode-dev");
+        var bundleRoot = Path.Combine(projectRoot, ".zavod", "import_evidence_bundle");
+        Directory.CreateDirectory(bundleRoot);
+        File.WriteAllText(Path.Combine(bundleRoot, "runprofiles.index.json"), """
+            [
+              {
+                "Id": "profile-packages-app-build",
+                "Kind": "build",
+                "Command": "npm run build",
+                "WorkingDirectory": "packages\\app",
+                "SourcePath": "packages\\app\\package.json",
+                "Confidence": 2,
+                "Evidence": ["script:build"]
+              },
+              {
+                "Id": "profile-packages-opencode-build",
+                "Kind": "build",
+                "Command": "npm run build",
+                "WorkingDirectory": "packages\\opencode",
+                "SourcePath": "packages\\opencode\\package.json",
+                "Confidence": 2,
+                "Evidence": ["script:build"]
+              }
+            ]
+            """, Encoding.UTF8);
+        var runner = new FakeExternalProcessRunner(_ => new ExternalProcessResult(0, "ok", string.Empty, TimedOut: false));
+        var service = new RunProfileExecutionService(runner);
+
+        var outcome = service.ExecuteFirstSupported(projectRoot, "Build opencode source for Windows");
+
+        AssertTrue(outcome.Attempted, "Supported scanner build profile should be attempted.");
+        AssertTrue(outcome.Profile is not null, "Run profile execution should expose selected profile.");
+        AssertEqual("packages\\opencode", outcome.Profile!.WorkingDirectory, "Task/project token should prefer the opencode package build over the first generic build profile.");
+        AssertEqual("packages\\opencode", runner.Requests.Single().WorkingDirectory!.Substring(projectRoot.Length + 1), "Process request should execute from the matched package directory.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void RunProfileExecutionServiceSurfacesMissingToolHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var bundleRoot = Path.Combine(workspaceRoot, ".zavod", "import_evidence_bundle");
+        Directory.CreateDirectory(bundleRoot);
+        File.WriteAllText(Path.Combine(bundleRoot, "runprofiles.index.json"), """
+            [
+              {
+                "Id": "profile-package-build",
+                "Kind": "build",
+                "Command": "npm run build",
+                "WorkingDirectory": ".",
+                "SourcePath": "package.json",
+                "Confidence": 2,
+                "Evidence": ["script:build"]
+              }
+            ]
+            """, Encoding.UTF8);
+        var runner = new FakeExternalProcessRunner(_ => throw new FileNotFoundException("Executable `npm` was not found on PATH."));
+        var service = new RunProfileExecutionService(runner);
+
+        var outcome = service.ExecuteFirstSupported(workspaceRoot, "build for Windows");
+
+        AssertTrue(outcome.Attempted, "Missing host tool should still be an attempted run profile with a reviewable diagnostic.");
+        AssertFalse(outcome.Success, "Missing host tool must not be reported as a successful build.");
+        AssertContains(outcome.Summary, "Executable `npm` was not found on PATH", "Run profile summary should tell the user which host tool is missing.");
+        AssertEqual("FileNotFoundException", outcome.Diagnostic, "Run profile diagnostic should preserve the missing executable exception type.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCyclePersistsRunningBeforeRunProfileCommandHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-run-profile-running-snapshot";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Running Snapshot");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "all:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"ready_for_validation","reply":"Оформляю сборку.","scope_notes":"Observed Makefile build evidence.","task_brief":"Build the project binary using observed run profile evidence.","warnings":[]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var observedRunningSnapshot = false;
+        var runner = new FakeExternalProcessRunner(_ =>
+        {
+            var resume = ResumeStageStorage.Load(workspaceRoot);
+            observedRunningSnapshot = resume is not null
+                && resume.PhaseState.Phase == SurfacePhase.Execution
+                && resume.PhaseState.ExecutionSubphase == ExecutionSubphase.Running
+                && resume.RuntimeState is not null;
+            return new ExternalProcessResult(0, "build ok", string.Empty, TimedOut: false);
+        });
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime,
+            workerAgentRuntime: new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("Edit worker should not run."))),
+            qcAgentRuntime: new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("LLM QC should not run."))),
+            runProfileExecutionService: new RunProfileExecutionService(runner));
+
+        AssertTrue(controller.SendProjectsMessageAsync("собери проект").GetAwaiter().GetResult(), "Build intent should enter ready discussion.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Ready build intent should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Preflight confirm should execute run profile.");
+
+        AssertTrue(observedRunningSnapshot, "Work cycle must persist Execution/Running with runtime state before starting a long run profile command.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleRecoversRunProfileCrashWithoutRunningSoftlock()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-run-profile-crash-recovery";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Run Profile Crash Recovery");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "all:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"ready_for_validation","reply":"Оформляю сборку.","scope_notes":"Observed Makefile build evidence.","task_brief":"Build the project binary using observed run profile evidence.","warnings":[]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var runner = new FakeExternalProcessRunner(_ => throw new FormatException("synthetic runner crash"));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime,
+            workerAgentRuntime: new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("Edit worker should not run."))),
+            qcAgentRuntime: new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("LLM QC should not run."))),
+            runProfileExecutionService: new RunProfileExecutionService(runner));
+
+        AssertTrue(controller.SendProjectsMessageAsync("собери проект").GetAwaiter().GetResult(), "Build intent should enter ready discussion.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Ready build intent should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Unexpected run profile crash should be contained by execution recovery.");
+
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+        AssertTrue(resume is not null, "Crash recovery should persist a resume snapshot.");
+        AssertEqual(SurfacePhase.Execution, resume!.PhaseState.Phase, "Crash recovery should stay on the execution surface.");
+        AssertEqual(ExecutionSubphase.Interrupted, resume.PhaseState.ExecutionSubphase, "Crash recovery must not leave the UI in Running.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("FormatException", StringComparison.Ordinal)
+                && item.Text.Contains("synthetic runner crash", StringComparison.Ordinal)),
+            "Crash recovery should tell the user which runtime failure happened.");
+
+        AssertTrue(controller.ReturnToChatAsync().GetAwaiter().GetResult(), "Interrupted execution should expose an explicit return-to-chat action.");
+        var reopened = ResumeStageStorage.Load(workspaceRoot);
+        AssertTrue(reopened is not null, "Return from interrupted execution should persist a resume snapshot.");
+        AssertEqual(SurfacePhase.Discussion, reopened!.PhaseState.Phase, "Return from interrupted execution should reopen discussion.");
+        AssertEqual(DiscussionSubphase.Reopened, reopened.PhaseState.DiscussionSubphase, "Interrupted return should keep a reopened discussion state.");
+        AssertEqual<ExecutionRuntimeState?>(null, reopened.RuntimeState, "Interrupted return to chat should not preserve a phantom live runtime.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("Возврат", StringComparison.Ordinal) || item.Text.Contains("Returned", StringComparison.Ordinal)),
+            "Interrupted return should leave a visible conversation event.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleReturnsFailedRunProfileOutputForRevisionHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-run-profile-failure-revision";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Run Profile Failure Revision");
+        File.WriteAllText(Path.Combine(workspaceRoot, "Makefile"), "all:\n\t@echo build\n", Encoding.UTF8);
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+            true,
+            """
+            {"intent_state":"ready_for_validation","reply":"Оформляю сборку.","scope_notes":"Observed Makefile build evidence.","task_brief":"Build the project binary using observed run profile evidence.","warnings":[]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok")));
+        var runner = new FakeExternalProcessRunner(_ => new ExternalProcessResult(1, "build started", "missing dependency", TimedOut: false));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime,
+            workerAgentRuntime: new WorkerAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("Edit worker should not run."))),
+            qcAgentRuntime: new QcAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(_ => throw new InvalidOperationException("LLM QC should not run."))),
+            runProfileExecutionService: new RunProfileExecutionService(runner));
+
+        AssertTrue(controller.SendProjectsMessageAsync("собери проект").GetAwaiter().GetResult(), "Build intent should enter ready discussion.");
+        AssertTrue(controller.EnterWorkAsync().GetAwaiter().GetResult(), "Ready build intent should enter preflight.");
+        AssertTrue(controller.ConfirmPreflightAsync().GetAwaiter().GetResult(), "Failed run profile command should return a reviewable diagnostic result.");
+
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+        AssertTrue(resume is not null, "Failed run profile should persist a resume snapshot.");
+        AssertEqual(SurfacePhase.Execution, resume!.PhaseState.Phase, "Failed run profile should stay on execution surface.");
+        AssertEqual(ExecutionSubphase.Revision, resume.PhaseState.ExecutionSubphase, "Failed run profile output should open revision, not crash or softlock.");
+        AssertTrue(resume.RuntimeState is not null, "Failed run profile revision should keep runtime state for the next attempt.");
+        AssertEqual(QCReviewStatus.NotStarted, resume.RuntimeState!.QcStatus, "Revision restart should reset QC status after deterministic failure review.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Kind == ConversationItemKind.Worker
+                && item.Text.Contains("exitCode=1", StringComparison.Ordinal)
+                && item.Text.Contains("missing dependency", StringComparison.Ordinal)),
+            "Conversation should show failed process output so the user can revise from evidence.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleStackSummaryCarriesScannerReviewFactsHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var bundleRoot = Path.Combine(workspaceRoot, ".zavod", "import_evidence_bundle");
+        Directory.CreateDirectory(bundleRoot);
+        File.WriteAllText(Path.Combine(bundleRoot, "technical_passport.json"), """
+            {
+              "ObservedLanguages": ["TypeScript", "Rust"],
+              "BuildSystems": ["package_json", "cargo"],
+              "RuntimeSurfaces": ["cli", "web"]
+            }
+            """, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(bundleRoot, "project_profile.json"), """
+            {
+              "SourceRoots": ["packages", "script"],
+              "SourceFileCount": 42,
+              "RelevantFileCount": 100
+            }
+            """, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(bundleRoot, "topology.index.json"), """
+            {
+              "Kind": "Ambiguous",
+              "SafeImportMode": "ambiguous-review"
+            }
+            """, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(bundleRoot, "entrypoints.index.json"), """
+            [
+              {
+                "RelativePath": "packages\\opencode\\bin\\opencode",
+                "Role": "cli",
+                "Score": 96,
+                "EvidenceMarker": { "Confidence": 2 }
+              }
+            ]
+            """, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(bundleRoot, "project_units.index.json"), """
+            [
+              {
+                "RootPath": "packages\\opencode",
+                "Kind": "node-package",
+                "Confidence": 2
+              }
+            ]
+            """, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(bundleRoot, "runprofiles.index.json"), """
+            [
+              {
+                "Kind": "run",
+                "Command": "npm run dev",
+                "WorkingDirectory": ".",
+                "Confidence": 2
+              }
+            ]
+            """, Encoding.UTF8);
+
+        var summary = WorkCycleActionController.BuildProjectStackSummary(workspaceRoot);
+        var text = string.Join("\n", summary);
+
+        AssertContains(text, "languages: TypeScript, Rust", "Lead project stack should still expose technical passport languages.");
+        AssertContains(text, "topology: Ambiguous", "Lead project stack should expose scanner topology for orientation answers.");
+        AssertContains(text, "safe_import_mode: ambiguous-review", "Lead project stack should expose scanner safe import mode.");
+        AssertContains(text, "entrypoints: packages\\opencode\\bin\\opencode (cli, score=96, confidence=Confirmed)", "Lead project stack should expose top scanner entrypoints.");
+        AssertContains(text, "project_units: packages\\opencode (node-package, confidence=Confirmed)", "Lead project stack should expose scanner project units.");
+        AssertContains(text, "run_profiles: run: npm run dev @ . (Confirmed)", "Lead project stack should expose scanner run profiles.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ProjectsWorkCycleCarriesRecentTaskContextToLeadHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        const string projectId = "zavod-project-recent-task-context";
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, projectId, "ZAVOD Project Recent Task Context");
+        var conversationId = ConversationRouting.GetProjectConversationId(projectId);
+        var adapter = new ProjectsAdapter(
+            storage: ConversationLogStorage.ForProjectConversation(workspaceRoot, conversationId),
+            artifactStorage: new ConversationArtifactStorage(workspaceRoot));
+        adapter.AddMessageAsync(
+            ConversationItemKind.User,
+            "User",
+            "давай добавим fps counter в правый верхний угол").GetAwaiter().GetResult();
+        adapter.AddMessageAsync(
+            ConversationItemKind.Status,
+            "System",
+            "Abandoned earlier: Add an FPS counter to the top-right corner of the cssDOOM browser game HUD").GetAwaiter().GetResult();
+
+        var leadRuntime = new LeadAgentRuntime(clientFactory: _ => new FakeOpenRouterExecutionClient(request =>
+        {
+            AssertContains(request.UserPrompt, "RECENT TASK CONTEXT", "Lead prompt should expose bounded task context separately from chat turns.");
+            AssertContains(request.UserPrompt, "Add an FPS counter to the top-right corner", "Lead prompt should carry the previous concrete task target for follow-up resolution.");
+            return new OpenRouterExecutionResponse(
+                true,
+                """
+                {"intent_state":"ready_for_validation","reply":"Переносим FPS counter в левый верхний угол.","scope_notes":"Resolved short follow-up from recent task context.","task_brief":"Move the FPS counter from the top-right corner to the top-left corner of the cssDOOM browser game HUD.","warnings":[]}
+                """,
+                "openrouter/test",
+                200,
+                null,
+                "ok");
+        }));
+        var controller = new WorkCycleActionController(
+            workspaceRoot,
+            () => adapter,
+            () => Task.CompletedTask,
+            () => { },
+            leadAgentRuntime: leadRuntime);
+
+        AssertTrue(controller.SendProjectsMessageAsync("отлично давай теперь перенесем в левый угол").GetAwaiter().GetResult(), "Short follow-up should be routed through Lead with task context.");
+        var resume = ResumeStageStorage.Load(workspaceRoot);
+
+        AssertTrue(resume is not null, "Work-cycle send should persist resume state.");
+        AssertEqual(ContextIntentState.ReadyForValidation, resume!.PhaseState.IntentState, "Lead should be able to promote an unambiguous task-context follow-up.");
+        AssertContains(resume.IntentSummary, "FPS counter", "Validated task summary should preserve the resolved target from recent task context.");
+        AssertContains(resume.IntentSummary, "top-left", "Validated task summary should preserve the new requested location.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
 }
 
 static void ProductReadyDraftCanEnterAndCancelPreflightWithoutLosingCta()
@@ -8198,6 +8865,22 @@ static void ChatsWebAssetsKeepUtf8AndPlainTextRenderingHonestly()
     AssertFalse(js.Contains("p.innerHTML = escapeHtml", StringComparison.Ordinal), "Chats bridge should not use innerHTML for raw assistant text rendering.");
 }
 
+static void ProjectsWebKeepsExecutionEvidenceInChatHonestly()
+{
+    var repoRoot = Directory.GetCurrentDirectory();
+    var jsPath = Path.Combine(repoRoot, "UI", "Web", "Projects", "projects.bridge.js");
+    var cssPath = Path.Combine(repoRoot, "UI", "Web", "Projects", "projects.css");
+    var js = File.ReadAllText(jsPath, Encoding.UTF8);
+    var css = File.ReadAllText(cssPath, Encoding.UTF8);
+
+    AssertContains(js, "Phase-3 is result review only", "Projects web bridge should keep execution progress out of the separate result surface.");
+    AssertContains(js, "const showPhase3 = inResult", "Projects web bridge should open phase-3 only for result review.");
+    AssertContains(js, "renderExecutionSurface(state, showPhase3, inResult)", "Projects web bridge should still render result surface when review is visible.");
+    AssertContains(js, "renderMessages(state.conversation", "Projects web bridge should keep execution status visible through the main conversation feed.");
+    AssertContains(js, "canConfirmPreflight === true", "Projects web bridge should allow the Tab confirm shortcut while preflight owns the composer.");
+    AssertFalse(css.Contains(".action-bar.recovery", StringComparison.Ordinal), "Projects web CSS should not keep the abandoned interrupted recovery action bar mode.");
+}
+
 static void ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHonestly()
 {
     var workspaceRoot = CreateScratchWorkspace();
@@ -8229,6 +8912,55 @@ static void ChatsRuntimeControllerIncludesAttachmentContentInExecutionRequestHon
 
         var snapshot = controller.BuildSnapshot();
         AssertContains(snapshot.Messages[^1].Text, "стабилизации UTF-8", "Assistant reply should be able to depend on the attached Cyrillic content.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
+static void ChatsRuntimeControllerPublishesOpenRouterStreamingDeltasHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        _ = ProjectStateStorage.EnsureInitialized(workspaceRoot, "zavod-chat-runtime-streaming", "ZAVOD Chat Runtime Streaming");
+        var openRouter = new FakeStreamingOpenRouterExecutionClient(
+            _ => new OpenRouterExecutionResponse(true, "full fallback", "openrouter/test", 200, null, "unused"),
+            (_, onDelta) =>
+            {
+                onDelta("First ");
+                Thread.Sleep(20);
+                onDelta("chunk.");
+                return new OpenRouterExecutionResponse(true, "First chunk.", "openrouter/test", 200, null, "ok");
+            });
+        var controller = new ChatsRuntimeController(workspaceRoot, openRouter);
+        controller.EnsureInitializedAsync().GetAwaiter().GetResult();
+
+        var publishedAssistantStates = new List<(string Text, string StreamState)>();
+        AssertTrue(
+            controller.SendMessageAsync(
+                "stream this",
+                () =>
+                {
+                    var assistant = controller.BuildSnapshot().Messages.LastOrDefault(message => string.Equals(message.Role, "assistant", StringComparison.Ordinal));
+                    if (assistant is not null)
+                    {
+                        publishedAssistantStates.Add((assistant.Text, assistant.StreamState));
+                    }
+
+                    return Task.CompletedTask;
+                }).GetAwaiter().GetResult(),
+            "Chats runtime should accept a streaming user message.");
+
+        AssertTrue(openRouter.StreamingWasUsed, "Chats runtime should use the OpenRouter streaming client when available.");
+        AssertTrue(
+            publishedAssistantStates.Any(state => string.Equals(state.StreamState, "streaming", StringComparison.Ordinal) && state.Text.Contains("First ", StringComparison.Ordinal)),
+            "Chats runtime should publish partial assistant text before final completion.");
+        var finalSnapshot = controller.BuildSnapshot();
+        var finalAssistant = finalSnapshot.Messages.Last(message => string.Equals(message.Role, "assistant", StringComparison.Ordinal));
+        AssertEqual("final", finalAssistant.StreamState, "Final assistant message should leave streaming state.");
+        AssertEqual("First chunk.", finalAssistant.Text, "Final assistant text should use the authoritative streaming response content.");
     }
     finally
     {
@@ -8538,7 +9270,7 @@ static void ProjectsWorkCycleQcUnavailableDoesNotOpenResultSurfaceHonestly()
     }
 }
 
-static void ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly()
+static void ProjectsWorkCycleObservesAcceptanceBeforePhysicalApplyHonestly()
 {
     var workspaceRoot = CreateScratchWorkspace();
     try
@@ -8548,6 +9280,7 @@ static void ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly()
         var targetPath = Path.Combine(workspaceRoot, "src", "File.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         File.WriteAllText(targetPath, "original", Encoding.UTF8);
+        EnsureProjectStructureForTest(workspaceRoot);
 
         var conversationId = ConversationRouting.GetProjectConversationId(projectId);
         var adapter = new ProjectsAdapter(
@@ -8600,11 +9333,14 @@ static void ProjectsWorkCycleBlocksPhysicalApplyBeforeAcceptanceGateHonestly()
 
         var accepted = controller.AcceptResultAsync().GetAwaiter().GetResult();
 
-        AssertFalse(accepted, "AcceptResult must stop before physical apply when acceptance evaluation is missing.");
-        AssertEqual("original", File.ReadAllText(targetPath, Encoding.UTF8), "Missing acceptance evaluation must not physically apply staged files.");
-        AssertTrue(
+        AssertTrue(accepted, "AcceptResult should observe acceptance before physical apply when QC has accepted the staged result.");
+        AssertEqual("staged", File.ReadAllText(targetPath, Encoding.UTF8), "Accepted staged file should physically apply after acceptance observation.");
+        AssertFalse(
             adapter.Items.Any(item => item.Text.Contains("Accepted result apply blocked", StringComparison.OrdinalIgnoreCase)),
-            "Blocked apply should be visible in the project conversation.");
+            "Happy-path apply should not emit a blocked apply message.");
+        AssertTrue(
+            adapter.Items.Any(item => item.Text.Contains("Accepted result applied", StringComparison.OrdinalIgnoreCase)),
+            "Accepted apply should be visible in the project conversation.");
     }
     finally
     {
@@ -8977,6 +9713,9 @@ static void WorkspaceScannerIgnoresGeneratedNoiseDirectoriesHonestly()
         Directory.CreateDirectory(Path.Combine(root, ".zavod", "project"));
         File.WriteAllText(Path.Combine(root, ".zavod", "project", "project.md"), "# internal truth");
 
+        Directory.CreateDirectory(Path.Combine(root, ".zavod.local", "lab", "run-001"));
+        File.WriteAllText(Path.Combine(root, ".zavod.local", "lab", "run-001", "response.txt"), "runtime response");
+
         Directory.CreateDirectory(Path.Combine(root, "coverage"));
         File.WriteAllText(Path.Combine(root, "coverage", "lcov.info"), "TN:");
 
@@ -8986,8 +9725,10 @@ static void WorkspaceScannerIgnoresGeneratedNoiseDirectoriesHonestly()
         AssertEqual(0, result.State.Summary.SourceFileCount, "Ignored generated directories must not contribute source files.");
         AssertFalse(result.State.Summary.SourceRoots.Any(), "Ignored generated directories must not fabricate source roots.");
         AssertFalse(result.State.HasRecognizableProjectStructure, "Generated noise must not fabricate recognizable project structure.");
-        AssertEqual(3, result.State.Summary.IgnoredNoiseFileCount, "Ignored generated files should be counted for honest noise reporting.");
+        AssertEqual(4, result.State.Summary.IgnoredNoiseFileCount, "Ignored generated files should be counted for honest noise reporting.");
+        AssertFalse(result.MaterialCandidates.Any(candidate => candidate.RelativePath.StartsWith(".zavod.local", StringComparison.OrdinalIgnoreCase)), "ZAVOD local runtime files must not become import-facing project materials.");
         AssertTrue(result.State.Summary.IgnoredNoiseRoots.Contains(".zavod"), "Ignored ZAVOD-internal root should be preserved for noise reporting.");
+        AssertTrue(result.State.Summary.IgnoredNoiseRoots.Contains(".zavod.local"), "Ignored ZAVOD-local runtime root should be preserved for noise reporting.");
         AssertTrue(result.State.Summary.IgnoredNoiseRoots.Contains("coverage"), "Ignored coverage root should be preserved for noise reporting.");
         AssertTrue(result.State.Summary.IgnoredNoiseRoots.Contains("node_modules"), "Ignored node_modules root should be preserved for noise reporting.");
         AssertTrue(result.State.StructuralAnomalies.Any(a => a.Code == "NOISY_WORKSPACE_HINT"), "Scanner should honestly report that valid import is surrounded by noisy payload.");
@@ -10503,6 +11244,32 @@ static void WorkspaceEvidencePackMapsRunProfilesHonestly()
     }
 }
 
+static void WorkspaceEvidencePackMapsMakefileRunProfilesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "Makefile"), "all:\n\tcc src/main.c -o game\n", Encoding.UTF8);
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.c"), "int main(void) { return 0; }", Encoding.UTF8);
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var pack = WorkspaceEvidencePackBuilder.Build(scan, Array.Empty<WorkspaceTechnicalPreviewInput>(), Array.Empty<WorkspaceMaterialPreviewInput>());
+        var profile = pack.Candidates.RunProfiles.FirstOrDefault(candidate => candidate.Command == "make");
+
+        AssertTrue(profile is not null, "Root Makefile should become a build run profile.");
+        AssertEqual("build", profile!.Kind, "Makefile profile should be a build profile.");
+        AssertEqual(".", profile.WorkingDirectory, "Root Makefile profile should execute from the project root.");
+        AssertEqual(WorkspaceEvidenceConfidenceLevel.Confirmed, profile.Confidence, "Makefile profile should preserve direct manifest confidence.");
+        AssertTrue(profile.Evidence.Contains("makefile_manifest", StringComparer.OrdinalIgnoreCase), "Makefile profile should expose direct Makefile evidence.");
+        AssertTrue(pack.Candidates.ProjectUnits.Any(unit => unit.Kind == "make-project" && unit.Manifests.Contains("Makefile", StringComparer.OrdinalIgnoreCase)), "Project units should preserve Makefile as a build unit.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
 static void WorkspaceEvidencePackDetectsPackageJsonEntryAndRunProfilesHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -11808,6 +12575,208 @@ static void WorkspaceImportPreviewSuppressesUnsupportedExtraEntriesBesideConfirm
     }
 }
 
+static void WorkspaceImportPreviewLabelsAmbiguousEntriesAsCandidateSurfacesHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        File.WriteAllText(Path.Combine(root, "index.js"), "import './src/game.js';");
+        File.WriteAllText(Path.Combine(root, "src", "game.js"), "export const game = true;");
+        Directory.CreateDirectory(Path.Combine(root, "public", "assets"));
+        File.WriteAllText(Path.Combine(root, "public", "assets", "map.json"), "{}");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Ambiguous JavaScript folder.",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                new[] { new WorkspaceImportMaterialEntryPointInterpretation("index.js", "entry", "Observed in root.", WorkspaceEvidenceConfidenceLevel.Unknown) },
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+        var artifacts = new ProjectDocumentRuntimeService().WritePreviewDocs(run, root);
+        var previewProjectText = File.ReadAllText(artifacts.PreviewProjectPath);
+
+        AssertContains(previewProjectText, "Candidate entry surface: `index.js` [Unknown]", "Ambiguous topology must not label weak entry selection as Main Entry.");
+        AssertFalse(previewProjectText.Contains("Main Entry: `index.js`", StringComparison.OrdinalIgnoreCase), "Ambiguous topology should require review instead of main-entry wording.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeWritesUnifiedPreviewStatusBlockHonestly()
+{
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    try
+    {
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+
+        var root = CreateScratchWorkspace();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "src"));
+            File.WriteAllText(Path.Combine(root, "src", "main.go"), "package main\nfunc main() {}");
+
+            var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+            var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+            var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+                packet,
+                new WorkspaceImportMaterialPromptResponse(
+                    "Single project summary.",
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                    Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                    Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(),
+                    new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                    Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+            var run = new WorkspaceImportMaterialInterpreterRunResult(
+                packet,
+                WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+                new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+                new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+                interpretation,
+                null,
+                "runtime summary");
+
+            var artifacts = new ProjectDocumentRuntimeService().WritePreviewDocs(run, root);
+            foreach (var path in new[] { artifacts.PreviewProjectPath, artifacts.PreviewDirectionPath, artifacts.PreviewRoadmapPath, artifacts.PreviewCanonPath, artifacts.PreviewCapsulePath })
+            {
+                var text = File.ReadAllText(path);
+                if (string.Equals(path, artifacts.PreviewCapsulePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    AssertContains(text, "Preview status", "Capsule should share a visible preview status block without adding a capsule v2 section.");
+                }
+                else
+                {
+                    AssertContains(text, "## Preview status", "Every non-capsule preview doc should share a visible preview status section.");
+                }
+
+                AssertContains(text, "Status: `Preview, not canonical`", "Preview docs must not look canonical.");
+                AssertContains(text, "Topology:", "Preview docs should carry scanner topology framing.");
+                AssertContains(text, "Local import path:", "Preview docs should mark local path as metadata.");
+            }
+        }
+        finally
+        {
+            DeleteScratchWorkspace(root);
+        }
+    }
+    finally
+    {
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
+    }
+}
+
+static void WorkspaceEvidenceArtifactRuntimeRendersTopologyMapForNonstandardPreviewsHonestly()
+{
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "src"));
+        Directory.CreateDirectory(Path.Combine(root, "vendor-tool", "src"));
+        File.WriteAllText(Path.Combine(root, "src", "main.cpp"), "int main() { return 0; }");
+        File.WriteAllText(Path.Combine(root, "vendor-tool", "src", "main.cpp"), "int main() { return 0; }");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "Ambiguous folder.",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(),
+                new ArchitectureDiagramSpec("Project Architecture", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+
+        var bundle = new WorkspaceEvidenceArtifactRuntimeService(new ArchitectureDiagramRuntimeService()).WriteBundle(run);
+        var previewText = File.ReadAllText(bundle.PreviewPath);
+
+        AssertContains(previewText, "Evidence / Topology Map", "Nonstandard previews should render scanner topology instead of an empty architecture promise.");
+        AssertContains(previewText, "Source: scanner topology artifacts", "Topology map should identify scanner artifacts as its source.");
+        AssertContains(previewText, "Safe mode:", "Topology safe mode should stay visible in HTML.");
+        AssertFalse(previewText.Contains("No richer structure map is projected", StringComparison.OrdinalIgnoreCase), "Nonstandard topology must not collapse to a blank map placeholder.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
+    }
+}
+
+static void UiLanguageResolverFollowsCurrentUiCultureHonestly()
+{
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    var previousOverride = Environment.GetEnvironmentVariable(UiLanguageResolver.EnvironmentVariable);
+    try
+    {
+        Environment.SetEnvironmentVariable(UiLanguageResolver.EnvironmentVariable, null);
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru-RU");
+        AssertEqual(UiLanguage.Russian, UiLanguageResolver.Resolve(), "UI language should follow CurrentUICulture when no override is set.");
+
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+        AssertEqual(UiLanguage.English, UiLanguageResolver.Resolve(), "English UI culture should fall back to English.");
+
+        Environment.SetEnvironmentVariable(UiLanguageResolver.EnvironmentVariable, "ru");
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+        AssertEqual(UiLanguage.Russian, UiLanguageResolver.Resolve(), "Explicit language override should beat OS culture.");
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable(UiLanguageResolver.EnvironmentVariable, previousOverride);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
+    }
+}
+
 static void WorkspaceEvidencePackExtractsDependencySurfaceHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -12943,6 +13912,30 @@ static void ExternalProcessRunnerDrainsStdoutAndStderrHonestly()
     AssertContains(result.StdErr, "err", "External process runner should capture stderr.");
 }
 
+static void ExternalProcessRunnerResolvesWindowsPathExtCommandHonestly()
+{
+    var workspaceRoot = CreateScratchWorkspace();
+    try
+    {
+        var bin = Path.Combine(workspaceRoot, "bin");
+        Directory.CreateDirectory(bin);
+        var commandPath = Path.Combine(bin, "npm.cmd");
+        File.WriteAllText(commandPath, "@echo off\r\necho npm fake\r\n", Encoding.ASCII);
+
+        var resolved = ExternalProcessRunner.ResolveExecutableForHost(
+            "npm",
+            pathEnvironment: bin,
+            pathExtEnvironment: ".COM;.EXE;.BAT;.CMD");
+
+        AssertTrue(resolved is not null, "Windows command resolution should find PATHEXT command files without shell wrapping.");
+        AssertEqual(Path.GetFullPath(commandPath), resolved!, "Bare npm should resolve to npm.cmd when that is the executable present on PATH.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(workspaceRoot);
+    }
+}
+
 static void ArchitectureDiagramRuntimeRendersBoundedPngHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -12992,6 +13985,114 @@ static void OpenRouterClientFailsFastOnMissingConfigHonestly()
     AssertFalse(response.Success, "OpenRouter client must fail fast when configuration is absent.");
     AssertTrue(response.Diagnostic is not null, "OpenRouter client must return a typed diagnostic for missing configuration.");
     AssertEqual("OPENROUTER_CONFIG_MISSING", response.Diagnostic!.Code, "OpenRouter client must classify missing configuration honestly.");
+}
+
+static void OpenRouterClientPreservesProvidedHttpTimeoutHonestly()
+{
+    var configuredTimeout = TimeSpan.FromSeconds(5);
+    var roleTimeout = TimeSpan.FromSeconds(123);
+    var configuration = new OpenRouterConfiguration(
+        "test-key",
+        "test/model",
+        OpenRouterConfiguration.DefaultBaseUrl,
+        configuredTimeout,
+        Referer: null,
+        Title: null,
+        Source: "test");
+    var httpClient = new HttpClient { Timeout = roleTimeout };
+    var client = new OpenRouterExecutionClient(configuration, httpClient, allowEnvironmentFallback: false);
+    var field = typeof(OpenRouterExecutionClient).GetField("_httpClient", BindingFlags.Instance | BindingFlags.NonPublic);
+    var actual = (HttpClient?)field?.GetValue(client);
+
+    AssertTrue(actual is not null, "OpenRouter client should keep an HTTP client instance.");
+    AssertEqual(roleTimeout, actual!.Timeout, "OpenRouter client must not overwrite role-specific timeout when caller provides HttpClient.");
+}
+
+static void OpenRouterClientSendsJsonResponseFormatWhenRequestedHonestly()
+{
+    string? body = null;
+    var handler = new FakeHttpMessageHandler((request, _) =>
+    {
+        body = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """
+                {"choices":[{"message":{"content":"{\"ok\":true}"}}]}
+                """,
+                Encoding.UTF8,
+                "application/json")
+        };
+    });
+    var configuration = new OpenRouterConfiguration(
+        "test-key",
+        "test/model",
+        OpenRouterConfiguration.DefaultBaseUrl,
+        TimeSpan.FromSeconds(30),
+        Referer: null,
+        Title: null,
+        Source: "test");
+    var client = new OpenRouterExecutionClient(configuration, new HttpClient(handler), allowEnvironmentFallback: false);
+
+    var response = client.Execute(new OpenRouterExecutionRequest(
+        "worker.agent",
+        "system",
+        "user",
+        ResponseFormatJsonObject: true,
+        ReasoningEffort: "none"));
+
+    AssertTrue(response.Success, "Fake OpenRouter response should parse successfully.");
+    AssertTrue(!string.IsNullOrWhiteSpace(body), "OpenRouter client should send a request body.");
+    using var document = JsonDocument.Parse(body!);
+    AssertTrue(document.RootElement.TryGetProperty("response_format", out var responseFormat), "OpenRouter client should include response_format when requested.");
+    AssertEqual("json_object", responseFormat.GetProperty("type").GetString(), "OpenRouter client should request JSON object mode honestly.");
+    AssertTrue(document.RootElement.TryGetProperty("reasoning", out var reasoning), "OpenRouter client should include reasoning controls when requested.");
+    AssertEqual("none", reasoning.GetProperty("effort").GetString(), "Reasoning effort should stay explicit when requested.");
+}
+
+static void OpenRouterClientParsesStreamingSseDeltasHonestly()
+{
+    string? body = null;
+    var handler = new FakeHttpMessageHandler((request, _) =>
+    {
+        body = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """
+                data: {"choices":[{"delta":{"content":"Hello "}}]}
+
+                data: {"choices":[{"delta":{"content":"stream"}}]}
+
+                data: [DONE]
+
+                """,
+                Encoding.UTF8,
+                "text/event-stream")
+        };
+    });
+    var configuration = new OpenRouterConfiguration(
+        "test-key",
+        "test/model",
+        OpenRouterConfiguration.DefaultBaseUrl,
+        TimeSpan.FromSeconds(30),
+        Referer: null,
+        Title: null,
+        Source: "test");
+    var client = new OpenRouterExecutionClient(configuration, new HttpClient(handler), allowEnvironmentFallback: false);
+    var deltas = new List<string>();
+
+    var response = client.ExecuteStreaming(
+        new OpenRouterExecutionRequest("chats.web.runtime", "system", "user"),
+        deltas.Add);
+
+    AssertTrue(response.Success, "Fake streaming OpenRouter response should parse successfully.");
+    AssertEqual("Hello stream", response.Content, "Streaming OpenRouter client should accumulate content deltas.");
+    AssertEqual(2, deltas.Count, "Streaming OpenRouter client should publish each content delta.");
+    AssertTrue(!string.IsNullOrWhiteSpace(body), "OpenRouter streaming client should send a request body.");
+    using var document = JsonDocument.Parse(body!);
+    AssertTrue(document.RootElement.TryGetProperty("stream", out var stream), "OpenRouter streaming client should request stream mode.");
+    AssertTrue(stream.GetBoolean(), "OpenRouter streaming payload should set stream=true.");
 }
 
 static void OpenRouterConfigurationDefaultsImportModelHonestly()
@@ -13084,6 +14185,142 @@ static void OpenRouterConfigurationCanLoadLocalFileHonestly()
         Environment.SetEnvironmentVariable("OPENROUTER_TITLE", previousTitle);
         Environment.SetEnvironmentVariable("OPENROUTER_CONFIG_FILE", previousConfigFile);
         Environment.SetEnvironmentVariable("OPENROUTER_TIMEOUT_SECONDS", previousTimeout);
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ModelRoutingDefaultsKeepLeadModestAndRouteWorkerQcToNemotronHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var previousCurrentDirectory = Environment.CurrentDirectory;
+    var previousRoutingFile = Environment.GetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE");
+    var previousImporter = Environment.GetEnvironmentVariable("ZAVOD_MODEL_IMPORTER");
+    var previousOpenRouterModel = Environment.GetEnvironmentVariable("OPENROUTER_MODEL");
+    var previousLead = Environment.GetEnvironmentVariable("ZAVOD_MODEL_LEAD");
+    var previousWorker = Environment.GetEnvironmentVariable("ZAVOD_MODEL_WORKER");
+    var previousQc = Environment.GetEnvironmentVariable("ZAVOD_MODEL_QC");
+
+    try
+    {
+        Environment.CurrentDirectory = root;
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE", null);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_IMPORTER", null);
+        Environment.SetEnvironmentVariable("OPENROUTER_MODEL", null);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_LEAD", null);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_WORKER", null);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_QC", null);
+
+        var routing = ModelRoutingConfiguration.LoadOrDefault();
+        var roles = RolesConfiguration.LoadOrDefault();
+
+        AssertEqual("openai/gpt-4.1-mini", routing.Lead.Model, "Lead default should stay intentionally modest.");
+        AssertEqual(ModelRoutingConfiguration.NemotronSuperFreeModelId, routing.Worker.Model, "Worker should route to Nemotron free by default.");
+        AssertEqual(3200, routing.Worker.MaxTokens, "Worker Nemotron profile should leave room for hidden reasoning plus strict JSON edits.");
+        AssertEqual(240, routing.Worker.TimeoutSeconds, "Worker Nemotron profile should allow the slower free route without hiding timeouts.");
+        AssertEqual(ModelRoutingConfiguration.NemotronSuperFreeModelId, routing.Qc.Model, "QC should route to Nemotron free by default.");
+        AssertEqual(routing.Lead.Model, roles.Lead.Model, "Legacy role facade should follow model routing for Lead.");
+        AssertEqual(routing.Worker.Model, roles.Worker.Model, "Legacy role facade should follow model routing for Worker.");
+        AssertEqual(routing.Qc.Model, roles.Qc.Model, "Legacy role facade should follow model routing for QC.");
+    }
+    finally
+    {
+        Environment.CurrentDirectory = previousCurrentDirectory;
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE", previousRoutingFile);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_IMPORTER", previousImporter);
+        Environment.SetEnvironmentVariable("OPENROUTER_MODEL", previousOpenRouterModel);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_LEAD", previousLead);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_WORKER", previousWorker);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_QC", previousQc);
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ModelRoutingLocalFileOverridesRoutesWithoutSecretsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    var previousCurrentDirectory = Environment.CurrentDirectory;
+    var previousRoutingFile = Environment.GetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE");
+    var previousImporter = Environment.GetEnvironmentVariable("ZAVOD_MODEL_IMPORTER");
+    var previousOpenRouterModel = Environment.GetEnvironmentVariable("OPENROUTER_MODEL");
+    var previousWorker = Environment.GetEnvironmentVariable("ZAVOD_MODEL_WORKER");
+
+    try
+    {
+        var configPath = Path.Combine(root, "model-routing.local.json");
+        File.WriteAllText(
+            configPath,
+            """
+            {
+              "routes": {
+                "importer": { "model": "local/importer", "timeoutSeconds": 77 },
+                "worker": { "model": "local/worker", "maxTokens": 1234 }
+              }
+            }
+            """);
+
+        Environment.CurrentDirectory = root;
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE", configPath);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_IMPORTER", null);
+        Environment.SetEnvironmentVariable("OPENROUTER_MODEL", null);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_WORKER", "env/worker");
+
+        var routing = ModelRoutingConfiguration.LoadOrDefault();
+
+        AssertEqual("local/importer", routing.Importer.Model, "Local model routing file should override importer model.");
+        AssertEqual(77, routing.Importer.TimeoutSeconds, "Local model routing file should override importer timeout.");
+        AssertEqual("env/worker", routing.Worker.Model, "Route-specific environment model should override local worker model.");
+        AssertEqual(1234, routing.Worker.MaxTokens, "Environment model override should not erase local worker token budget.");
+        AssertContains(routing.Source, "model-routing.local.json", "Model routing should disclose local routing file source.");
+    }
+    finally
+    {
+        Environment.CurrentDirectory = previousCurrentDirectory;
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_ROUTING_CONFIG_FILE", previousRoutingFile);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_IMPORTER", previousImporter);
+        Environment.SetEnvironmentVariable("OPENROUTER_MODEL", previousOpenRouterModel);
+        Environment.SetEnvironmentVariable("ZAVOD_MODEL_WORKER", previousWorker);
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkspaceImportMaterialInterpreterRuntimeUsesImporterRouteHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "README.md"), "# Import target");
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var seenRequests = new List<OpenRouterExecutionRequest>();
+        var openRouter = new FakeOpenRouterExecutionClient(request =>
+        {
+            seenRequests.Add(request);
+            return new OpenRouterExecutionResponse(
+                true,
+                "SUMMARY: route test",
+                request.ModelId ?? string.Empty,
+                200,
+                null,
+                "ok");
+        });
+        var routing = new ModelRoutingConfiguration(
+            new RoleProfile("test/importer-route", 0.4, 88, 999),
+            ModelRoutingConfiguration.DefaultLead,
+            ModelRoutingConfiguration.DefaultWorker,
+            ModelRoutingConfiguration.DefaultQc,
+            ModelRoutingConfiguration.DefaultSeniorSpecialist,
+            ModelRoutingConfiguration.DefaultSage,
+            "test");
+        var runtime = new WorkspaceImportMaterialInterpreterRuntime(openRouterExecutionClient: openRouter, modelRoutingConfiguration: routing);
+
+        var run = runtime.Interpret(scan, maxMaterials: 2, maxCharsPerMaterial: 64, writeArtifacts: false);
+
+        AssertTrue(run.ExecutionResponse.Success, "Importer should use provided fake OpenRouter client successfully.");
+        AssertEqual("test/importer-route", seenRequests.Single().ModelId, "Importer route should provide the request model id.");
+        AssertEqual(0.4, seenRequests.Single().Temperature, "Importer route should provide the request temperature.");
+        AssertEqual(999, seenRequests.Single().MaxTokens, "Importer route should provide the request token budget.");
+    }
+    finally
+    {
         DeleteScratchWorkspace(root);
     }
 }
@@ -13832,6 +15069,10 @@ static void WorkspaceEvidenceArtifactRuntimeSuppressesUnifiedReportProjectionFor
 
 static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlForSingleProjectHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -13877,16 +15118,22 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlForSingleProjectHon
         AssertContains(previewText, "Ambiguous", "Preview header should expose importer-owned interpretation mode.");
         AssertContains(previewText, "Project (Preview)", "Preview should render the richer preview project doc.");
         AssertContains(previewText, "Companion Document", "Preview should render the companion capsule section when available.");
-        AssertContains(previewText, "Structure / Map", "Preview should render the richer structure block.");
+        AssertContains(previewText, "Evidence / Topology", "Preview should render the richer structure block.");
     }
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
 static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForMultipleProjectContainerHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -13937,11 +15184,17 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForMultipleP
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
 static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForAmbiguousContainerHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -13992,11 +15245,17 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlWarningForAmbiguous
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
 static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlFromCanonicalDocsHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -14046,11 +15305,17 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewHtmlFromCanonicalDocsHo
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
 static void WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -14104,7 +15369,7 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly()
         AssertContains(previewProjectText, "## Identity", "Preview project should expose identity section.");
         AssertContains(previewProjectText, "Project Id: `", "Preview project should expose deterministic project id.");
         AssertContains(previewProjectText, "Project Name: `", "Preview project should expose deterministic project name.");
-        AssertContains(previewProjectText, "## Scope and container mode", "Preview project should expose scope/container section.");
+        AssertContains(previewProjectText, "## Topology and scope", "Preview project should expose topology/scope section.");
         AssertContains(previewProjectText, "## What this project appears to be", "Preview project should expose bounded human description.");
         AssertContains(previewProjectText, "## Observed structure", "Preview project should expose observed structure section.");
         AssertContains(previewProjectText, "## Runtime / stack signals", "Preview project should expose runtime signal section.");
@@ -14135,6 +15400,8 @@ static void WorkspaceEvidenceArtifactRuntimeWritesPreviewDocsHonestly()
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
@@ -14199,6 +15466,63 @@ static void ProjectDocumentRuntimeWritesBoundedContainerProjectPreviewHonestly()
         AssertContains(previewProjectText, "evidence remains too coarse for a strong unified truth claim", "Container project preview should keep readiness unknown/coarse.");
         AssertFalse(previewProjectText.Contains("A unified platform architecture spans both repos", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated summary wording.");
         AssertFalse(previewProjectText.Contains("shared runtime and service layers", StringComparison.OrdinalIgnoreCase), "Container project preview must not preserve inflated shared-runtime wording.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void ProjectDocumentRuntimeRefusesContainerPreviewPromotionHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "alpha", ".git"));
+        Directory.CreateDirectory(Path.Combine(root, "alpha", "src"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", ".git"));
+        Directory.CreateDirectory(Path.Combine(root, "beta", "cmd"));
+        File.WriteAllText(Path.Combine(root, "alpha", "src", "main.ts"), "export function main() {}");
+        File.WriteAllText(Path.Combine(root, "alpha", "package.json"), "{ \"name\": \"alpha\" }");
+        File.WriteAllText(Path.Combine(root, "beta", "cmd", "main.go"), "package main\nfunc main() {}");
+        File.WriteAllText(Path.Combine(root, "beta", "go.mod"), "module beta");
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var packet = new WorkspaceMaterialRuntimeFront().BuildPreviewPacket(scan, maxMaterials: 4, maxCharsPerMaterial: 96);
+        var interpretation = WorkspaceImportMaterialInterpretationResultBuilder.BuildFromResponse(
+            packet,
+            new WorkspaceImportMaterialPromptResponse(
+                "A unified platform architecture spans both repos.",
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<WorkspaceImportMaterialLayerInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialModuleInterpretation>(),
+                Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>(),
+                new ArchitectureDiagramSpec("Project Container", Array.Empty<ArchitectureDiagramNode>(), Array.Empty<ArchitectureDiagramEdge>(), Array.Empty<ArchitectureDiagramGroup>(), Array.Empty<string>(), new ArchitectureDiagramRenderHints("left-to-right", Array.Empty<string>(), true)),
+                Array.Empty<WorkspaceImportMaterialPromptResponseItem>()));
+        var run = new WorkspaceImportMaterialInterpreterRunResult(
+            packet,
+            WorkspaceImportMaterialPromptRequestBuilder.Build(packet),
+            new OpenRouterExecutionRequest("workspace.import.interpreter", "system", "user"),
+            new OpenRouterExecutionResponse(true, "SUMMARY: test", "openrouter/test", 200, null, "ok"),
+            interpretation,
+            null,
+            "runtime summary");
+
+        var documentRuntime = new ProjectDocumentRuntimeService();
+        _ = documentRuntime.WritePreviewDocs(run, root);
+
+        var exception = AssertThrows<InvalidOperationException>(
+            () => documentRuntime.PromotePreviewDoc(root, ProjectDocumentKind.Project, "test-contributor"),
+            "Container preview promotion must be blocked until an active child root is selected.",
+            static ex => ex.Message.Contains("specific active project root", StringComparison.OrdinalIgnoreCase));
+
+        AssertContains(exception.Message, "Container preview", "Container promotion failure should name the blocked condition.");
+        AssertFalse(File.Exists(Path.Combine(root, ".zavod", "project", "project.md")), "Blocked container promotion must not write canonical project.md.");
     }
     finally
     {
@@ -14384,6 +15708,10 @@ static void ProjectDocumentRuntimeKeepsProjectPreviewIdentityStableOnReimportHon
 
 static void ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly()
 {
+    var previousCulture = CultureInfo.CurrentCulture;
+    var previousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
     var root = CreateScratchWorkspace();
     try
     {
@@ -14438,6 +15766,8 @@ static void ProjectDocumentRuntimeWritesObservedCanonPreviewHonestly()
     finally
     {
         DeleteScratchWorkspace(root);
+        CultureInfo.CurrentCulture = previousCulture;
+        CultureInfo.CurrentUICulture = previousUiCulture;
     }
 }
 
@@ -15613,6 +16943,46 @@ static void AcceptanceGuardRejectsSiblingPathPrefixEscapeHonestly()
     }
 }
 
+static void WorkerEditSlotMapBuilderEmitsDslSlotsHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var renderer = Path.Combine(root, "src", "renderer");
+        var ui = Path.Combine(root, "src", "ui");
+        Directory.CreateDirectory(renderer);
+        Directory.CreateDirectory(ui);
+        File.WriteAllText(
+            Path.Combine(renderer, "hud.js"),
+            "import { state } from '../game/state.js';\n" +
+            "import '../ui/hud.css';\n\n" +
+            "export function updateHud() {\n" +
+            "    const style = dom.status.style;\n" +
+            "}\n",
+            Encoding.UTF8);
+        File.WriteAllText(Path.Combine(ui, "hud.css"), "#hud { position: fixed; }\n", Encoding.UTF8);
+
+        var anchorLines = new[]
+        {
+            "usable source file paths (relative to project root, forward slashes; 2):",
+            "- src/renderer/hud.js",
+            "- src/ui/hud.css",
+            "--- snippet path: src/renderer/hud.js (first 45 lines) ---"
+        };
+
+        var slots = WorkerEditSlotMapBuilder.Build(root, anchorLines);
+
+        AssertTrue(slots.Any(slot => slot.Path == "src/renderer/hud.js" && slot.SlotId == "module:after_imports"), "JS module import block slot should be exposed.");
+        AssertTrue(slots.Any(slot => slot.Path == "src/renderer/hud.js" && slot.SlotId == "function:updateHud:after_start"), "Shallow function slot should be exposed.");
+        AssertTrue(slots.Any(slot => slot.Path == "src/ui/hud.css" && slot.SlotId == "file:end"), "Generic file end slot should be exposed.");
+        AssertTrue(slots.Any(slot => slot.Path == "src/ui/hud.css" && slot.SlotId == "css:file:end"), "CSS append slot should be exposed.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
 static void StagingTaskIdPathSegmentAcceptsSafeIdsHonestly()
 {
     var root = CreateScratchWorkspace();
@@ -15673,6 +17043,112 @@ static void StagingTaskIdPathSegmentRejectsUnsafeIdsHonestly()
         {
             DeleteScratchWorkspace(root);
         }
+    }
+}
+
+static void StagingWriterStagesInsertAtSlotHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var targetPath = Path.Combine(root, "src", "renderer", "hud.js");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(
+            targetPath,
+            "import { state } from '../game/state.js';\n\n" +
+            "export function updateHud() {\n" +
+            "    const style = dom.status.style;\n" +
+            "}\n",
+            Encoding.UTF8);
+
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-SLOT",
+            1,
+            "Slot staging regression.",
+            new[]
+            {
+                new WorkerEdit(
+                    "src/renderer/hud.js",
+                    WorkerEdit.OperationInsertAtSlot,
+                    "    const fpsElement = document.createElement('div');\n",
+                    SlotId: "function:updateHud:after_start")
+            });
+
+        var result = manifest.Results.Single();
+        AssertTrue(result.Applied, "insert_at_slot should stage when the deterministic slot resolves.");
+        AssertEqual("function:updateHud:after_start", result.SlotId, "Staging manifest should preserve slot id evidence.");
+        var staged = File.ReadAllText(result.StagedAbsolutePath!, Encoding.UTF8);
+        AssertContains(staged, "export function updateHud() {\n    const fpsElement = document.createElement('div');\n    const style = dom.status.style;", "Slot insertion should land after function start without raw anchor copying.");
+        AssertEqual("import { state } from '../game/state.js';\n\nexport function updateHud() {\n    const style = dom.status.style;\n}\n", File.ReadAllText(targetPath, Encoding.UTF8), "Staging must not mutate the real project file.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void StagingWriterSkipsUnknownInsertSlotHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var targetPath = Path.Combine(root, "src", "renderer", "hud.js");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "export function updateHud() {\n}\n", Encoding.UTF8);
+
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-SLOT-MISSING",
+            1,
+            "Missing slot regression.",
+            new[]
+            {
+                new WorkerEdit(
+                    "src/renderer/hud.js",
+                    WorkerEdit.OperationInsertAtSlot,
+                    "    const fps = 0;\n",
+                    SlotId: "function:missing:after_start")
+            });
+
+        var result = manifest.Results.Single();
+        AssertFalse(result.Applied, "Unknown slot should skip instead of guessing an insertion point.");
+        AssertEqual("function:missing:after_start", result.SlotId, "Skipped manifest should still preserve slot id evidence.");
+        AssertContains(result.SkipReason ?? string.Empty, "slot not found", "Unknown slot skip should be explicit.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void StagingWriterKeepsInsertAfterCompatibilityHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        var targetPath = Path.Combine(root, "src", "File.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(targetPath, "alpha\nbeta\n", Encoding.UTF8);
+
+        var manifest = StagingWriter.Stage(
+            root,
+            "TASK-RAW-ANCHOR",
+            1,
+            "Raw anchor compatibility regression.",
+            new[]
+            {
+                new WorkerEdit("src/File.txt", WorkerEdit.OperationInsertAfter, "inserted\n", Anchor: "alpha\n")
+            });
+
+        var result = manifest.Results.Single();
+        AssertTrue(result.Applied, "Existing insert_after operation should remain supported.");
+        AssertEqual<string?>(null, result.SlotId, "Raw anchor edits should not invent slot id evidence.");
+        AssertEqual("alpha\ninserted\nbeta\n", File.ReadAllText(result.StagedAbsolutePath!, Encoding.UTF8), "insert_after should preserve existing staging semantics.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
     }
 }
 
@@ -16892,6 +18368,7 @@ static void LeadAgentPromptCarriesWorkPacketStatusHonestly()
         CurrentIntentSummary: string.Empty,
         AdvisoryNotes: Array.Empty<string>(),
         RecentTurns: Array.Empty<LeadAgentTurn>(),
+        RecentTaskContext: new[] { "Abandoned earlier: Add an FPS counter to the top-right corner of the HUD." },
         IsOrientationRequest: false,
         ProjectStackSummary: Array.Empty<string>(),
         CanonicalDocsStatus: status,
@@ -16910,6 +18387,112 @@ static void LeadAgentPromptCarriesWorkPacketStatusHonestly()
     AssertContains(prompt, "- at_least_preview_count: 3/5", "Lead prompt must expose at-least-preview count.");
     AssertContains(prompt, "- preview_docs: Direction", "Lead prompt must list preview doc kinds.");
     AssertContains(prompt, "roadmap.md absent: do not invent content for this kind.", "Lead prompt must carry missing truth warnings.");
+    AssertContains(prompt, "HOST ENVIRONMENT", "Lead prompt must expose the execution host context.");
+    AssertContains(prompt, "- os: Windows", "Lead prompt should tell the model that this test/runtime host is Windows.");
+    AssertContains(prompt, "project target_platforms are evidence, not the user's current OS", "Lead prompt must not let target platform hints override the current host.");
+    AssertContains(prompt, "NOVICE EXECUTION GUIDANCE", "Lead prompt must carry novice build/run guidance.");
+    AssertContains(prompt, "do not bounce tool choices back to them", "Lead prompt must avoid repeated toolchain questionnaires for novice build/run requests.");
+    AssertContains(prompt, "RECENT TASK CONTEXT", "Lead prompt must carry bounded task context for short follow-up references.");
+    AssertContains(prompt, "Add an FPS counter to the top-right corner of the HUD", "Lead prompt must expose previous task target without treating it as proof of success.");
+    AssertFalse(prompt.Contains("â", StringComparison.Ordinal), "Lead prompt must not leak mojibake markers.");
+    AssertTrue(client.LastRequest?.ResponseFormatJsonObject == true, "Lead agent must request JSON object mode from OpenRouter.");
+}
+
+static void WorkerAnchorPackStaysBoundedForRealProjectExecutionHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "index.js"), "import { renderHud } from './src/renderer/hud.js';\nrenderHud();\n");
+        var renderer = Path.Combine(root, "src", "renderer");
+        var ui = Path.Combine(root, "src", "ui");
+        Directory.CreateDirectory(renderer);
+        Directory.CreateDirectory(ui);
+        File.WriteAllText(Path.Combine(renderer, "hud.js"), "import '../ui/hud.css';\nexport function renderHud() { return 'hud'; }\n");
+        File.WriteAllText(Path.Combine(ui, "hud.css"), "#hud { position: fixed; }\n");
+
+        var sourceRoot = Path.Combine(root, "src", "generated");
+        Directory.CreateDirectory(sourceRoot);
+        for (var i = 0; i < 120; i++)
+        {
+            File.WriteAllText(Path.Combine(sourceRoot, $"file{i:D3}.js"), $"export const value{i:D3} = {i};\n");
+        }
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var anchors = WorkerAnchorPackBuilder.Build(
+            scan,
+            root,
+            taskDescription: "Add an FPS counter to the top-right corner of the HUD.");
+        var anchorText = string.Join('\n', anchors);
+
+        AssertTrue(anchors.Count <= 430, $"Worker anchor pack should stay bounded for LLM execution, got {anchors.Count} lines.");
+        AssertContains(anchorText, "usable source file paths (relative to project root, forward slashes;", "Worker anchors should label usable relative paths explicitly.");
+        AssertContains(anchorText, "src/ui/hud.css", "Task keyword expansion should still surface HUD CSS as a forward-slash edit target.");
+        AssertContains(anchorText, "--- snippet path: src/ui/hud.css", "Worker snippet headers should expose usable forward-slash paths.");
+        AssertFalse(anchorText.Contains("src\\ui\\hud.css", StringComparison.Ordinal), "Worker anchor prompt should not expose Windows separators to model-facing edit paths.");
+        AssertFalse(anchorText.Contains("â", StringComparison.Ordinal), "Worker anchor prompt must not leak mojibake markers.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
+}
+
+static void WorkerAnchorPackSurfacesFrameLoopForFpsTasksHonestly()
+{
+    var root = CreateScratchWorkspace();
+    try
+    {
+        File.WriteAllText(Path.Combine(root, "index.js"),
+            "import { updateGame } from './src/game/index.js';\n" +
+            "import { updateHud } from './src/renderer/hud.js';\n\n" +
+            "function gameLoop(timestamp) {\n" +
+            "    updateGame(timestamp);\n" +
+            "    updateHud();\n" +
+            "    requestAnimationFrame(gameLoop);\n" +
+            "}\n\n" +
+            "requestAnimationFrame(gameLoop);\n");
+
+        var game = Path.Combine(root, "src", "game");
+        var renderer = Path.Combine(root, "src", "renderer");
+        var ui = Path.Combine(root, "src", "ui");
+        Directory.CreateDirectory(game);
+        Directory.CreateDirectory(renderer);
+        Directory.CreateDirectory(ui);
+        File.WriteAllText(Path.Combine(game, "index.js"), "export function updateGame(timestamp) { return timestamp; }\n");
+        File.WriteAllText(Path.Combine(renderer, "hud.js"), "import '../ui/hud.css';\nexport function updateHud() { return 'hud'; }\n");
+        File.WriteAllText(Path.Combine(ui, "hud.css"), "#hud { position: fixed; }\n");
+
+        var sourceRoot = Path.Combine(root, "src", "generated");
+        Directory.CreateDirectory(sourceRoot);
+        for (var i = 0; i < 80; i++)
+        {
+            File.WriteAllText(Path.Combine(sourceRoot, $"file{i:D3}.js"), $"export const value{i:D3} = {i};\n");
+        }
+
+        var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(root));
+        var anchors = WorkerAnchorPackBuilder.Build(
+            scan,
+            root,
+            taskDescription: "Add an FPS counter to the top-right corner of the HUD.");
+        var anchorText = string.Join('\n', anchors);
+
+        AssertContains(anchorText, "--- snippet path: index.js", "FPS tasks should surface the frame loop snippet, not only HUD files.");
+        AssertContains(anchorText, "requestAnimationFrame(gameLoop);", "Frame-loop snippet should expose requestAnimationFrame as direct execution evidence.");
+        AssertContains(anchorText, "updateHud();", "Frame-loop snippet should show where HUD updates are called.");
+        AssertContains(anchorText, "src/renderer/hud.js", "FPS tasks should still surface the HUD implementation target.");
+        AssertContains(anchorText, "src/ui/hud.css", "FPS tasks should still surface the HUD styling target.");
+
+        var slots = WorkerEditSlotMapBuilder.Build(root, anchors);
+        AssertTrue(slots.Any(slot => slot.Path == "index.js" && slot.SlotId == "function:gameLoop:after_start"), "FPS tasks should expose a frame-loop edit slot.");
+        AssertTrue(slots.Any(slot => slot.Path == "src/renderer/hud.js" && slot.SlotId == "function:updateHud:after_start"), "FPS tasks should expose a HUD update edit slot.");
+        AssertTrue(slots.Any(slot => slot.Path == "src/ui/hud.css" && slot.SlotId == "css:file:end"), "FPS tasks should expose a CSS append edit slot.");
+        AssertTrue(slots.Take(12).Any(slot => slot.Path == "index.js" && slot.SlotId == "function:gameLoop:after_start"), "Snippet paths should be prioritized so frame-loop slots are not buried behind the source file list.");
+    }
+    finally
+    {
+        DeleteScratchWorkspace(root);
+    }
 }
 
 static void WorkerAgentPromptCarriesWorkPacketStatusHonestly()
@@ -16944,7 +18527,8 @@ static void WorkerAgentPromptCarriesWorkPacketStatusHonestly()
         Scope: new[] { "src" },
         AcceptanceCriteria: new[] { "Stay bounded." },
         AdvisoryNotes: Array.Empty<string>(),
-        Anchors: Array.Empty<string>(),
+        Anchors: new[] { "source files (1):", "- src/App.cs", "#hud {", "    --scale: 3;", "", "    position: fixed;", "    const style = dom.status.style;" },
+        EditSlots: new[] { new WorkerEditSlot("src/App.cs", "file:end", "file", "end of existing file") },
         RevisionNotes: null,
         CanonicalDocsStatus: status,
         PreviewStatus: preview,
@@ -16960,6 +18544,131 @@ static void WorkerAgentPromptCarriesWorkPacketStatusHonestly()
     AssertContains(prompt, "- at_least_preview_count: 3/5", "Worker prompt must expose at-least-preview count.");
     AssertContains(prompt, "- preview_docs: Direction", "Worker prompt must list preview doc kinds.");
     AssertContains(prompt, "canon.md absent: do not invent content for this kind.", "Worker prompt must carry missing truth warnings.");
+    AssertContains(prompt, "CODE ANCHORS (grounded relative file paths and snippets - use these paths as edit targets)", "Worker prompt should keep ASCII section labels with explicit path grounding.");
+    AssertContains(prompt, "EDIT SLOTS (deterministic insertion points - prefer insert_at_slot over raw anchors when a slot fits)", "Worker prompt should expose deterministic edit slots.");
+    AssertContains(prompt, "path: src/App.cs | slotId: file:end | kind: file", "Worker prompt should expose exact slot IDs for model-facing DSL edits.");
+    AssertContains(prompt, "OUTPUT - reply with a single strict JSON object only", "Worker output instruction should keep ASCII section labels.");
+    AssertContains(prompt, "allowed values are success, partial, failed, refused.", "Worker prompt should keep allowed statuses outside a JSON example.");
+    AssertContains(prompt, "operation is write_full, insert_at_slot, or insert_after", "Worker prompt should advertise insert_at_slot in the strict output schema.");
+    AssertFalse(prompt.Contains("\"success\" |", StringComparison.Ordinal), "Worker prompt must not use schema-like union syntax inside JSON examples.");
+    AssertFalse(prompt.Contains("// inserted text", StringComparison.Ordinal), "Worker prompt must not include copyable concrete edit content examples.");
+    AssertContains(prompt, "Use paths exactly as listed under CODE ANCHORS; they are relative to the project root and use forward slashes.", "Worker prompt should tell weak models how to reuse anchor paths.");
+    AssertContains(prompt, "insert_at_slot: set slotId to one exact slotId from EDIT SLOTS", "Worker prompt should prefer slot DSL over raw anchor copying.");
+    AssertContains(prompt, "Slot IDs are exact identifiers. Copy slotId from EDIT SLOTS", "Worker prompt should warn weak models not to invent slot IDs.");
+    AssertContains(prompt, "    const style = dom.status.style;", "Worker prompt must preserve leading spaces in code anchors so exact-match staging can apply insert_after edits.");
+    AssertContains(prompt, "    --scale: 3;" + Environment.NewLine + Environment.NewLine + "    position: fixed;", "Worker prompt must preserve blank lines inside code anchors so multi-line insert_after anchors match source files.");
+    AssertContains(prompt, "Copy anchor text from CODE ANCHORS byte-for-byte, including leading spaces", "Worker prompt must explicitly warn weak models not to normalize exact anchors.");
+    AssertFalse(prompt.Contains("â", StringComparison.Ordinal), "Worker prompt must not leak mojibake markers.");
+    AssertTrue(client.LastRequest?.ResponseFormatJsonObject == true, "Worker agent must request JSON object mode from OpenRouter.");
+    AssertEqual("none", client.LastRequest?.ReasoningEffort, "Worker agent should disable reasoning for strict JSON edit output.");
+}
+
+static void WorkerAgentParsesInsertAtSlotDslHonestly()
+{
+    var client = new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+        true,
+        """
+        {"status":"success","summary":"Prepared slot edit.","plan":[],"actions":[],"modifications":[{"path":"src/App.js","kind":"edit","summary":"inserted setup"}],"edits":[{"path":"src/App.js","operation":"insert_at_slot","slotId":"function:start:after_start","content":"    setup();\n"}],"blockers":[],"risks":[],"warnings":[]}
+        """,
+        "openrouter/test",
+        200,
+        null,
+        "ok"));
+    var runtime = new WorkerAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new WorkerAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        TaskId: "TASK-001",
+        TaskDescription: "Check slot edit",
+        Scope: new[] { "src" },
+        AcceptanceCriteria: new[] { "Stay bounded." },
+        AdvisoryNotes: Array.Empty<string>(),
+        EditSlots: new[] { new WorkerEditSlot("src/App.js", "function:start:after_start", "function", "after start of function start") }));
+
+    AssertTrue(result.Success, "Worker response with insert_at_slot should parse.");
+    var edit = result.Parsed?.Edits.Single() ?? throw new InvalidOperationException("Expected one parsed edit.");
+    AssertEqual(WorkerEdit.OperationInsertAtSlot, edit.Operation, "Worker edit operation should preserve insert_at_slot.");
+    AssertEqual("function:start:after_start", edit.SlotId, "Worker edit should preserve slotId for staging compiler.");
+    AssertEqual<string?>(null, edit.Anchor, "Slot edits should not require raw anchors.");
+}
+
+static void WorkerAgentNormalizesColonPrefixedStatusHonestly()
+{
+    var client = new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+        true,
+        """
+        {"status":":success","summary":"Prepared edit.","plan":[],"actions":[],"modifications":[],"edits":[],"blockers":[],"risks":[],"warnings":[]}
+        """,
+        "openrouter/test",
+        200,
+        null,
+        "ok"));
+    var runtime = new WorkerAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new WorkerAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        TaskId: "TASK-001",
+        TaskDescription: "Check first task",
+        Scope: new[] { "src" },
+        AcceptanceCriteria: new[] { "Stay bounded." },
+        AdvisoryNotes: Array.Empty<string>()));
+
+    AssertTrue(result.Success, "Colon-prefixed known Worker status should still parse.");
+    AssertEqual("success", result.Parsed?.Status, "Worker status normalization should preserve only known status vocabulary.");
+}
+
+static void WorkerAgentRetriesMalformedJsonOnceHonestly()
+{
+    var calls = 0;
+    var requests = new List<OpenRouterExecutionRequest>();
+    var client = new FakeOpenRouterExecutionClient(request =>
+    {
+        calls++;
+        requests.Add(request);
+        if (calls == 1)
+        {
+            return new OpenRouterExecutionResponse(
+                true,
+                "{\"status\":\", \"}",
+                "openrouter/test",
+                200,
+                null,
+                "malformed");
+        }
+
+        return new OpenRouterExecutionResponse(
+            true,
+            """
+            {"status":"success","summary":"Prepared edit after repair.","plan":[],"actions":[],"modifications":[],"edits":[],"blockers":[],"risks":[],"warnings":[]}
+            """,
+            "openrouter/test",
+            200,
+            null,
+            "ok");
+    });
+    var runtime = new WorkerAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new WorkerAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        TaskId: "TASK-001",
+        TaskDescription: "Check first task",
+        Scope: new[] { "src" },
+        AcceptanceCriteria: new[] { "Stay bounded." },
+        AdvisoryNotes: Array.Empty<string>()));
+
+    AssertTrue(result.Success, "Worker should retry one malformed JSON response before abandoning.");
+    AssertEqual(2, calls, "Worker should make exactly one repair retry after parse failure.");
+    AssertEqual("worker.agent.repair", requests[1].RouteId, "Repair retry should disclose its route.");
+    AssertContains(requests[1].UserPrompt, "PREVIOUS WORKER OUTPUT WAS MALFORMED.", "Repair retry should tell the model why it is being retried.");
+    AssertContains(requests[1].UserPrompt, "{\"status\":\", \"}", "Repair retry should include the malformed response preview.");
+    AssertTrue(requests[1].ResponseFormatJsonObject, "Repair retry must keep JSON object mode.");
+    AssertEqual("none", requests[1].ReasoningEffort, "Repair retry must preserve strict JSON reasoning policy.");
 }
 
 static void QcAgentPromptCarriesWorkPacketStatusHonestly()
@@ -17012,6 +18721,43 @@ static void QcAgentPromptCarriesWorkPacketStatusHonestly()
     AssertContains(prompt, "- at_least_preview_count: 3/5", "QC prompt must expose at-least-preview count.");
     AssertContains(prompt, "- preview_docs: Direction", "QC prompt must list preview doc kinds.");
     AssertContains(prompt, "roadmap.md absent: do not invent content for this kind.", "QC prompt must carry missing truth warnings.");
+    AssertContains(prompt, "not applied to the project yet", "QC prompt must preserve the user acceptance boundary for staged artefacts.");
+    AssertContains(prompt, "allowed values are ACCEPT, REVISE, REJECT.", "QC prompt should keep allowed decisions outside a JSON example.");
+    AssertFalse(prompt.Contains("\"ACCEPT\" |", StringComparison.Ordinal), "QC prompt must not use schema-like union syntax inside JSON examples.");
+    AssertFalse(prompt.Contains("Worker result is supported by staged artefacts.", StringComparison.Ordinal), "QC prompt must not include copyable concrete rationale examples.");
+    AssertTrue(client.LastRequest?.ResponseFormatJsonObject == true, "QC agent must request JSON object mode from OpenRouter.");
+    AssertEqual("none", client.LastRequest?.ReasoningEffort, "QC agent should disable reasoning for strict JSON review output.");
+}
+
+static void QcAgentNormalizesColonPrefixedDecisionHonestly()
+{
+    var client = new FakeOpenRouterExecutionClient(_ => new OpenRouterExecutionResponse(
+        true,
+        """
+        {"decision":": ACCEPT","rationale":"Staged artifact satisfies the acceptance criteria.","issues":[],"next_action":"Surface the staged result for user review."}
+        """,
+        "openrouter/test",
+        200,
+        null,
+        "ok"));
+    var runtime = new QcAgentRuntime(clientFactory: _ => client);
+
+    var result = runtime.Run(new QcAgentInput(
+        ProjectName: "demo",
+        ProjectRoot: "C:\\demo",
+        ProjectKind: "unknown",
+        TaskId: "TASK-001",
+        TaskDescription: "Check QC normalization",
+        AcceptanceCriteria: new[] { "Accept concrete staged artifact." },
+        WorkerStatus: "success",
+        WorkerSummary: "Prepared staged edit.",
+        WorkerBlockers: Array.Empty<string>(),
+        WorkerWarnings: Array.Empty<string>(),
+        WorkerModifications: new[] { "edit: src/app.js - inserted comment" },
+        StagedArtifacts: new[] { "edit: src/app.js (origin=1B -> staged=2B, sha256=abc123)" }));
+
+    AssertTrue(result.Success, "Colon-prefixed known QC decision should still parse.");
+    AssertEqual("ACCEPT", result.Parsed?.Decision, "QC decision normalization should preserve only known decision vocabulary.");
 }
 
 static zavod.Persistence.ProjectDocumentSourceSelection BuildSelectionForBuilder(
@@ -17182,8 +18928,11 @@ static void CanonicalDocsStatusCountsCanonicalAndAtLeastPreviewHonestly()
 
 sealed class FakeExternalProcessRunner(Func<ExternalProcessRequest, ExternalProcessResult> handler) : IExternalProcessRunner
 {
+    public List<ExternalProcessRequest> Requests { get; } = new();
+
     public ExternalProcessResult Run(ExternalProcessRequest request)
     {
+        Requests.Add(request);
         return handler(request);
     }
 }
@@ -17196,6 +18945,28 @@ sealed class FakeOpenRouterExecutionClient(Func<OpenRouterExecutionRequest, Open
     {
         LastRequest = request;
         return handler(request);
+    }
+}
+
+sealed class FakeStreamingOpenRouterExecutionClient(
+    Func<OpenRouterExecutionRequest, OpenRouterExecutionResponse> handler,
+    Func<OpenRouterExecutionRequest, Action<string>, OpenRouterExecutionResponse> streamingHandler) : IOpenRouterStreamingExecutionClient
+{
+    public OpenRouterExecutionRequest? LastRequest { get; private set; }
+
+    public bool StreamingWasUsed { get; private set; }
+
+    public OpenRouterExecutionResponse Execute(OpenRouterExecutionRequest request)
+    {
+        LastRequest = request;
+        return handler(request);
+    }
+
+    public OpenRouterExecutionResponse ExecuteStreaming(OpenRouterExecutionRequest request, Action<string> onContentDelta)
+    {
+        LastRequest = request;
+        StreamingWasUsed = true;
+        return streamingHandler(request, onContentDelta);
     }
 }
 

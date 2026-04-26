@@ -257,6 +257,23 @@ public static class StagingWriter
                 (edit.Content ?? string.Empty).AsSpan(),
                 originalContent.AsSpan(spliceAt));
         }
+        else if (string.Equals(edit.Operation, WorkerEdit.OperationInsertAtSlot, StringComparison.OrdinalIgnoreCase))
+        {
+            if (originalContent is null)
+            {
+                return Skip(edit, "insert_at_slot requires existing file");
+            }
+
+            if (!WorkerEditSlotResolver.TryResolveInsertionIndex(normalizedRelative, originalContent, edit.SlotId, out var insertionIndex, out var slotReason))
+            {
+                return Skip(edit, slotReason ?? "slot not found");
+            }
+
+            newContent = string.Concat(
+                originalContent.AsSpan(0, insertionIndex),
+                (edit.Content ?? string.Empty).AsSpan(),
+                originalContent.AsSpan(insertionIndex));
+        }
         else
         {
             return Skip(edit, "operation not supported");
@@ -281,7 +298,8 @@ public static class StagingWriter
             OriginalBytes: originalBytes,
             StagedBytes: stagedBytes,
             OriginalSha256: originalSha256,
-            SkipReason: null);
+            SkipReason: null,
+            SlotId: string.IsNullOrWhiteSpace(edit.SlotId) ? null : edit.SlotId);
     }
 
     private static StagedEditResult Skip(WorkerEdit edit, string reason)
@@ -294,7 +312,8 @@ public static class StagingWriter
             OriginalBytes: 0,
             StagedBytes: 0,
             OriginalSha256: null,
-            SkipReason: reason);
+            SkipReason: reason,
+            SlotId: string.IsNullOrWhiteSpace(edit.SlotId) ? null : edit.SlotId);
     }
 
     private static void PersistManifest(string stagingRoot, StagingManifest manifest)

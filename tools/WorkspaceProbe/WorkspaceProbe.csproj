@@ -22,6 +22,7 @@
     <Compile Include="..\..\Execution\MaterialRuntimeRequest.cs" Link="Execution\MaterialRuntimeRequest.cs" />
     <Compile Include="..\..\Execution\MaterialRuntimeResult.cs" Link="Execution\MaterialRuntimeResult.cs" />
     <Compile Include="..\..\Execution\MaterialRuntimeStatus.cs" Link="Execution\MaterialRuntimeStatus.cs" />
+    <Compile Include="..\..\Execution\ModelRoutingConfiguration.cs" Link="Execution\ModelRoutingConfiguration.cs" />
     <Compile Include="..\..\Execution\OpenRouterConfiguration.cs" Link="Execution\OpenRouterConfiguration.cs" />
     <Compile Include="..\..\Execution\OpenRouterDiagnostic.cs" Link="Execution\OpenRouterDiagnostic.cs" />
     <Compile Include="..\..\Execution\OpenRouterAttachment.cs" Link="Execution\OpenRouterAttachment.cs" />
@@ -30,9 +31,14 @@
     <Compile Include="..\..\Execution\OpenRouterExecutionResponse.cs" Link="Execution\OpenRouterExecutionResponse.cs" />
     <Compile Include="..\..\Execution\PdfExtractionRuntimeService.cs" Link="Execution\PdfExtractionRuntimeService.cs" />
     <Compile Include="..\..\Execution\ProjectDocumentRuntimeService.cs" Link="Execution\ProjectDocumentRuntimeService.cs" />
+    <Compile Include="..\..\Execution\RolesConfiguration.cs" Link="Execution\RolesConfiguration.cs" />
+    <Compile Include="..\..\Execution\LabTelemetryWriter.cs" Link="Execution\LabTelemetryWriter.cs" />
     <Compile Include="..\..\Execution\TextMaterialRuntimeService.cs" Link="Execution\TextMaterialRuntimeService.cs" />
     <Compile Include="..\..\Execution\WorkspaceEvidenceArtifactRuntimeService.cs" Link="Execution\WorkspaceEvidenceArtifactRuntimeService.cs" />
     <Compile Include="..\..\Execution\WorkspaceMaterialRuntimeFront.cs" Link="Execution\WorkspaceMaterialRuntimeFront.cs" />
+    <Compile Include="..\..\Orchestration\CanonicalDocsStatus.cs" Link="Orchestration\CanonicalDocsStatus.cs" />
+    <Compile Include="..\..\Orchestration\DocumentCanonicalState.cs" Link="Orchestration\DocumentCanonicalState.cs" />
+    <Compile Include="..\..\Orchestration\PreviewStatus.cs" Link="Orchestration\PreviewStatus.cs" />
     <Compile Include="..\..\Persistence\PersistenceContracts.cs" Link="Persistence\PersistenceContracts.cs" />
     <Compile Include="..\..\Persistence\ProjectDocumentContracts.cs" Link="Persistence\ProjectDocumentContracts.cs" />
     <Compile Include="..\..\Persistence\ProjectDocumentPathResolver.cs" Link="Persistence\ProjectDocumentPathResolver.cs" />
@@ -82,6 +88,9 @@
     <Compile Include="..\..\Workspace\WorkspaceMaterialKind.cs" Link="Workspace\WorkspaceMaterialKind.cs" />
     <Compile Include="..\..\Workspace\WorkspaceMaterialCandidate.cs" Link="Workspace\WorkspaceMaterialCandidate.cs" />
     <Compile Include="..\..\Workspace\WorkspaceScanner.cs" Link="Workspace\WorkspaceScanner.cs" />
+    <Compile Include="..\..\Worker\WorkerAgentRuntime.cs" Link="Worker\WorkerAgentRuntime.cs" />
+    <Compile Include="..\..\Worker\WorkerEdit.cs" Link="Worker\WorkerEdit.cs" />
+    <Compile Include="..\..\Qc\QcAgentRuntime.cs" Link="Qc\QcAgentRuntime.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -105,6 +105,11 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
 
         var previewMarkdown = File.ReadAllText(previewPath, Encoding.UTF8);
+        if (RequiresProjectRootSelectionBeforeCanonicalPromotion(previewMarkdown))
+        {
+            throw new InvalidOperationException("Container preview requires selecting a specific active project root before canonical promotion.");
+        }
+
         var canonicalPath = GetCanonicalPath(projectState, kind);
         var canonicalMarkdown = kind switch
         {
@@ -412,6 +417,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         var topology = pack?.Topology;
         var topologyKind = topology?.Kind ?? "Unknown";
         var safeImportMode = topology?.SafeImportMode ?? "Unknown";
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var isStandardSingleProjectTopology = IsStandardSingleProjectTopology(topologyKind);
         var isNonStandardTopology = !isStandardSingleProjectTopology && !string.Equals(topologyKind, "Unknown", StringComparison.OrdinalIgnoreCase);
         var topMaterials = materials
@@ -420,79 +426,81 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             .ToArray();
         var builder = new StringBuilder();
 
-        builder.AppendLine("# Project (Preview)");
+        builder.AppendLine(PreviewHeading(language, ProjectDocumentKind.Project));
         builder.AppendLine();
-        builder.AppendLine("Candidate project base from the current import understanding.");
-        builder.AppendLine("This document is not canonical truth yet.");
-        builder.AppendLine();
-
-        builder.AppendLine("## Identity");
-        builder.AppendLine();
-        AppendSectionConfidence(builder, WorkspaceEvidenceConfidenceLevel.Confirmed, "Workspace root and derived identity are filesystem-observed; purpose remains preview.");
-        builder.AppendLine($"- Project Id: `{projectId}`");
-        builder.AppendLine($"- Project Name: `{projectName}`");
-        builder.AppendLine($"- Workspace Root: `{workspaceRoot}`");
-        builder.AppendLine($"- Import Kind: `{interpretation.ImportKind}`");
-        builder.AppendLine($"- Interpretation Mode: `{interpretationMode}`");
-        builder.AppendLine($"- Scanner Topology: `{topologyKind}`");
-        builder.AppendLine($"- Safe Import Mode: `{safeImportMode}`");
-        builder.AppendLine($"- Health: `{pack?.ProjectProfile.Health.ToString() ?? "Unknown"}`");
-        builder.AppendLine($"- Truth Status: `Preview only / not canonical yet`");
+        AppendPreviewDocumentStatus(builder, runResult, ProjectDocumentKind.Project);
         builder.AppendLine();
 
-        builder.AppendLine("## Scope and container mode");
+        builder.AppendLine(SectionHeading(language, "section.project.identity", "Identity"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, WorkspaceEvidenceConfidenceLevel.Confirmed, "Container mode is produced by the importer/scanner interpretation.");
+        AppendSectionConfidence(builder, language, WorkspaceEvidenceConfidenceLevel.Confirmed, "note.identity_boundary", "Workspace root and derived identity are filesystem-observed; purpose remains preview.");
+        builder.AppendLine($"- {L(language, "label.project_id", "Project Id")}: `{projectId}`");
+        builder.AppendLine($"- {L(language, "label.project_name", "Project Name")}: `{projectName}`");
+        builder.AppendLine($"- {L(language, "label.workspace_root", "Workspace Root")}: `{workspaceRoot}`");
+        builder.AppendLine($"- {L(language, "label.import_kind", "Import Kind")}: `{interpretation.ImportKind}`");
+        builder.AppendLine($"- {L(language, "label.interpretation_mode", "Interpretation Mode")}: `{interpretationMode}`");
+        builder.AppendLine($"- {L(language, "label.scanner_topology", "Scanner Topology")}: `{topologyKind}`");
+        builder.AppendLine($"- {L(language, "label.safe_import_mode", "Safe Import Mode")}: `{safeImportMode}`");
+        builder.AppendLine($"- {L(language, "label.scan_health", "Scan health")}: `{pack?.ProjectProfile.Health.ToString() ?? "Unknown"}`");
+        builder.AppendLine($"- {L(language, "label.truth_status", "Truth Status")}: `{L(language, "value.preview_only_not_canonical", "Preview only / not canonical yet")}`");
+        builder.AppendLine();
+
+        builder.AppendLine(SectionHeading(language, "section.project.topology_scope", "Topology and scope"));
+        builder.AppendLine();
+        AppendSectionConfidence(builder, language, WorkspaceEvidenceConfidenceLevel.Confirmed, "note.topology_scope_boundary", "Topology/mode is produced by scanner/importer evidence, not contributor-confirmed architecture.");
         if (sourceRoots.Count > 0)
         {
-            builder.AppendLine($"- Source Roots: {string.Join(", ", sourceRoots.Select(static root => $"`{root}`"))}");
+            var sourceRootsLabel = isNonStandardTopology
+                ? L(language, "label.observed_source_like_zones", "Observed source-like zones")
+                : L(language, "label.source_roots", "Source Roots");
+            builder.AppendLine($"- {sourceRootsLabel}: {string.Join(", ", sourceRoots.Select(static root => $"`{root}`"))}");
         }
         else
         {
-            builder.AppendLine("- Source Roots: Unknown");
+            builder.AppendLine($"- {L(language, "label.source_roots", "Source Roots")}: {L(language, "value.unknown", "Unknown")}");
         }
 
-        AppendInline(builder, "Build Roots", pack?.ProjectProfile.BuildRoots);
-        AppendInline(builder, "Structural Anomalies", pack?.ProjectProfile.StructuralAnomalies);
+        AppendInline(builder, L(language, "label.build_roots", "Build Roots"), pack?.ProjectProfile.BuildRoots);
+        AppendInline(builder, L(language, "label.structural_anomalies", "Structural Anomalies"), pack?.ProjectProfile.StructuralAnomalies);
         if (topology is not null)
         {
-            AppendInline(builder, "Topology Uncertainty", topology.UncertaintyReasons);
-            AppendInline(builder, "Release / Output Zones", topology.ReleaseOutputZones);
-            AppendInline(builder, "Ignored / Noise Zones", topology.IgnoredNoiseZones);
+            AppendInline(builder, L(language, "label.topology_uncertainty", "Topology Uncertainty"), topology.UncertaintyReasons);
+            AppendInline(builder, L(language, "label.release_output_zones", "Release / Output Zones"), topology.ReleaseOutputZones);
+            AppendInline(builder, L(language, "label.ignored_noise_zones", "Ignored / Noise Zones"), topology.IgnoredNoiseZones);
         }
 
         if (interpretationMode == ProjectInterpretationMode.SingleProject)
         {
             if (isStandardSingleProjectTopology)
             {
-                builder.AppendLine("- Topology Status: Single project interpretation.");
+                builder.AppendLine($"- {L(language, "label.topology_status", "Topology Status")}: {L(language, "value.single_project_interpretation", "Single project interpretation")}.");
             }
             else
             {
-                builder.AppendLine($"- Topology Status: `{topologyKind}`; normal single-application assumptions are not confirmed.");
-                builder.AppendLine("- Safe mode must remain visible until a contributor selects or confirms the active project shape.");
+                builder.AppendLine($"- {L(language, "label.topology_status", "Topology Status")}: `{topologyKind}`; {L(language, "sentence.normal_app_not_confirmed", "normal single-application assumptions are not confirmed")}.");
+                builder.AppendLine($"- {L(language, "sentence.safe_mode_visible", "Safe mode must remain visible until a contributor selects or confirms the active project shape")}.");
             }
         }
         else
         {
-            builder.AppendLine($"- Interpretation Status: `{interpretationMode}`.");
+            builder.AppendLine($"- {L(language, "label.interpretation_status", "Interpretation Status")}: `{interpretationMode}`.");
             if (isNonStandardTopology)
             {
-                builder.AppendLine($"- Topology Status: `{topologyKind}`; normal single-application assumptions are not confirmed.");
-                builder.AppendLine("- Unified architecture across the whole folder is not confirmed.");
-                builder.AppendLine("- Safe mode must remain visible until a contributor selects or confirms the active project shape.");
+                builder.AppendLine($"- {L(language, "label.topology_status", "Topology Status")}: `{topologyKind}`; {L(language, "sentence.normal_app_not_confirmed", "normal single-application assumptions are not confirmed")}.");
+                builder.AppendLine($"- {L(language, "sentence.unified_arch_not_confirmed", "Unified architecture across the whole folder is not confirmed")}.");
+                builder.AppendLine($"- {L(language, "sentence.safe_mode_visible", "Safe mode must remain visible until a contributor selects or confirms the active project shape")}.");
             }
             else
             {
-                builder.AppendLine("- Unified architecture across the whole folder is not confirmed.");
-                builder.AppendLine("- Any technical signals below describe observed folder evidence, not a shared project architecture.");
+                builder.AppendLine($"- {L(language, "sentence.unified_arch_not_confirmed", "Unified architecture across the whole folder is not confirmed")}.");
+                builder.AppendLine($"- {L(language, "sentence.signals_not_shared_arch", "Any technical signals below describe observed folder evidence, not a shared project architecture")}.");
             }
         }
         builder.AppendLine();
 
-        builder.AppendLine("## What this project appears to be");
+        builder.AppendLine(SectionHeading(language, "section.project.description", "What this project appears to be"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, confirmedSignals.Count > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "Importer-owned summary; contributor confirmation is still required.");
+        AppendSectionConfidence(builder, language, confirmedSignals.Count > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "note.importer_summary_boundary", "Importer-owned summary; contributor confirmation is still required.");
         builder.AppendLine($"- {interpretation.SummaryLine}");
         foreach (var detail in interpretation.ProjectDetails.Take(4))
         {
@@ -500,9 +508,9 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Observed structure");
+        builder.AppendLine(SectionHeading(language, "section.project.observed_structure", "Observed structure"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, entryPoints.Count > 0 || modules.Count > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "Entry points and modules are interpreted from scanner/importer evidence.");
+        AppendSectionConfidence(builder, language, entryPoints.Count > 0 || modules.Count > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "note.observed_structure_boundary", "Entry points and modules are interpreted from scanner/importer evidence.");
 
         if (entryPoints.Count > 0)
         {
@@ -510,76 +518,83 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             var confirmedMain = entryPoints.FirstOrDefault(IsConfirmedExecutableOrCodeMainEntry);
             if (confirmedMain is null)
             {
-                builder.AppendLine("- Confirmed main entry: Unknown");
+                builder.AppendLine($"- {L(language, "label.confirmed_main_entry", "Confirmed main entry")}: {L(language, "value.unknown", "Unknown")}");
             }
 
             builder.AppendLine(IsPackageSurfaceEntry(primary)
-                ? $"- Selected package surface: `{primary.RelativePath}` [{primary.Confidence}]"
+                ? $"- {L(language, "label.selected_package_surface", "Selected package surface")}: `{primary.RelativePath}` [{primary.Confidence}]"
                 : ShouldUseCandidateEntrySurface(topologyKind, primary)
-                    ? $"- Candidate entry surface: `{primary.RelativePath}` [{primary.Confidence}]"
-                : $"- Main Entry: `{primary.RelativePath}` [{primary.Confidence}]");
+                    ? $"- {L(language, "label.candidate_entry_surface", "Candidate entry surface")}: `{primary.RelativePath}` [{primary.Confidence}]"
+                : $"- {L(language, "label.main_entry", "Main Entry")}: `{primary.RelativePath}` [{primary.Confidence}]");
             if (entryPoints.Count > 1)
             {
-                builder.AppendLine($"- Likely Entries: {string.Join(", ", entryPoints.Skip(1).Take(3).Select(entry => $"`{entry.RelativePath}` [{entry.Confidence}]"))}");
+                builder.AppendLine($"- {L(language, "label.likely_entries", "Likely Entries")}: {string.Join(", ", entryPoints.Skip(1).Take(3).Select(entry => $"`{entry.RelativePath}` [{entry.Confidence}]"))}");
             }
         }
         else
         {
-            builder.AppendLine("- Confirmed main entry: Unknown");
+            builder.AppendLine($"- {L(language, "label.confirmed_main_entry", "Confirmed main entry")}: {L(language, "value.unknown", "Unknown")}");
         }
 
         if (interpretationMode == ProjectInterpretationMode.SingleProject && modules.Count > 0)
         {
-            builder.AppendLine($"- Key Modules: {string.Join(", ", modules.Take(5).Select(module => $"`{module.Name}` [{module.Confidence}]"))}");
+            builder.AppendLine($"- {L(language, "label.key_modules", "Key Modules")}: {string.Join(", ", modules.Take(5).Select(module => $"`{module.Name}` [{module.Confidence}]"))}");
         }
         else if (interpretationMode != ProjectInterpretationMode.SingleProject)
         {
-            builder.AppendLine("- Key Modules: Unified module map is suppressed for this container.");
+            var suppressionKey = IsContainerTopology(topologyKind)
+                ? "sentence.module_map_suppressed_container"
+                : "sentence.module_map_suppressed";
+            var suppressionFallback = IsContainerTopology(topologyKind)
+                ? "Unified module map is suppressed for this container"
+                : "Unified module map is suppressed for this topology";
+            builder.AppendLine($"- {L(language, "label.key_modules", "Key Modules")}: {L(language, suppressionKey, suppressionFallback)}.");
         }
         else
         {
-            builder.AppendLine("- Key Modules: Unknown");
+            builder.AppendLine($"- {L(language, "label.key_modules", "Key Modules")}: {L(language, "value.unknown", "Unknown")}");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Runtime / stack signals");
+        builder.AppendLine(SectionHeading(language, "section.project.runtime_signals", "Runtime / stack signals"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, HasAnyValues(pack?.TechnicalPassport.ObservedLanguages, pack?.TechnicalPassport.Frameworks, pack?.TechnicalPassport.BuildSystems, pack?.TechnicalPassport.Toolchains)
+        AppendSectionConfidence(builder, language, HasAnyValues(pack?.TechnicalPassport.ObservedLanguages, pack?.TechnicalPassport.Frameworks, pack?.TechnicalPassport.BuildSystems, pack?.TechnicalPassport.Toolchains)
             ? WorkspaceEvidenceConfidenceLevel.Likely
             : WorkspaceEvidenceConfidenceLevel.Unknown,
+            "note.runtime_signals_boundary",
             interpretationMode == ProjectInterpretationMode.SingleProject
                 ? "Technical passport values are observed signals, not architectural rules."
                 : "Technical passport values are observed across the container and do not prove one unified stack.");
-        AppendInline(builder, "Languages", pack?.TechnicalPassport.ObservedLanguages);
-        AppendInline(builder, "Frameworks", pack?.TechnicalPassport.Frameworks);
-        AppendInline(builder, "Build Systems", pack?.TechnicalPassport.BuildSystems);
-        AppendInline(builder, "Toolchains", pack?.TechnicalPassport.Toolchains);
-        AppendInline(builder, "Target Platforms", pack?.TechnicalPassport.TargetPlatforms);
-        AppendInline(builder, "Runtime Surfaces", pack?.TechnicalPassport.RuntimeSurfaces);
-        AppendInline(builder, "Version Hints", pack?.TechnicalPassport.VersionHints);
-        AppendInline(builder, "Build Variants", pack?.TechnicalPassport.BuildVariants);
-        AppendInline(builder, "Notable Options", pack?.TechnicalPassport.NotableOptions);
+        AppendInline(builder, L(language, "label.languages", "Languages"), pack?.TechnicalPassport.ObservedLanguages);
+        AppendInline(builder, L(language, "label.frameworks", "Frameworks"), pack?.TechnicalPassport.Frameworks);
+        AppendInline(builder, L(language, "label.build_systems", "Build Systems"), pack?.TechnicalPassport.BuildSystems);
+        AppendInline(builder, L(language, "label.toolchains", "Toolchains"), pack?.TechnicalPassport.Toolchains);
+        AppendInline(builder, L(language, "label.target_platforms", "Target Platforms"), pack?.TechnicalPassport.TargetPlatforms);
+        AppendInline(builder, L(language, "label.runtime_surfaces", "Runtime Surfaces"), pack?.TechnicalPassport.RuntimeSurfaces);
+        AppendInline(builder, L(language, "label.version_hints", "Version Hints"), pack?.TechnicalPassport.VersionHints);
+        AppendInline(builder, L(language, "label.build_variants", "Build Variants"), pack?.TechnicalPassport.BuildVariants);
+        AppendInline(builder, L(language, "label.notable_options", "Notable Options"), pack?.TechnicalPassport.NotableOptions);
         if (!HasAnyValues(pack?.TechnicalPassport.ObservedLanguages, pack?.TechnicalPassport.Frameworks, pack?.TechnicalPassport.BuildSystems, pack?.TechnicalPassport.Toolchains))
         {
-            builder.AppendLine("- Runtime / stack signals remain coarse or unknown.");
+            builder.AppendLine($"- {L(language, "sentence.runtime_signals_unknown", "Runtime / stack signals remain coarse or unknown")}.");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## What is confirmed / likely / unknown");
+        builder.AppendLine(SectionHeading(language, "section.project.confidence_split", "What is confirmed / likely / unknown"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, WorkspaceEvidenceConfidenceLevel.Confirmed, "This section preserves the importer's explicit confidence split.");
-        AppendInline(builder, "Confirmed", confirmedSignals);
-        AppendInline(builder, "Likely", likelySignals);
-        AppendInline(builder, "Unknown", unknownSignals);
+        AppendSectionConfidence(builder, language, WorkspaceEvidenceConfidenceLevel.Confirmed, "note.confidence_split_boundary", "This section preserves the importer's explicit confidence split.");
+        AppendInline(builder, L(language, "label.confirmed", "Confirmed"), confirmedSignals);
+        AppendInline(builder, L(language, "label.likely", "Likely"), likelySignals);
+        AppendInline(builder, L(language, "label.unknown", "Unknown"), unknownSignals);
         if (!confirmedSignals.Any() && !likelySignals.Any() && !unknownSignals.Any())
         {
-            builder.AppendLine("- Confidence split is still coarse.");
+            builder.AppendLine($"- {L(language, "sentence.confidence_split_coarse", "Confidence split is still coarse")}.");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Materials worth reading");
+        builder.AppendLine(SectionHeading(language, "section.project.materials", "Materials worth reading"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, topMaterials.Length > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "Imported materials are context candidates, not canonical truth.");
+        AppendSectionConfidence(builder, language, topMaterials.Length > 0 ? WorkspaceEvidenceConfidenceLevel.Likely : WorkspaceEvidenceConfidenceLevel.Unknown, "note.materials_boundary", "Imported materials are context candidates, not canonical truth.");
         if (topMaterials.Length > 0)
         {
             foreach (var material in topMaterials)
@@ -589,13 +604,13 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
         else
         {
-            builder.AppendLine("- No clearly useful materials are stabilized yet.");
+            builder.AppendLine($"- {L(language, "sentence.no_materials", "No clearly useful materials are stabilized yet")}.");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Open uncertainty");
+        builder.AppendLine(SectionHeading(language, "section.project.open_uncertainty", "Open uncertainty"));
         builder.AppendLine();
-        AppendSectionConfidence(builder, WorkspaceEvidenceConfidenceLevel.Unknown, "Unknowns are explicit gaps, not hidden facts.");
+        AppendSectionConfidence(builder, language, WorkspaceEvidenceConfidenceLevel.Unknown, "note.open_uncertainty_boundary", "Unknowns are explicit gaps, not hidden facts.");
         if (unknownSignals.Count > 0)
         {
             foreach (var item in unknownSignals.Take(5))
@@ -605,25 +620,25 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
         else if (interpretationMode != ProjectInterpretationMode.SingleProject)
         {
-            builder.AppendLine("- Shared architecture across the whole folder is not confirmed.");
+            builder.AppendLine($"- {L(language, "sentence.shared_arch_not_confirmed", "Shared architecture across the whole folder is not confirmed")}.");
         }
         else
         {
-            builder.AppendLine("- Remaining uncertainty is low or still coarse.");
+            builder.AppendLine($"- {L(language, "sentence.remaining_uncertainty_low", "Remaining uncertainty is low or still coarse")}.");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Canonical readiness");
+        builder.AppendLine(SectionHeading(language, "section.project.canonical_readiness", "Canonical readiness"));
         builder.AppendLine();
         var readinessConfidence = interpretationMode == ProjectInterpretationMode.SingleProject && isStandardSingleProjectTopology
             ? WorkspaceEvidenceConfidenceLevel.Likely
             : WorkspaceEvidenceConfidenceLevel.Unknown;
-        AppendSectionConfidence(builder, readinessConfidence, "Promotion is a contributor act; preview evidence alone is not truth.");
-        builder.AppendLine("- First confirm target: `project.md`");
-        builder.AppendLine("- Derived companion after confirm: `capsule.md`");
+        AppendSectionConfidence(builder, language, readinessConfidence, "note.canonical_readiness_boundary", "Promotion is a contributor act; preview evidence alone is not truth.");
+        builder.AppendLine($"- {L(language, "label.first_confirm_target", "First confirm target")}: `project.md`");
+        builder.AppendLine($"- {L(language, "label.derived_companion", "Derived companion after confirm")}: `capsule.md`");
         builder.AppendLine(interpretationMode == ProjectInterpretationMode.SingleProject && isStandardSingleProjectTopology
-            ? "- Current preview looks bounded enough for explicit confirm, but it is still not truth until confirmed."
-            : $"- `{topologyKind}` evidence remains too coarse for a strong unified truth claim without contributor review.");
+            ? $"- {L(language, "sentence.preview_bounded_not_truth", "Current preview looks bounded enough for explicit confirm, but it is still not truth until confirmed")}."
+            : $"- `{topologyKind}` {L(language, "sentence.evidence_too_coarse", "evidence remains too coarse for a strong unified truth claim without contributor review")}.");
 
         return builder.ToString().TrimEnd();
     }
@@ -635,12 +650,70 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         string previewRoadmapMarkdown,
         string previewCanonMarkdown)
     {
-        return BuildPreviewCapsuleMarkdown(
+        var markdown = BuildPreviewCapsuleMarkdown(
             Path.GetFullPath(runResult.PreviewPacket.WorkspaceRoot),
             previewProjectMarkdown,
             previewDirectionMarkdown,
             previewRoadmapMarkdown,
             previewCanonMarkdown);
+        return InsertPreviewCapsuleStatus(markdown, runResult);
+    }
+
+    private static void AppendPreviewDocumentStatus(
+        StringBuilder builder,
+        WorkspaceImportMaterialInterpreterRunResult runResult,
+        ProjectDocumentKind kind,
+        bool includeHeading = true)
+    {
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
+        var topology = runResult.PreviewPacket.EvidencePack?.Topology;
+        var topologyKind = topology?.Kind ?? "Unknown";
+        var safeImportMode = topology?.SafeImportMode ?? "unknown";
+        var localPath = Path.GetFullPath(runResult.PreviewPacket.WorkspaceRoot);
+
+        builder.AppendLine(includeHeading
+            ? SectionHeading(language, "section.preview_status", "Preview status")
+            : $"**{L(language, "section.preview_status", "Preview status")}**");
+        builder.AppendLine();
+        builder.AppendLine($"- {L(language, "label.document", "Document")}: `{GetCanonicalFileName(kind)}`");
+        builder.AppendLine($"- {L(language, "label.status", "Status")}: `Preview, not canonical`.");
+        builder.AppendLine($"- {L(language, "sentence.document_not_canonical", "This document is not canonical truth yet")}.");
+        builder.AppendLine($"- {L(language, "label.topology", "Topology")}: `{topologyKind}`.");
+        builder.AppendLine($"- {L(language, "label.safe_import_mode", "Safe import mode")}: `{safeImportMode}`.");
+        builder.AppendLine($"- {L(language, "label.evidence_boundary", "Evidence boundary")}: {L(language, "note.preview_status_boundary", "scanner/importer evidence projection; contributor must confirm or replace this document before canon")}.");
+        builder.AppendLine($"- {L(language, "label.local_import_path", "Local import path")}: `{localPath}` ({L(language, "note.local_import_path", "local import metadata, not project truth")}).");
+    }
+
+    private static string InsertPreviewCapsuleStatus(
+        string markdown,
+        WorkspaceImportMaterialInterpreterRunResult runResult)
+    {
+        var status = new StringBuilder();
+        AppendPreviewDocumentStatus(status, runResult, ProjectDocumentKind.Capsule, includeHeading: false);
+        var normalized = markdown.Replace("\r\n", "\n");
+        var headingIndex = normalized.IndexOf("\n# ", StringComparison.Ordinal);
+        if (headingIndex >= 0)
+        {
+            headingIndex += 1;
+        }
+        else if (normalized.StartsWith("# ", StringComparison.Ordinal))
+        {
+            headingIndex = 0;
+        }
+
+        if (headingIndex < 0)
+        {
+            return markdown;
+        }
+
+        var firstBreak = normalized.IndexOf("\n\n", headingIndex, StringComparison.Ordinal);
+        if (firstBreak < 0)
+        {
+            return markdown;
+        }
+
+        var insertAt = firstBreak + 2;
+        return normalized.Insert(insertAt, status.ToString().TrimEnd() + "\n\n");
     }
 
     private static string BuildPreviewCapsuleMarkdown(
@@ -651,6 +724,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         string previewCanonMarkdown)
     {
         var projectName = new DirectoryInfo(Path.GetFullPath(projectRootPath)).Name;
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var sources = new CapsuleLayerSources(
             new CapsuleSourceDocument(ProjectDocumentKind.Project, ProjectDocumentStage.PreviewDocs, "preview_project.md", previewProjectMarkdown, Exists: true),
             new CapsuleSourceDocument(ProjectDocumentKind.Direction, ProjectDocumentStage.PreviewDocs, "preview_direction.md", previewDirectionMarkdown, !string.IsNullOrWhiteSpace(previewDirectionMarkdown)),
@@ -658,7 +732,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             new CapsuleSourceDocument(ProjectDocumentKind.Canon, ProjectDocumentStage.PreviewDocs, "preview_canon.md", previewCanonMarkdown, !string.IsNullOrWhiteSpace(previewCanonMarkdown)));
 
         return BuildCapsuleV2Markdown(
-            "# Capsule (Preview)",
+            PreviewHeading(language, ProjectDocumentKind.Capsule),
             projectName,
             sources,
             activeShiftId: null,
@@ -669,18 +743,18 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
     private static string BuildPreviewDirectionMarkdown(WorkspaceImportMaterialInterpreterRunResult runResult)
     {
         var direction = DirectionSignalInterpreter.Interpret(runResult);
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var builder = new StringBuilder();
 
-        builder.AppendLine("# Direction (Preview)");
+        builder.AppendLine(PreviewHeading(language, ProjectDocumentKind.Direction));
         builder.AppendLine();
-        builder.AppendLine("Candidate direction surface from current import evidence.");
-        builder.AppendLine("This document is not canonical truth yet.");
-        builder.AppendLine("Contributor may reject, rewrite, or author direction from scratch before promotion.");
+        AppendPreviewDocumentStatus(builder, runResult, ProjectDocumentKind.Direction);
+        builder.AppendLine(L(language, "sentence.direction_review", "Contributor may reject, rewrite, or author direction from scratch before promotion."));
         builder.AppendLine();
 
         if (!direction.HasDirectionEvidence)
         {
-            builder.AppendLine("## Unknown / not-yet-established");
+            builder.AppendLine(SectionHeading(language, "section.unknown_not_established", "Unknown / not-yet-established"));
             builder.AppendLine();
             foreach (var unknown in direction.Unknowns)
             {
@@ -690,12 +764,12 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             return builder.ToString().TrimEnd();
         }
 
-        builder.AppendLine("## Confirmed direction");
+        builder.AppendLine(SectionHeading(language, "section.direction.confirmed", "Confirmed direction"));
         builder.AppendLine();
-        builder.AppendLine("- No confirmed direction statement is derived automatically.");
+        builder.AppendLine($"- {L(language, "sentence.no_confirmed_direction", "No confirmed direction statement is derived automatically")}.");
         builder.AppendLine();
 
-        builder.AppendLine("## Likely / candidate direction signals");
+        builder.AppendLine(SectionHeading(language, "section.direction.candidates", "Likely / candidate direction signals"));
         builder.AppendLine();
         foreach (var candidate in direction.Candidates)
         {
@@ -703,7 +777,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Unknown / not-yet-established");
+        builder.AppendLine(SectionHeading(language, "section.unknown_not_established", "Unknown / not-yet-established"));
         builder.AppendLine();
         foreach (var unknown in direction.Unknowns)
         {
@@ -717,18 +791,18 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
     {
         var history = _roadmapHistoryReader.Read(projectRootPath);
         var roadmap = RoadmapSignalInterpreter.Interpret(history, runResult);
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var builder = new StringBuilder();
 
-        builder.AppendLine("# Roadmap (Preview)");
+        builder.AppendLine(PreviewHeading(language, ProjectDocumentKind.Roadmap));
         builder.AppendLine();
-        builder.AppendLine("Candidate roadmap surface from observable evidence.");
-        builder.AppendLine("This document is not canonical truth yet.");
-        builder.AppendLine("Every phase below is candidate-level only; contributor must confirm or replace it.");
+        AppendPreviewDocumentStatus(builder, runResult, ProjectDocumentKind.Roadmap);
+        builder.AppendLine(L(language, "sentence.roadmap_review", "Every phase below is candidate-level only; contributor must confirm or replace it."));
         builder.AppendLine();
 
         if (!roadmap.HasCandidateEvidence)
         {
-            builder.AppendLine("## Unknown / not-yet-established");
+            builder.AppendLine(SectionHeading(language, "section.unknown_not_established", "Unknown / not-yet-established"));
             builder.AppendLine();
             foreach (var unknown in roadmap.Unknowns)
             {
@@ -738,15 +812,15 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             return builder.ToString().TrimEnd();
         }
 
-        builder.AppendLine("## Candidate phases");
+        builder.AppendLine(SectionHeading(language, "section.roadmap.candidates", "Candidate phases"));
         builder.AppendLine();
         foreach (var candidate in roadmap.Candidates)
         {
-            builder.AppendLine($"- Candidate phase from {candidate.Evidence}. Contributor must confirm or replace. {candidate.Label}");
+            builder.AppendLine($"- {L(language, "sentence.candidate_phase_from", "Candidate phase from")} {candidate.Evidence}. {L(language, "sentence.contributor_confirm_replace", "Contributor must confirm or replace")}. {candidate.Label}");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Unknown / not-yet-established");
+        builder.AppendLine(SectionHeading(language, "section.unknown_not_established", "Unknown / not-yet-established"));
         builder.AppendLine();
         foreach (var unknown in roadmap.Unknowns)
         {
@@ -763,37 +837,37 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         var passport = pack?.TechnicalPassport;
         var modules = interpretation.Modules ?? Array.Empty<WorkspaceImportMaterialModuleInterpretation>();
         var entryPoints = interpretation.EntryPoints ?? Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>();
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var builder = new StringBuilder();
 
-        builder.AppendLine("# Canon (Preview)");
+        builder.AppendLine(PreviewHeading(language, ProjectDocumentKind.Canon));
         builder.AppendLine();
-        builder.AppendLine("Observed technical canon candidate from the current import understanding.");
-        builder.AppendLine("This document is not canonical truth yet.");
-        builder.AppendLine("It contains observed technical facts only; contributor-authored rules remain empty.");
+        AppendPreviewDocumentStatus(builder, runResult, ProjectDocumentKind.Canon);
+        builder.AppendLine(L(language, "sentence.canon_preview_boundary", "It contains observed technical facts only; contributor-authored rules remain empty."));
         builder.AppendLine();
 
-        builder.AppendLine("## Observed technical signals");
+        builder.AppendLine(SectionHeading(language, "section.canon.observed_signals", "Observed technical signals"));
         builder.AppendLine();
-        builder.AppendLine("- Confidence: `Confirmed for listed scanner/importer observations`");
-        builder.AppendLine("- Evidence Boundary: Derived from TechnicalPassport, interpreted modules, and interpreted entry points only; these are not canon rules.");
-        AppendObservedCanonValues(builder, "Observed Languages", passport?.ObservedLanguages);
-        AppendObservedCanonValues(builder, "Frameworks", passport?.Frameworks);
-        AppendObservedCanonValues(builder, "Build Systems", passport?.BuildSystems);
-        AppendObservedCanonValues(builder, "Toolchains", passport?.Toolchains);
-        AppendObservedCanonValues(builder, "Target Platforms", passport?.TargetPlatforms);
-        AppendObservedCanonValues(builder, "Runtime Surfaces", passport?.RuntimeSurfaces);
-        AppendObservedCanonValues(builder, "Version Hints", passport?.VersionHints);
-        AppendObservedCanonValues(builder, "Config Markers", passport?.ConfigMarkers);
-        AppendObservedCanonValues(builder, "Build Variants", passport?.BuildVariants);
-        AppendObservedCanonValues(builder, "Notable Options", passport?.NotableOptions);
+        builder.AppendLine($"- {L(language, "label.confidence", "Confidence")}: `{L(language, "value.confirmed_observations", "Confirmed for listed scanner/importer observations")}`");
+        builder.AppendLine($"- {L(language, "label.evidence_boundary", "Evidence Boundary")}: {L(language, "note.canon_signals_boundary", "Derived from TechnicalPassport, interpreted modules, and interpreted entry points only; these are not canon rules")}.");
+        AppendObservedCanonValues(builder, L(language, "label.observed_languages", "Observed Languages"), passport?.ObservedLanguages);
+        AppendObservedCanonValues(builder, L(language, "label.frameworks", "Frameworks"), passport?.Frameworks);
+        AppendObservedCanonValues(builder, L(language, "label.build_systems", "Build Systems"), passport?.BuildSystems);
+        AppendObservedCanonValues(builder, L(language, "label.toolchains", "Toolchains"), passport?.Toolchains);
+        AppendObservedCanonValues(builder, L(language, "label.target_platforms", "Target Platforms"), passport?.TargetPlatforms);
+        AppendObservedCanonValues(builder, L(language, "label.runtime_surfaces", "Runtime Surfaces"), passport?.RuntimeSurfaces);
+        AppendObservedCanonValues(builder, L(language, "label.version_hints", "Version Hints"), passport?.VersionHints);
+        AppendObservedCanonValues(builder, L(language, "label.config_markers", "Config Markers"), passport?.ConfigMarkers);
+        AppendObservedCanonValues(builder, L(language, "label.build_variants", "Build Variants"), passport?.BuildVariants);
+        AppendObservedCanonValues(builder, L(language, "label.notable_options", "Notable Options"), passport?.NotableOptions);
         if (modules.Count > 0)
         {
-            builder.AppendLine($"- Observed Modules: {string.Join(", ", modules.Take(8).Select(static module => $"`{module.Name}` [{module.Confidence}]"))}");
+            builder.AppendLine($"- {L(language, "label.observed_modules", "Observed Modules")}: {string.Join(", ", modules.Take(8).Select(static module => $"`{module.Name}` [{module.Confidence}]"))}");
         }
 
         if (entryPoints.Count > 0)
         {
-            builder.AppendLine($"- Observed Entry Points: {string.Join(", ", entryPoints.Take(8).Select(static entry => $"`{entry.RelativePath}` [{entry.Confidence}]"))}");
+            builder.AppendLine($"- {L(language, "label.observed_entry_points", "Observed Entry Points")}: {string.Join(", ", entryPoints.Take(8).Select(static entry => $"`{entry.RelativePath}` [{entry.Confidence}]"))}");
         }
 
         if (!HasAnyValues(
@@ -810,26 +884,26 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
             modules.Count == 0 &&
             entryPoints.Count == 0)
         {
-            builder.AppendLine("- No technical signals are confirmed by the current import evidence.");
+            builder.AppendLine($"- {L(language, "sentence.no_technical_signals", "No technical signals are confirmed by the current import evidence")}.");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Contributor-authored rules");
+        builder.AppendLine(SectionHeading(language, "section.canon.contributor_rules", "Contributor-authored rules"));
         builder.AppendLine();
-        builder.AppendLine("- Confidence: `None / contributor-owned`");
-        builder.AppendLine("- No authored rules yet. Contributor must add review rules / execution rules / intent rules here.");
-        builder.AppendLine("- The importer must not derive these rules from observed frameworks, modules, filenames, README prose, or code layout.");
+        builder.AppendLine($"- {L(language, "label.confidence", "Confidence")}: `{L(language, "value.none_contributor_owned", "None / contributor-owned")}`");
+        builder.AppendLine($"- {L(language, "sentence.no_authored_rules", "No authored rules yet. Contributor must add review rules / execution rules / intent rules here")}.");
+        builder.AppendLine($"- {L(language, "sentence.importer_must_not_derive_rules", "The importer must not derive these rules from observed frameworks, modules, filenames, README prose, or code layout")}.");
         builder.AppendLine();
 
-        builder.AppendLine("## Unknown / not-yet-established");
+        builder.AppendLine(SectionHeading(language, "section.unknown_not_established", "Unknown / not-yet-established"));
         builder.AppendLine();
-        builder.AppendLine("- Confidence: `Unknown`");
-        builder.AppendLine("- What is not yet canonical: review workflow.");
-        builder.AppendLine("- What is not yet canonical: execution boundaries.");
-        builder.AppendLine("- What is not yet canonical: refusal rules.");
-        builder.AppendLine("- What is not yet canonical: truth mutation limits.");
-        builder.AppendLine("- What is not yet canonical: scope discipline.");
-        builder.AppendLine("- Contributor must confirm, replace, or author these rules before promotion.");
+        builder.AppendLine($"- {L(language, "label.confidence", "Confidence")}: `Unknown`");
+        builder.AppendLine($"- {L(language, "label.not_yet_canonical", "What is not yet canonical")}: {L(language, "value.review_workflow", "review workflow")}.");
+        builder.AppendLine($"- {L(language, "label.not_yet_canonical", "What is not yet canonical")}: {L(language, "value.execution_boundaries", "execution boundaries")}.");
+        builder.AppendLine($"- {L(language, "label.not_yet_canonical", "What is not yet canonical")}: {L(language, "value.refusal_rules", "refusal rules")}.");
+        builder.AppendLine($"- {L(language, "label.not_yet_canonical", "What is not yet canonical")}: {L(language, "value.truth_mutation_limits", "truth mutation limits")}.");
+        builder.AppendLine($"- {L(language, "label.not_yet_canonical", "What is not yet canonical")}: {L(language, "value.scope_discipline", "scope discipline")}.");
+        builder.AppendLine($"- {L(language, "sentence.contributor_author_rules", "Contributor must confirm, replace, or author these rules before promotion")}.");
 
         return builder.ToString().TrimEnd();
     }
@@ -914,6 +988,7 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         ProjectDocumentStage outputStage)
     {
         var sourceStage = ResolveCapsuleSourceStage(sources, outputStage);
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
         var builder = new StringBuilder();
 
         builder.AppendLine("---");
@@ -922,106 +997,105 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         builder.AppendLine();
         builder.AppendLine(heading);
         builder.AppendLine();
-        builder.AppendLine("Derived capsule v2. This document is a compressed view over Layer A sources, not an independent truth layer.");
+        builder.AppendLine(L(language, "sentence.capsule_intro", "Derived capsule v2. This document is a compressed view over Layer A sources, not an independent truth layer."));
         if (sourceStage == "preview")
         {
-            builder.AppendLine("Reader obligation: source_stage preview is below canonical truth.");
+            builder.AppendLine(L(language, "sentence.capsule_preview_obligation", "Reader obligation: source_stage preview is below canonical truth."));
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Project identity");
+        builder.AppendLine(SectionHeading(language, "section.capsule.project_identity", "Project identity"));
         builder.AppendLine();
-        AppendSectionSource(builder, sources.Project);
-        builder.AppendLine($"- Project: `{projectName}`");
-        AppendBulletsOrNone(builder, ExtractBulletsUnderSection(sources.Project.Markdown, "## Identity").Take(3), "No project identity details are available.");
+        AppendSectionSource(builder, language, sources.Project);
+        builder.AppendLine($"- {L(language, "label.project", "Project")}: `{projectName}`");
+        AppendBulletsOrNone(builder, ExtractBulletsUnderSections(sources.Project.Markdown, SectionAliases(language, "section.project.identity", "Identity")).Take(3), L(language, "sentence.no_project_identity", "No project identity details are available."));
         builder.AppendLine();
 
-        builder.AppendLine("## What this project is");
+        builder.AppendLine(SectionHeading(language, "section.capsule.project_description", "What this project is"));
         builder.AppendLine();
-        AppendSectionSource(builder, sources.Project);
+        AppendSectionSource(builder, language, sources.Project);
         AppendBulletsOrNone(
             builder,
-            ExtractBulletsUnderSection(sources.Project.Markdown, "## What this project appears to be")
-                .Concat(ExtractBulletsUnderSection(sources.Project.Markdown, "## What this looks like"))
+            ExtractBulletsUnderSections(sources.Project.Markdown, SectionAliases(language, "section.project.description", "What this project appears to be", "What this looks like"))
                 .Take(4),
-            "None established.");
+            L(language, "sentence.none_established", "None established."));
         builder.AppendLine();
 
-        builder.AppendLine("## Current direction");
+        builder.AppendLine(SectionHeading(language, "section.capsule.current_direction", "Current direction"));
         builder.AppendLine();
-        AppendSectionSource(builder, sources.Direction);
+        AppendSectionSource(builder, language, sources.Direction);
         AppendBulletsOrNone(
             builder,
-            ExtractBulletsUnderSection(sources.Direction.Markdown, "## Confirmed direction")
-                .Concat(ExtractBulletsUnderSection(sources.Direction.Markdown, "## Likely / candidate direction signals"))
-                .Concat(ExtractBulletsUnderSection(sources.Direction.Markdown, "## Unknown / not-yet-established"))
+            ExtractBulletsUnderSections(sources.Direction.Markdown, SectionAliases(language, "section.direction.confirmed", "Confirmed direction"))
+                .Concat(ExtractBulletsUnderSections(sources.Direction.Markdown, SectionAliases(language, "section.direction.candidates", "Likely / candidate direction signals")))
+                .Concat(ExtractBulletsUnderSections(sources.Direction.Markdown, SectionAliases(language, "section.unknown_not_established", "Unknown / not-yet-established")))
                 .Take(4),
-            "None established.");
+            L(language, "sentence.none_established", "None established."));
         builder.AppendLine();
 
-        builder.AppendLine("## Current roadmap phase");
+        builder.AppendLine(SectionHeading(language, "section.capsule.current_roadmap", "Current roadmap phase"));
         builder.AppendLine();
-        AppendSectionSource(builder, sources.Roadmap);
+        AppendSectionSource(builder, language, sources.Roadmap);
         AppendBulletsOrNone(
             builder,
-            ExtractBulletsUnderSection(sources.Roadmap.Markdown, "## Candidate phases")
-                .Concat(ExtractBulletsUnderSection(sources.Roadmap.Markdown, "## Unknown / not-yet-established"))
+            ExtractBulletsUnderSections(sources.Roadmap.Markdown, SectionAliases(language, "section.roadmap.candidates", "Candidate phases"))
+                .Concat(ExtractBulletsUnderSections(sources.Roadmap.Markdown, SectionAliases(language, "section.unknown_not_established", "Unknown / not-yet-established")))
                 .Take(2),
-            "None established.");
+            L(language, "sentence.none_established", "None established."));
         builder.AppendLine();
 
-        builder.AppendLine("## Core canon rules");
+        builder.AppendLine(SectionHeading(language, "section.capsule.core_canon_rules", "Core canon rules"));
         builder.AppendLine();
-        AppendSectionSource(builder, sources.Canon);
+        AppendSectionSource(builder, language, sources.Canon);
         AppendBulletsOrNone(
             builder,
-            ExtractBulletsUnderSection(sources.Canon.Markdown, "## Contributor-authored rules")
+            ExtractBulletsUnderSections(sources.Canon.Markdown, SectionAliases(language, "section.canon.contributor_rules", "Contributor-authored rules"))
                 .Take(6),
-            "None established.");
+            L(language, "sentence.none_established", "None established."));
         builder.AppendLine();
 
-        builder.AppendLine("## Current focus");
+        builder.AppendLine(SectionHeading(language, "section.capsule.current_focus", "Current focus"));
         builder.AppendLine();
-        builder.AppendLine("- Source: runtime overlay [runtime]");
-        builder.AppendLine("- Overlay boundary: this section is runtime state only, not Layer A truth.");
+        builder.AppendLine($"- {L(language, "label.source", "Source")}: runtime overlay [runtime]");
+        builder.AppendLine($"- {L(language, "label.overlay_boundary", "Overlay boundary")}: {L(language, "sentence.runtime_overlay_boundary", "this section is runtime state only, not Layer A truth")}.");
         if (string.IsNullOrWhiteSpace(activeShiftId) && string.IsNullOrWhiteSpace(activeTaskId))
         {
-            builder.AppendLine("- Active shift: none.");
-            builder.AppendLine("- Active task: none.");
+            builder.AppendLine($"- {L(language, "label.active_shift", "Active shift")}: none.");
+            builder.AppendLine($"- {L(language, "label.active_task", "Active task")}: none.");
         }
         else
         {
-            builder.AppendLine($"- Active shift: `{activeShiftId ?? "none"}`");
-            builder.AppendLine($"- Active task: `{activeTaskId ?? "none"}`");
+            builder.AppendLine($"- {L(language, "label.active_shift", "Active shift")}: `{activeShiftId ?? "none"}`");
+            builder.AppendLine($"- {L(language, "label.active_task", "Active task")}: `{activeTaskId ?? "none"}`");
         }
         builder.AppendLine();
 
-        builder.AppendLine("## Open risks / unresolved items");
+        builder.AppendLine(SectionHeading(language, "section.capsule.open_risks", "Open risks / unresolved items"));
         builder.AppendLine();
-        builder.AppendLine("- Source: compressed Layer A unknowns [mixed]");
+        builder.AppendLine($"- {L(language, "label.source", "Source")}: compressed Layer A unknowns [mixed]");
         AppendBulletsOrNone(
             builder,
-            ExtractBulletsUnderSection(sources.Project.Markdown, "## Open uncertainty")
-                .Concat(ExtractBulletsUnderSection(sources.Direction.Markdown, "## Unknown / not-yet-established"))
-                .Concat(ExtractBulletsUnderSection(sources.Roadmap.Markdown, "## Unknown / not-yet-established"))
-                .Concat(ExtractBulletsUnderSection(sources.Canon.Markdown, "## Unknown / not-yet-established"))
+            ExtractBulletsUnderSections(sources.Project.Markdown, SectionAliases(language, "section.project.open_uncertainty", "Open uncertainty"))
+                .Concat(ExtractBulletsUnderSections(sources.Direction.Markdown, SectionAliases(language, "section.unknown_not_established", "Unknown / not-yet-established")))
+                .Concat(ExtractBulletsUnderSections(sources.Roadmap.Markdown, SectionAliases(language, "section.unknown_not_established", "Unknown / not-yet-established")))
+                .Concat(ExtractBulletsUnderSections(sources.Canon.Markdown, SectionAliases(language, "section.unknown_not_established", "Unknown / not-yet-established")))
                 .Distinct(StringComparer.Ordinal)
                 .Take(5),
-            "None listed.");
+            L(language, "sentence.none_listed", "None listed."));
         builder.AppendLine();
 
-        builder.AppendLine("## Canon completeness status");
+        builder.AppendLine(SectionHeading(language, "section.capsule.completeness", "Canon completeness status"));
         builder.AppendLine();
-        builder.AppendLine("- Source: derived from 5/5 document state [derived]");
+        builder.AppendLine($"- {L(language, "label.source", "Source")}: derived from 5/5 document state [derived]");
         builder.AppendLine($"- source_stage: `{sourceStage}`");
-        builder.AppendLine($"- Status: {BuildCompletenessStatus(sources, outputStage)}");
-        builder.AppendLine($"- Project identity source: {FormatStage(sources.Project)}");
-        builder.AppendLine($"- What this project is source: {FormatStage(sources.Project)}");
-        builder.AppendLine($"- Current direction source: {FormatStage(sources.Direction)}");
-        builder.AppendLine($"- Current roadmap phase source: {FormatStage(sources.Roadmap)}");
-        builder.AppendLine($"- Core canon rules source: {FormatStage(sources.Canon)}");
-        builder.AppendLine("- Current focus source: runtime overlay.");
-        builder.AppendLine("- Open risks / unresolved items source: mixed Layer A unknowns.");
+        builder.AppendLine($"- {L(language, "label.status", "Status")}: {BuildCompletenessStatus(sources, outputStage)}");
+        builder.AppendLine($"- {L(language, "label.project_identity_source", "Project identity source")}: {FormatStage(sources.Project)}");
+        builder.AppendLine($"- {L(language, "label.project_description_source", "What this project is source")}: {FormatStage(sources.Project)}");
+        builder.AppendLine($"- {L(language, "label.current_direction_source", "Current direction source")}: {FormatStage(sources.Direction)}");
+        builder.AppendLine($"- {L(language, "label.current_roadmap_source", "Current roadmap phase source")}: {FormatStage(sources.Roadmap)}");
+        builder.AppendLine($"- {L(language, "label.core_canon_source", "Core canon rules source")}: {FormatStage(sources.Canon)}");
+        builder.AppendLine($"- {L(language, "label.current_focus_source", "Current focus source")}: runtime overlay.");
+        builder.AppendLine($"- {L(language, "label.open_risks_source", "Open risks / unresolved items source")}: mixed Layer A unknowns.");
 
         return builder.ToString().TrimEnd();
     }
@@ -1342,6 +1416,14 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         return File.Exists(path) ? File.ReadAllText(path, Encoding.UTF8) : string.Empty;
     }
 
+    private static IReadOnlyList<string> ExtractBulletsUnderSections(string markdown, IEnumerable<string> headings)
+    {
+        return headings
+            .SelectMany(heading => ExtractBulletsUnderSection(markdown, heading))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static IReadOnlyList<string> ExtractBulletsUnderSection(string markdown, string heading)
     {
         var lines = markdown.Replace("\r\n", "\n").Split('\n');
@@ -1379,14 +1461,16 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
     {
         return bullet.StartsWith("Confidence:", StringComparison.OrdinalIgnoreCase) ||
                bullet.StartsWith("Evidence Boundary:", StringComparison.OrdinalIgnoreCase) ||
+               bullet.StartsWith("Уверенность:", StringComparison.OrdinalIgnoreCase) ||
+               bullet.StartsWith("Граница evidence:", StringComparison.OrdinalIgnoreCase) ||
                bullet.StartsWith("Source:", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void AppendSectionSource(StringBuilder builder, CapsuleSourceDocument source)
+    private static void AppendSectionSource(StringBuilder builder, WorkspaceDocumentationLanguagePolicy language, CapsuleSourceDocument source)
     {
         builder.AppendLine(source.Exists
-            ? $"- Source: `{source.FileName}` [{FormatStage(source)}]"
-            : $"- Source: `{source.FileName}` [absent]");
+            ? $"- {L(language, "label.source", "Source")}: `{source.FileName}` [{FormatStage(source)}]"
+            : $"- {L(language, "label.source", "Source")}: `{source.FileName}` [absent]");
     }
 
     private static void AppendBulletsOrNone(StringBuilder builder, IEnumerable<string> bullets, string noneText)
@@ -1469,11 +1553,202 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         builder.AppendLine($"- {label}: {string.Join(", ", items.Select(static item => $"`{item}`"))}");
     }
 
-    private static void AppendSectionConfidence(StringBuilder builder, WorkspaceEvidenceConfidenceLevel confidence, string note)
+    private static void AppendSectionConfidence(
+        StringBuilder builder,
+        WorkspaceDocumentationLanguagePolicy language,
+        WorkspaceEvidenceConfidenceLevel confidence,
+        string noteKey,
+        string note)
     {
-        builder.AppendLine($"- Confidence: `{confidence}`");
-        builder.AppendLine($"- Evidence Boundary: {note}");
+        builder.AppendLine($"- {L(language, "label.confidence", "Confidence")}: `{confidence}`");
+        builder.AppendLine($"- {L(language, "label.evidence_boundary", "Evidence Boundary")}: {L(language, noteKey, note)}");
     }
+
+    private static string PreviewHeading(WorkspaceDocumentationLanguagePolicy language, ProjectDocumentKind kind)
+    {
+        return $"# {L(language, $"doc.{kind.ToString().ToLowerInvariant()}", GetCanonicalTitle(kind))} ({L(language, "label.preview", "Preview")})";
+    }
+
+    private static string SectionHeading(WorkspaceDocumentationLanguagePolicy language, string key, string english)
+    {
+        return $"## {L(language, key, english)}";
+    }
+
+    private static IEnumerable<string> SectionAliases(WorkspaceDocumentationLanguagePolicy language, string key, params string[] englishAliases)
+    {
+        var aliases = new List<string>();
+        foreach (var english in englishAliases)
+        {
+            aliases.Add($"## {english}");
+        }
+
+        var localized = SectionHeading(language, key, englishAliases.FirstOrDefault() ?? key);
+        if (!aliases.Contains(localized, StringComparer.OrdinalIgnoreCase))
+        {
+            aliases.Add(localized);
+        }
+
+        return aliases;
+    }
+
+    private static string L(WorkspaceDocumentationLanguagePolicy language, string key, string english)
+    {
+        var code = language.TwoLetterIsoCode.ToLowerInvariant();
+        return DocumentText.TryGetValue(code, out var catalog) && catalog.TryGetValue(key, out var localized)
+            ? localized
+            : english;
+    }
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> DocumentText =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ru"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["doc.project"] = "Проект",
+                ["doc.direction"] = "Направление",
+                ["doc.roadmap"] = "Roadmap",
+                ["doc.canon"] = "Канон",
+                ["doc.capsule"] = "Capsule",
+                ["label.preview"] = "Превью",
+                ["section.preview_status"] = "Статус превью",
+                ["section.project.identity"] = "Идентичность",
+                ["section.project.topology_scope"] = "Топология и область",
+                ["section.project.description"] = "Что это за проект",
+                ["section.project.observed_structure"] = "Наблюдаемая структура",
+                ["section.project.runtime_signals"] = "Runtime / stack сигналы",
+                ["section.project.confidence_split"] = "Что подтверждено / вероятно / неизвестно",
+                ["section.project.materials"] = "Материалы для чтения",
+                ["section.project.open_uncertainty"] = "Открытая неопределённость",
+                ["section.project.canonical_readiness"] = "Готовность к канону",
+                ["section.unknown_not_established"] = "Неизвестно / ещё не установлено",
+                ["section.direction.confirmed"] = "Подтверждённое направление",
+                ["section.direction.candidates"] = "Вероятные / кандидатные сигналы направления",
+                ["section.roadmap.candidates"] = "Кандидатные фазы",
+                ["section.canon.observed_signals"] = "Наблюдаемые технические сигналы",
+                ["section.canon.contributor_rules"] = "Правила, заданные contributor",
+                ["section.capsule.project_identity"] = "Идентичность проекта",
+                ["section.capsule.project_description"] = "Что это за проект",
+                ["section.capsule.current_direction"] = "Текущее направление",
+                ["section.capsule.current_roadmap"] = "Текущая roadmap-фаза",
+                ["section.capsule.core_canon_rules"] = "Основные правила канона",
+                ["section.capsule.current_focus"] = "Текущий фокус",
+                ["section.capsule.open_risks"] = "Открытые риски / нерешённые пункты",
+                ["section.capsule.completeness"] = "Статус полноты канона",
+                ["label.document"] = "Документ",
+                ["label.status"] = "Статус",
+                ["label.topology"] = "Топология",
+                ["label.safe_import_mode"] = "Safe import mode",
+                ["label.evidence_boundary"] = "Граница evidence",
+                ["label.local_import_path"] = "Локальный путь импорта",
+                ["label.confidence"] = "Уверенность",
+                ["label.project_id"] = "Project Id",
+                ["label.project_name"] = "Название проекта",
+                ["label.workspace_root"] = "Workspace root",
+                ["label.import_kind"] = "Тип импорта",
+                ["label.interpretation_mode"] = "Режим интерпретации",
+                ["label.scanner_topology"] = "Топология scanner",
+                ["label.scan_health"] = "Состояние скана",
+                ["label.truth_status"] = "Статус truth",
+                ["label.source_roots"] = "Source roots",
+                ["label.observed_source_like_zones"] = "Наблюдаемые source-like зоны",
+                ["label.build_roots"] = "Build roots",
+                ["label.structural_anomalies"] = "Структурные аномалии",
+                ["label.topology_uncertainty"] = "Неопределённость топологии",
+                ["label.release_output_zones"] = "Release / output зоны",
+                ["label.ignored_noise_zones"] = "Игнорируемые / noise зоны",
+                ["label.topology_status"] = "Статус топологии",
+                ["label.interpretation_status"] = "Статус интерпретации",
+                ["label.confirmed_main_entry"] = "Подтверждённый main entry",
+                ["label.selected_package_surface"] = "Выбранная package surface",
+                ["label.candidate_entry_surface"] = "Кандидатная entry surface",
+                ["label.main_entry"] = "Main Entry",
+                ["label.likely_entries"] = "Вероятные entries",
+                ["label.key_modules"] = "Ключевые модули",
+                ["label.languages"] = "Языки",
+                ["label.observed_languages"] = "Наблюдаемые языки",
+                ["label.frameworks"] = "Frameworks",
+                ["label.build_systems"] = "Build systems",
+                ["label.toolchains"] = "Toolchains",
+                ["label.target_platforms"] = "Target platforms",
+                ["label.runtime_surfaces"] = "Runtime surfaces",
+                ["label.version_hints"] = "Version hints",
+                ["label.config_markers"] = "Config markers",
+                ["label.build_variants"] = "Build variants",
+                ["label.notable_options"] = "Notable options",
+                ["label.confirmed"] = "Подтверждено",
+                ["label.likely"] = "Вероятно",
+                ["label.unknown"] = "Неизвестно",
+                ["label.first_confirm_target"] = "Первый документ для подтверждения",
+                ["label.derived_companion"] = "Производный companion после подтверждения",
+                ["label.observed_modules"] = "Наблюдаемые модули",
+                ["label.observed_entry_points"] = "Наблюдаемые entry points",
+                ["label.not_yet_canonical"] = "Ещё не канонично",
+                ["label.source"] = "Источник",
+                ["label.project"] = "Проект",
+                ["label.overlay_boundary"] = "Граница overlay",
+                ["label.active_shift"] = "Активный shift",
+                ["label.active_task"] = "Активная task",
+                ["label.project_identity_source"] = "Источник идентичности проекта",
+                ["label.project_description_source"] = "Источник описания проекта",
+                ["label.current_direction_source"] = "Источник текущего направления",
+                ["label.current_roadmap_source"] = "Источник текущей roadmap-фазы",
+                ["label.core_canon_source"] = "Источник правил канона",
+                ["label.current_focus_source"] = "Источник текущего фокуса",
+                ["label.open_risks_source"] = "Источник открытых рисков",
+                ["value.unknown"] = "Unknown",
+                ["value.preview_only_not_canonical"] = "Preview only / not canonical yet",
+                ["value.single_project_interpretation"] = "single project interpretation",
+                ["value.confirmed_observations"] = "Confirmed for listed scanner/importer observations",
+                ["value.none_contributor_owned"] = "None / contributor-owned",
+                ["value.review_workflow"] = "review workflow",
+                ["value.execution_boundaries"] = "execution boundaries",
+                ["value.refusal_rules"] = "refusal rules",
+                ["value.truth_mutation_limits"] = "truth mutation limits",
+                ["value.scope_discipline"] = "scope discipline",
+                ["sentence.document_not_canonical"] = "Этот документ ещё не является канонической правдой проекта",
+                ["sentence.normal_app_not_confirmed"] = "обычные single-application предположения не подтверждены",
+                ["sentence.safe_mode_visible"] = "Safe mode должен оставаться видимым, пока contributor не выберет или не подтвердит active project shape",
+                ["sentence.unified_arch_not_confirmed"] = "Единая архитектура всей папки не подтверждена",
+                ["sentence.signals_not_shared_arch"] = "Технические сигналы ниже описывают наблюдаемую папку, а не общую архитектуру проекта",
+                ["sentence.module_map_suppressed"] = "Единая карта модулей подавлена для этой топологии",
+                ["sentence.module_map_suppressed_container"] = "Единая карта модулей подавлена для этого container",
+                ["sentence.runtime_signals_unknown"] = "Runtime / stack сигналы пока грубые или неизвестные",
+                ["sentence.confidence_split_coarse"] = "Confidence split пока грубый",
+                ["sentence.no_materials"] = "Стабилизированных полезных материалов пока нет",
+                ["sentence.shared_arch_not_confirmed"] = "Общая архитектура всей папки не подтверждена",
+                ["sentence.remaining_uncertainty_low"] = "Оставшаяся неопределённость низкая или пока грубая",
+                ["sentence.preview_bounded_not_truth"] = "Текущее превью выглядит достаточно ограниченным для явного подтверждения, но не является truth до подтверждения",
+                ["sentence.evidence_too_coarse"] = "evidence слишком грубое для сильного утверждения о единой truth без review contributor",
+                ["sentence.direction_review"] = "Contributor может отклонить, переписать или создать direction с нуля перед promotion.",
+                ["sentence.no_confirmed_direction"] = "Подтверждённое направление автоматически не выводится",
+                ["sentence.roadmap_review"] = "Все фазы ниже являются candidate-level; contributor должен подтвердить или заменить их.",
+                ["sentence.candidate_phase_from"] = "Кандидатная фаза из",
+                ["sentence.contributor_confirm_replace"] = "Contributor должен подтвердить или заменить",
+                ["sentence.canon_preview_boundary"] = "Документ содержит только наблюдаемые технические факты; contributor-authored rules остаются пустыми.",
+                ["sentence.no_technical_signals"] = "Текущий import evidence не подтверждает технические сигналы",
+                ["sentence.no_authored_rules"] = "Авторских правил пока нет. Contributor должен добавить review rules / execution rules / intent rules здесь",
+                ["sentence.importer_must_not_derive_rules"] = "Importer не должен выводить эти правила из framework, модулей, имён файлов, README prose или code layout",
+                ["sentence.contributor_author_rules"] = "Contributor должен подтвердить, заменить или написать эти правила перед promotion",
+                ["sentence.capsule_intro"] = "Derived capsule v2. Это сжатый вид Layer A sources, а не независимый truth layer.",
+                ["sentence.capsule_preview_obligation"] = "Reader obligation: source_stage preview находится ниже canonical truth.",
+                ["sentence.no_project_identity"] = "Детали идентичности проекта недоступны.",
+                ["sentence.none_established"] = "Ничего не установлено.",
+                ["sentence.runtime_overlay_boundary"] = "эта секция является только runtime state, не Layer A truth",
+                ["sentence.none_listed"] = "Ничего не перечислено.",
+                ["note.preview_status_boundary"] = "это проекция scanner/importer evidence; contributor должен подтвердить или заменить документ перед каноном",
+                ["note.local_import_path"] = "локальная метка импорта, не project truth",
+                ["note.identity_boundary"] = "Workspace root и derived identity наблюдаются из файловой системы; purpose остаётся preview.",
+                ["note.topology_scope_boundary"] = "Топология/режим получены из scanner/importer evidence, а не из contributor-confirmed architecture.",
+                ["note.importer_summary_boundary"] = "Importer-owned summary; confirmation contributor всё ещё требуется.",
+                ["note.observed_structure_boundary"] = "Entry points и modules интерпретируются из scanner/importer evidence.",
+                ["note.runtime_signals_boundary"] = "Technical passport values являются наблюдаемыми сигналами и не доказывают единую архитектуру.",
+                ["note.confidence_split_boundary"] = "Эта секция сохраняет explicit confidence split импортера.",
+                ["note.materials_boundary"] = "Imported materials являются context candidates, не canonical truth.",
+                ["note.open_uncertainty_boundary"] = "Unknowns являются явными gaps, а не скрытыми фактами.",
+                ["note.canonical_readiness_boundary"] = "Promotion является действием contributor; preview evidence само по себе не truth.",
+                ["note.canon_signals_boundary"] = "Derived from TechnicalPassport, interpreted modules, and interpreted entry points only; these are not canon rules"
+            }
+        };
 
     private static bool IsPackageSurfaceEntry(WorkspaceImportMaterialEntryPointInterpretation entry)
     {
@@ -1485,17 +1760,43 @@ public sealed class ProjectDocumentRuntimeService(GitRoadmapHistoryReader? roadm
         return string.Equals(topologyKind, "SingleProject", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsContainerTopology(string topologyKind)
+    {
+        return topologyKind.Equals("Container", StringComparison.OrdinalIgnoreCase) ||
+               topologyKind.Equals("MultipleIndependentProjects", StringComparison.OrdinalIgnoreCase) ||
+               topologyKind.Equals("AmbiguousContainer", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool RequiresProjectRootSelectionBeforeCanonicalPromotion(string previewMarkdown)
+    {
+        if (string.IsNullOrWhiteSpace(previewMarkdown))
+        {
+            return false;
+        }
+
+        return previewMarkdown.Contains("Scanner Topology: `Container`", StringComparison.OrdinalIgnoreCase) ||
+               previewMarkdown.Contains("Топология: `Container`", StringComparison.OrdinalIgnoreCase) ||
+               previewMarkdown.Contains("Interpretation Mode: `MultipleIndependentProjects`", StringComparison.OrdinalIgnoreCase) ||
+               previewMarkdown.Contains("Режим интерпретации: `MultipleIndependentProjects`", StringComparison.OrdinalIgnoreCase) ||
+               previewMarkdown.Contains("Safe Import Mode: `container-review", StringComparison.OrdinalIgnoreCase) ||
+               previewMarkdown.Contains("Safe import mode: `container-review", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool ShouldUseCandidateEntrySurface(string topologyKind, WorkspaceImportMaterialEntryPointInterpretation entry)
     {
         if (topologyKind.Equals("Decompilation", StringComparison.OrdinalIgnoreCase) ||
             topologyKind.Equals("Legacy", StringComparison.OrdinalIgnoreCase) ||
             topologyKind.Equals("MaterialOnly", StringComparison.OrdinalIgnoreCase) ||
-            topologyKind.Equals("ReleaseBundle", StringComparison.OrdinalIgnoreCase))
+            topologyKind.Equals("ReleaseBundle", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("Ambiguous", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("Container", StringComparison.OrdinalIgnoreCase) ||
+            topologyKind.Equals("MultipleIndependentProjects", StringComparison.OrdinalIgnoreCase))
         {
-            return true;
+            return entry.Confidence != WorkspaceEvidenceConfidenceLevel.Confirmed;
         }
 
-        return topologyKind.Equals("Mixed", StringComparison.OrdinalIgnoreCase) &&
+        return (topologyKind.Equals("Mixed", StringComparison.OrdinalIgnoreCase) ||
+                topologyKind.Equals("MixedSourceRelease", StringComparison.OrdinalIgnoreCase)) &&
                entry.Confidence != WorkspaceEvidenceConfidenceLevel.Confirmed;
     }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -234,7 +235,11 @@ internal sealed class ChatsRuntimeController
             }
 
             var attachments = ConversationAttachmentPromptBuilder.Load(submission.Attachments);
-            var assistantText = await ExecuteAssistantReplyAsync(trimmed, attachments);
+            var assistantText = await ExecuteAssistantReplyAsync(
+                trimmed,
+                attachments,
+                assistantItem,
+                publishSnapshotAsync);
             await _activeAdapter.CompleteStreamingAsync(assistantItem, assistantText);
             if (publishSnapshotAsync is not null)
             {
@@ -453,7 +458,11 @@ internal sealed class ChatsRuntimeController
         PersistActiveChatSession();
     }
 
-    private async Task<string> ExecuteAssistantReplyAsync(string userText, IReadOnlyList<OpenRouterAttachment> attachments)
+    private async Task<string> ExecuteAssistantReplyAsync(
+        string userText,
+        IReadOnlyList<OpenRouterAttachment> attachments,
+        ConversationItemViewModel assistantItem,
+        Func<Task>? publishSnapshotAsync)
     {
         var request = new OpenRouterExecutionRequest(
             RouteId: "chats.web.runtime",
@@ -463,7 +472,73 @@ internal sealed class ChatsRuntimeController
             Temperature: 0.2,
             Attachments: attachments);
 
+        if (_openRouterClient is IOpenRouterStreamingExecutionClient streamingClient)
+        {
+            return await ExecuteAssistantStreamingReplyAsync(streamingClient, request, assistantItem, publishSnapshotAsync);
+        }
+
         var response = await Task.Run(() => _openRouterClient.Execute(request));
+        if (response.Success && !string.IsNullOrWhiteSpace(response.Content))
+        {
+            return response.Content.Trim();
+        }
+
+        if (response.Diagnostic is not null)
+        {
+            return AppText.Current.Format("chats.openrouter.failed", response.Diagnostic.Code, response.Diagnostic.Message);
+        }
+
+        return AppText.Current.Get("chats.openrouter.empty_failed");
+    }
+
+    private async Task<string> ExecuteAssistantStreamingReplyAsync(
+        IOpenRouterStreamingExecutionClient streamingClient,
+        OpenRouterExecutionRequest request,
+        ConversationItemViewModel assistantItem,
+        Func<Task>? publishSnapshotAsync)
+    {
+        var deltas = new ConcurrentQueue<string>();
+        var responseTask = Task.Run(() => streamingClient.ExecuteStreaming(
+            request,
+            delta =>
+            {
+                if (string.IsNullOrEmpty(delta))
+                {
+                    return;
+                }
+
+                deltas.Enqueue(delta);
+            }));
+
+        while (!responseTask.IsCompleted || !deltas.IsEmpty)
+        {
+            var publishedDelta = false;
+            while (deltas.TryDequeue(out var delta))
+            {
+                publishedDelta = true;
+                await _activeAdapter.AppendStreamingAsync(assistantItem, delta);
+                if (publishSnapshotAsync is not null)
+                {
+                    await publishSnapshotAsync();
+                }
+            }
+
+            if (!publishedDelta && !responseTask.IsCompleted)
+            {
+                await Task.WhenAny(responseTask, Task.Delay(25));
+            }
+        }
+
+        var response = await responseTask;
+        while (deltas.TryDequeue(out var delta))
+        {
+            await _activeAdapter.AppendStreamingAsync(assistantItem, delta);
+            if (publishSnapshotAsync is not null)
+            {
+                await publishSnapshotAsync();
+            }
+        }
+
         if (response.Success && !string.IsNullOrWhiteSpace(response.Content))
         {
             return response.Content.Trim();

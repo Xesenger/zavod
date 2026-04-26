@@ -33,7 +33,7 @@ public sealed record ProjectWorkCycleQueryState(
 
 public static class ProjectWorkCycleQueryStateBuilder
 {
-    public static ProjectWorkCycleQueryState Build(string projectRoot)
+    public static ProjectWorkCycleQueryState Build(string projectRoot, bool preserveLiveRuntimePhase = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
 
@@ -47,7 +47,7 @@ public static class ProjectWorkCycleQueryStateBuilder
         var normalizedResume = ResumeStageNormalizer.Normalize(
             ResumeStageStorage.Load(normalizedRoot),
             hasActiveWork: state.ActiveTaskId is not null,
-            preserveLiveRuntimePhase: true,
+            preserveLiveRuntimePhase: preserveLiveRuntimePhase,
             hasActiveShift: state.ActiveShiftId is not null);
         var scan = WorkspaceScanner.Scan(new WorkspaceScanRequest(normalizedRoot));
 

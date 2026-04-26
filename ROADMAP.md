@@ -487,6 +487,9 @@ It is a factual snapshot, not a claim of completeness.
 
 - **Infrastructure failure isolation.** Provider timeouts, LLM parse errors, and any upstream unavailability must be treated separately from Worker/QC task judgment. They must not synthesize fake results, trigger QC on empty input, or destructively abandon revision progress. Staged artefacts from prior attempts must survive transient infrastructure failures.
 - **Revision cycles carry forward structured feedback.** A revision attempt must receive typed notes from its predecessors within the same task: user revision intake, prior QC rationale, and any staging skip reasons. Worker must see its own history within the task; blind retries are a regression.
+- **Weak-model execution is a supported stress path.** Nemotron-class failures revealed that exact textual anchors are too brittle as the only mutation contract. Execution DSL v0 now adds deterministic edit slots (`insert_at_slot`) while preserving `write_full` and `insert_after` compatibility. This is a first slice, not a complete task DSL.
+- **Run-profile failures must be reviewable evidence, not softlocks.** Build/run profile execution now returns failed commands and missing host tools (for example absent `npm`) as revision-ready process diagnostics. Missing tools are not success, and they are not Worker/QC judgment.
+- **Short follow-ups remain an open product gap.** Recent task context is now available to Lead as a reference resolver, but field testing still showed "move it to the left corner" can be treated as ambiguous. Next shape: deterministic continuation/task-object resolver before the Lead/Worker handoff.
 
 ---
 
@@ -529,6 +532,8 @@ It is a factual snapshot, not a claim of completeness.
 - Mechanical verification (build / lint / test) via TypedToolContracts is deferred; current verification is SHA256 origin-hash drift detection + staging manifest
 - External changes detected via scan/baseline/acceptance; realtime file watching and scanner-driven stale invalidation are not implemented
 - Scanner v2 MVP is verified on weird import targets for preview honesty, but known limitations remain: ambiguous main entry wording, broad active roots in decompilation/legacy layouts, no full AST/semantic architecture map, no canonical promotion verification yet, and no UI visual verification for scanner changes
+- Execution DSL v0 is present only for edit slots (`insert_at_slot`); command/run/test DSL and deterministic task-object continuation are still future work
+- Project execution transparency is moving back into the main conversation feed; the dedicated execution panel remains a source of UX confusion and should not be treated as final product direction
 
 ZAVOD at this stage can be described as:
 

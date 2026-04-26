@@ -12,6 +12,28 @@ public sealed record WorkspaceDocumentationLanguagePolicy(
 
     public static WorkspaceDocumentationLanguagePolicy ResolveCurrent()
     {
+        var overrideValue = System.Environment.GetEnvironmentVariable("ZAVOD_UI_LANG")?.Trim();
+        if (!string.IsNullOrWhiteSpace(overrideValue))
+        {
+            if (string.Equals(overrideValue, "ru", System.StringComparison.OrdinalIgnoreCase))
+            {
+                overrideValue = "ru-RU";
+            }
+            else if (string.Equals(overrideValue, "en", System.StringComparison.OrdinalIgnoreCase))
+            {
+                overrideValue = "en-US";
+            }
+
+            try
+            {
+                return FromCulture(CultureInfo.GetCultureInfo(overrideValue));
+            }
+            catch (CultureNotFoundException)
+            {
+                // Invalid overrides fall back to the OS/user culture below.
+            }
+        }
+
         var culture = CultureInfo.CurrentUICulture;
         if (string.IsNullOrWhiteSpace(culture.Name))
         {
@@ -23,6 +45,11 @@ public sealed record WorkspaceDocumentationLanguagePolicy(
             culture = CultureInfo.GetCultureInfo("en-US");
         }
 
+        return FromCulture(culture);
+    }
+
+    private static WorkspaceDocumentationLanguagePolicy FromCulture(CultureInfo culture)
+    {
         return new WorkspaceDocumentationLanguagePolicy(
             culture.Name,
             culture.TwoLetterISOLanguageName,

@@ -68,6 +68,8 @@ internal sealed class ProjectsWebSnapshotBuilder
         "projects.stats.docs",
         "projects.home.currentLabel",
         "projects.home.enterWork",
+        "projects.empty.status",
+        "projects.empty.missing_truth",
         "projects.home.scannerAnalysis",
         "projects.home.truthDocs",
         "projects.home.nextActions",
@@ -135,6 +137,7 @@ internal sealed class ProjectsWebSnapshotBuilder
         "projects.action.revise",
         "projects.action.reject",
         "projects.action.confirm",
+        "projects.work_cycle.execution.return_to_chat",
         "projects.newProject.title",
         "projects.newProject.nameLabel",
         "projects.newProject.namePlaceholder",
@@ -297,13 +300,44 @@ internal sealed class ProjectsWebSnapshotBuilder
             HasActiveTask: state?.ActiveTaskId is not null,
             HasStaleSections: false,
             HasImportFailure: false));
+        var requiresRootSelection = RequiresProjectRootSelectionBeforePromotion(projectRoot);
+        var actions = requiresRootSelection
+            ? BuildRootSelectionActions(actionSet.Actions)
+            : actionSet.Actions;
+        var missingTruthWarnings = WorkPacketBuilder.BuildMissingTruthWarnings(status).ToList();
+        if (requiresRootSelection)
+        {
+            missingTruthWarnings.Insert(0, AppText.Current.Get("projects.warning.container_root_selection_required"));
+        }
 
         return new WelcomePayload(
             Rule: actionSet.PrimaryRule.ToString(),
             CanonicalCount: status.CanonicalCount,
             PreviewCount: preview?.PreviewKinds.Count ?? 0,
-            Actions: actionSet.Actions.Select(BuildWelcomeAction).ToArray(),
-            MissingTruthWarnings: WorkPacketBuilder.BuildMissingTruthWarnings(status));
+            Actions: actions.Select(BuildWelcomeAction).ToArray(),
+            MissingTruthWarnings: missingTruthWarnings);
+    }
+
+    private static IReadOnlyList<WelcomeAction> BuildRootSelectionActions(IReadOnlyList<WelcomeAction> original)
+    {
+        var actions = new List<WelcomeAction>(4);
+        AddIfPresentOrNeeded(actions, original, WelcomeAction.ReviewPreviewDocs, required: true);
+        AddIfPresentOrNeeded(actions, original, WelcomeAction.ReviewProjectAudit, required: true);
+        AddIfPresentOrNeeded(actions, original, WelcomeAction.ImportRetry, required: true);
+        AddIfPresentOrNeeded(actions, original, WelcomeAction.RejectPreview, required: false);
+        return actions;
+    }
+
+    private static void AddIfPresentOrNeeded(
+        List<WelcomeAction> target,
+        IReadOnlyList<WelcomeAction> original,
+        WelcomeAction action,
+        bool required)
+    {
+        if ((required || original.Contains(action)) && !target.Contains(action))
+        {
+            target.Add(action);
+        }
     }
 
     private static ProjectState? TryLoadProjectState(string projectRoot)
@@ -362,17 +396,18 @@ internal sealed class ProjectsWebSnapshotBuilder
     {
         var projectDir = Path.Combine(projectRoot, ".zavod", "project");
         var previewDir = Path.Combine(projectRoot, ".zavod", "preview_docs");
+        var canPromotePreviewDocs = !RequiresProjectRootSelectionBeforePromotion(projectRoot);
         return new[]
         {
-            BuildDocStatus("project", "project.md", Path.Combine(projectDir, "project.md"), Path.Combine(previewDir, "preview_project.md")),
-            BuildDocStatus("direction", "direction.md", Path.Combine(projectDir, "direction.md"), Path.Combine(previewDir, "preview_direction.md")),
-            BuildDocStatus("roadmap", "roadmap.md", Path.Combine(projectDir, "roadmap.md"), Path.Combine(previewDir, "preview_roadmap.md")),
-            BuildDocStatus("canon", "canon.md", Path.Combine(projectDir, "canon.md"), Path.Combine(previewDir, "preview_canon.md")),
-            BuildDocStatus("capsule", "capsule.md", Path.Combine(projectDir, "capsule.md"), Path.Combine(previewDir, "preview_capsule.md"))
+            BuildDocStatus("project", "project.md", Path.Combine(projectDir, "project.md"), Path.Combine(previewDir, "preview_project.md"), canPromotePreviewDocs),
+            BuildDocStatus("direction", "direction.md", Path.Combine(projectDir, "direction.md"), Path.Combine(previewDir, "preview_direction.md"), canPromotePreviewDocs),
+            BuildDocStatus("roadmap", "roadmap.md", Path.Combine(projectDir, "roadmap.md"), Path.Combine(previewDir, "preview_roadmap.md"), canPromotePreviewDocs),
+            BuildDocStatus("canon", "canon.md", Path.Combine(projectDir, "canon.md"), Path.Combine(previewDir, "preview_canon.md"), canPromotePreviewDocs),
+            BuildDocStatus("capsule", "capsule.md", Path.Combine(projectDir, "capsule.md"), Path.Combine(previewDir, "preview_capsule.md"), canPromotePreviewDocs)
         };
     }
 
-    private static ProjectsWebDocStatus BuildDocStatus(string kind, string fileName, string canonicalPath, string previewPath)
+    private static ProjectsWebDocStatus BuildDocStatus(string kind, string fileName, string canonicalPath, string previewPath, bool canPromotePreviewDocs)
     {
         var canonicalExists = File.Exists(canonicalPath);
         var previewExists = File.Exists(previewPath);
@@ -387,8 +422,56 @@ internal sealed class ProjectsWebSnapshotBuilder
             fileName,
             canonicalExists,
             stage,
-            CanPromote: !canonicalExists && previewExists,
+            CanPromote: canPromotePreviewDocs && !canonicalExists && previewExists,
             CanReject: !canonicalExists && previewExists);
+    }
+
+    private static bool RequiresProjectRootSelectionBeforePromotion(string projectRoot)
+    {
+        var topologyPath = Path.Combine(projectRoot, ".zavod", "import_evidence_bundle", "topology.index.json");
+        if (!File.Exists(topologyPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(topologyPath);
+            using var document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            var kind = ReadString(document.RootElement, "kind", "Kind");
+            var safeImportMode = ReadString(document.RootElement, "safeImportMode", "SafeImportMode");
+            return IsContainerTopology(kind) ||
+                (safeImportMode?.StartsWith("container-review", StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsContainerTopology(string? topologyKind)
+    {
+        return string.Equals(topologyKind, "Container", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(topologyKind, "MultipleIndependentProjects", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(topologyKind, "AmbiguousContainer", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ReadString(JsonElement root, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (root.TryGetProperty(name, out var node) && node.ValueKind == JsonValueKind.String)
+            {
+                return node.GetString();
+            }
+        }
+
+        return null;
     }
 
     private static readonly string[] DocumentCategories =

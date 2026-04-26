@@ -104,7 +104,7 @@ public static class ResumeStageNormalizer
             && phaseState.ExecutionSubphase == ExecutionSubphase.Running
             && runtimeState?.Session.State == ExecutionSessionState.InProgress)
         {
-            return preserveLiveRuntimePhase
+            return preserveLiveRuntimePhase && RuntimeWatchdogStillLive(runtimeState)
                 ? StepPhaseMachine.ResumeWork() with
                 {
                     HasClarification = phaseState.HasClarification
@@ -121,7 +121,7 @@ public static class ResumeStageNormalizer
             && (runtimeState.Session.State == ExecutionSessionState.ResultProduced
                 || runtimeState.Session.State == ExecutionSessionState.UnderReview))
         {
-            return preserveLiveRuntimePhase
+            return preserveLiveRuntimePhase && RuntimeWatchdogStillLive(runtimeState)
                 ? new StepPhaseState(
                 SurfacePhase.Execution,
                 DiscussionSubphase.None,
@@ -143,7 +143,7 @@ public static class ResumeStageNormalizer
             && phaseState.ResultSubphase == ResultSubphase.None
             && runtimeState?.Session.State == ExecutionSessionState.InProgress)
         {
-            return preserveLiveRuntimePhase
+            return preserveLiveRuntimePhase && RuntimeWatchdogStillLive(runtimeState)
                 ? new StepPhaseState(
                 SurfacePhase.Execution,
                 DiscussionSubphase.None,
@@ -336,6 +336,12 @@ public static class ResumeStageNormalizer
     {
         return runtimeState is not null
             && phaseState.Phase == SurfacePhase.Execution
-            && phaseState.ExecutionSubphase is ExecutionSubphase.Running or ExecutionSubphase.Qc or ExecutionSubphase.Revision;
+            && phaseState.ExecutionSubphase is ExecutionSubphase.Running or ExecutionSubphase.Qc or ExecutionSubphase.Revision
+            && RuntimeWatchdogStillLive(runtimeState);
+    }
+
+    private static bool RuntimeWatchdogStillLive(ExecutionRuntimeState runtimeState)
+    {
+        return ExecutionWatchdog.Evaluate(runtimeState.Watchdog, DateTimeOffset.UtcNow) is null;
     }
 }

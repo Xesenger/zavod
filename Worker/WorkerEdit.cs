@@ -12,6 +12,9 @@ namespace zavod.Worker;
 /// - write_full: replace the entire file contents with <c>Content</c>.
 ///   Use for small files or when the whole file is being rewritten. The
 ///   parent directory is created on stage if it does not exist.
+/// - insert_at_slot: resolve <c>SlotId</c> against the current target file and
+///   insert <c>Content</c> at the deterministic insertion point. This is the
+///   preferred DSL operation when Worker was given an EDIT SLOTS map.
 /// - insert_after: find <c>Anchor</c> in the file (exact string match) and
 ///   insert <c>Content</c> immediately after it. Use for targeted additions
 ///   to larger files where emitting the whole file is not justified.
@@ -30,17 +33,26 @@ public sealed record WorkerEdit(
     string Path,
     string Operation,
     string Content,
-    string? Anchor = null)
+    string? Anchor = null,
+    string? SlotId = null)
 {
     public const string OperationWriteFull = "write_full";
     public const string OperationInsertAfter = "insert_after";
+    public const string OperationInsertAtSlot = "insert_at_slot";
 
     public bool IsKnownOperation()
     {
         return string.Equals(Operation, OperationWriteFull, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(Operation, OperationInsertAfter, StringComparison.OrdinalIgnoreCase);
+            || string.Equals(Operation, OperationInsertAfter, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Operation, OperationInsertAtSlot, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+public sealed record WorkerEditSlot(
+    string Path,
+    string SlotId,
+    string Kind,
+    string Reason);
 
 /// <summary>
 /// Outcome of staging a single edit onto disk. Captures the target path,
@@ -55,7 +67,8 @@ public sealed record StagedEditResult(
     int OriginalBytes,
     int StagedBytes,
     string? OriginalSha256,
-    string? SkipReason);
+    string? SkipReason,
+    string? SlotId = null);
 
 /// <summary>
 /// Aggregate manifest produced by StagingWriter. Serialized to

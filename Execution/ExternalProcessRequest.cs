@@ -7,4 +7,5 @@ public sealed record ExternalProcessRequest(
     string FileName,
     IReadOnlyList<string> Arguments,
     TimeSpan Timeout,
-    string Purpose);
+    string Purpose,
+    string? WorkingDirectory = null);

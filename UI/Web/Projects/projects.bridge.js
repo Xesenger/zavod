@@ -118,6 +118,11 @@ const zavodProjectsBridge = (() => {
     });
   }
 
+  function formatLocalized(key, fallback, ...args) {
+    const template = localizedText[key] || fallback;
+    return args.reduce((value, arg, index) => value.replaceAll(`{${index}}`, String(arg)), template);
+  }
+
   // ── Screen switching ──────────────────────────────────────────
   function showScreen(name) {
     const next = screens[name];
@@ -188,19 +193,45 @@ const zavodProjectsBridge = (() => {
       composerWrap.style.display = inPreflight ? 'none' : '';
     }
 
-    // Phase-3 (Result) visibility toggle: Accept/Reject/Revise CTAs live here.
-    // Without this toggle the result phase is invisible and the user is stuck.
+    // Phase-3 is result review only. Running/interrupted execution evidence stays
+    // in the main conversation feed so the work cycle remains chat-first.
+    const isInterrupted = !!(state.workCycle
+      && state.workCycle.surfacePhase === 'Execution'
+      && state.workCycle.executionSubphase === 'Interrupted');
     const inResult = state.workCycle?.resultVisible === true;
-    if (phase3) {
-      phase3.classList.toggle('active', !!inResult);
+    const showPhase3 = inResult;
+    const wcScreen = screens['work-cycle'];
+    if (wcScreen) {
+      wcScreen.classList.toggle('execution-open', showPhase3);
+      wcScreen.classList.toggle('result-open', !!inResult);
     }
-    if (phase1) {
-      phase1.style.display = inResult ? 'none' : '';
+    if (phase3) {
+      phase3.classList.toggle('active', showPhase3);
     }
     // Reveal the Accept/Reject/Revise bar — it's hidden by default (opacity:0,
     // pointer-events:none) and only becomes interactive when we're in Result.
     if (actionBar) {
       actionBar.classList.toggle('visible', !!inResult);
+      actionBar.classList.remove('recovery');
+    }
+    const rejectLabel = document.getElementById('btn-reject-label');
+    if (rejectLabel) {
+      rejectLabel.textContent = localizedText['projects.action.reject'] || 'Reject';
+    }
+    renderExecutionSurface(state, showPhase3, inResult);
+
+    const canSendMessage = state.workCycle?.canSendMessage !== false || isInterrupted;
+    if (composerWrap) {
+      composerWrap.classList.toggle('disabled', !canSendMessage);
+    }
+    if (cinput) {
+      cinput.disabled = !canSendMessage;
+    }
+    if (cSendBtn) {
+      cSendBtn.disabled = !canSendMessage;
+    }
+    if (cPlusBtn) {
+      cPlusBtn.disabled = !canSendMessage;
     }
 
     renderComposerAttachments(state.conversation?.composer?.pendingAttachments);
@@ -400,7 +431,7 @@ const zavodProjectsBridge = (() => {
         }
         break;
       case 'import_retry':
-        emit({ type: 'import_project', payload: {} });
+        emit({ type: 'import_project', payload: { mode: 'reimport', projectId: currentProj } });
         break;
       default:
         break;
@@ -648,7 +679,12 @@ const zavodProjectsBridge = (() => {
     items.forEach((m) => {
       if (!m || typeof m !== 'object') return;
       const kind = m.kind || 'message';
-      if (kind !== 'message' && kind !== 'status') return;
+      if (kind !== 'message'
+        && kind !== 'status'
+        && kind !== 'worker'
+        && kind !== 'qc'
+        && kind !== 'artifact'
+        && kind !== 'log') return;
 
       const role = (m.role || 'assistant').toLowerCase();
       const text = typeof m.text === 'string' ? m.text : '';
@@ -692,7 +728,9 @@ const zavodProjectsBridge = (() => {
     const lines = [];
     const headline = emptyState?.headline || `${selectedProject.name || 'Project'}: no conversation yet`;
     lines.push(headline);
-    const status = `${selectedProject.canonicalDocCount || 0}/5 canonical · ${selectedProject.previewDocCount || 0}/5 preview · ${selectedProject.welcomeRule || 'welcome'}`;
+    const canonicalCount = selectedProject.canonicalDocCount || 0;
+    const previewCount = selectedProject.previewDocCount || 0;
+    const status = formatLocalized('projects.empty.status', '{0}/5 canonical - {1}/5 preview - preview-only', canonicalCount, previewCount);
     lines.push(status);
     if (emptyState?.subtitle) {
       lines.push(emptyState.subtitle);
@@ -703,7 +741,7 @@ const zavodProjectsBridge = (() => {
       : [];
     if (warnings.length > 0) {
       lines.push('');
-      lines.push('Missing truth:');
+      lines.push(localizedText['projects.empty.missing_truth'] || 'Missing canonical truth:');
       warnings.slice(0, 5).forEach((warning) => lines.push(`- ${warning.trim()}`));
     }
 
@@ -712,8 +750,121 @@ const zavodProjectsBridge = (() => {
     feed.appendChild(mk('gap'));
   }
 
+  function renderExecutionSurface(state, visible, inResult) {
+    if (!agentFeed || !artifactBody) return;
+    agentFeed.innerHTML = '';
+    artifactBody.innerHTML = '';
+    if (!visible) return;
+
+    const workCycle = state.workCycle || {};
+    if (artifactTitle) {
+      const phase = `${workCycle.surfacePhase || 'Execution'} / ${workCycle.executionSubphase || workCycle.resultSubphase || 'Running'}`;
+      artifactTitle.textContent = inResult
+        ? (localizedText['projects.result.review'] || 'result review')
+        : phase;
+    }
+
+    const messages = Array.isArray(state.conversation?.messages)
+      ? state.conversation.messages
+      : [];
+    const executionMessages = messages
+      .filter((item) => item && typeof item === 'object' && (item.kind === 'status' || item.kind === 'worker' || item.kind === 'qc' || item.kind === 'artifact' || item.kind === 'log'))
+      .slice(-12);
+
+    if (executionMessages.length === 0) {
+      const block = document.createElement('div');
+      block.className = 'agent-block in';
+      const action = document.createElement('div');
+      action.className = 'agent-action dim';
+      const dot = document.createElement('span');
+      dot.className = 'agent-dot';
+      const text = document.createElement('span');
+      text.textContent = localizedText['projects.execution.waiting'] || 'waiting for execution evidence';
+      action.append(dot, text);
+      block.appendChild(action);
+      agentFeed.appendChild(block);
+      return;
+    }
+
+    executionMessages.forEach((item) => {
+      const role = item.role || item.kind || 'system';
+      const text = typeof item.text === 'string' ? item.text.trim() : '';
+      if (!text) return;
+
+      const block = document.createElement('div');
+      block.className = 'agent-block in';
+      const action = document.createElement('div');
+      action.className = item.kind === 'status' ? 'agent-action dim' : 'agent-action';
+      const dot = document.createElement('span');
+      dot.className = 'agent-dot';
+      const label = document.createElement('span');
+      label.textContent = role;
+      action.append(dot, label);
+      block.appendChild(action);
+
+      const details = document.createElement('div');
+      details.className = 'agent-details';
+      text.split(/\r?\n/).slice(0, 4).forEach((line) => {
+        if (!line.trim()) return;
+        const detail = document.createElement('div');
+        detail.className = 'agent-detail';
+        const arrow = document.createElement('span');
+        arrow.className = 'det-arrow';
+        arrow.textContent = '›';
+        const content = document.createElement('span');
+        content.textContent = line.trim();
+        detail.append(arrow, content);
+        details.appendChild(detail);
+      });
+      block.appendChild(details);
+      agentFeed.appendChild(block);
+    });
+
+    const important = executionMessages
+      .filter((item) => item.kind === 'worker' || item.kind === 'qc' || item.kind === 'status')
+      .slice(-5);
+    important.forEach((item) => {
+      const card = document.createElement('div');
+      card.className = 'diff-card in';
+
+      const head = document.createElement('div');
+      head.className = 'diff-card-head';
+      const file = document.createElement('div');
+      file.className = 'diff-card-file';
+      file.textContent = item.role || item.kind || 'event';
+      const sep = document.createElement('div');
+      sep.className = 'diff-card-sep';
+      sep.textContent = '·';
+      const title = document.createElement('div');
+      title.className = 'diff-card-title';
+      title.textContent = (item.text || '').split(/\r?\n/)[0] || 'execution event';
+      head.append(file, sep, title);
+
+      const caption = document.createElement('div');
+      caption.className = 'diff-caption';
+      caption.textContent = item.text || '';
+
+      card.append(head, caption);
+      artifactBody.appendChild(card);
+    });
+
+    agentFeed.scrollTop = agentFeed.scrollHeight;
+    artifactBody.scrollTop = artifactBody.scrollHeight;
+  }
+
   // ── Action wiring (always on; emit to C# when bridged) ────────
   function wireActions() {
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      if (renderedState?.workCycle?.canConfirmPreflight === true) {
+        event.preventDefault();
+        emit({ type: 'confirm_preflight', payload: {} });
+      }
+    });
+
     // Project list cards → select_project
     if (projGrid) {
       projGrid.addEventListener('click', (event) => {

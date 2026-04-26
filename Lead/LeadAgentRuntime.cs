@@ -24,6 +24,7 @@ public sealed record LeadAgentInput(
     string CurrentIntentSummary,
     IReadOnlyList<string> AdvisoryNotes,
     IReadOnlyList<LeadAgentTurn> RecentTurns,
+    IReadOnlyList<string>? RecentTaskContext,
     bool IsOrientationRequest,
     IReadOnlyList<string> ProjectStackSummary,
     CanonicalDocsStatus? CanonicalDocsStatus = null,
@@ -81,7 +82,8 @@ public sealed class LeadAgentRuntime
             ModelId: _profile.Model,
             Temperature: _profile.Temperature,
             Attachments: null,
-            MaxTokens: _profile.MaxTokens);
+            MaxTokens: _profile.MaxTokens,
+            ResponseFormatJsonObject: true);
 
         var stopwatch = Stopwatch.StartNew();
         var response = client.Execute(request);
@@ -172,10 +174,14 @@ public sealed class LeadAgentRuntime
         builder.AppendLine($"- kind: {Safe(input.ProjectKind)}");
         builder.AppendLine($"- root: {Safe(input.ProjectRoot)}");
         builder.AppendLine();
+        builder.AppendLine("HOST ENVIRONMENT");
+        builder.AppendLine($"- os: {ResolveHostOs()}");
+        builder.AppendLine("- use this as the execution host; project target_platforms are evidence, not the user's current OS.");
+        builder.AppendLine();
 
         if (input.ProjectStackSummary is { Count: > 0 })
         {
-            builder.AppendLine("PROJECT STACK (observed by scanner — trust over guesses)");
+            builder.AppendLine("PROJECT STACK (observed by scanner - trust over guesses)");
             foreach (var line in input.ProjectStackSummary)
             {
                 if (string.IsNullOrWhiteSpace(line))
@@ -212,6 +218,28 @@ public sealed class LeadAgentRuntime
             builder.AppendLine();
         }
 
+        if (input.RecentTaskContext is { Count: > 0 })
+        {
+            builder.AppendLine("RECENT TASK CONTEXT (for resolving short follow-up references; not proof of success)");
+            foreach (var note in input.RecentTaskContext)
+            {
+                if (string.IsNullOrWhiteSpace(note))
+                {
+                    continue;
+                }
+
+                var collapsed = note.Replace("\r", " ").Replace("\n", " ").Trim();
+                if (collapsed.Length > 400)
+                {
+                    collapsed = collapsed[..397] + "...";
+                }
+
+                builder.AppendLine($"- {collapsed}");
+            }
+
+            builder.AppendLine();
+        }
+
         if (input.RecentTurns is { Count: > 0 })
         {
             builder.AppendLine("RECENT CONVERSATION (oldest first, so you can see the framing dialogue)");
@@ -237,18 +265,24 @@ public sealed class LeadAgentRuntime
 
         if (input.IsOrientationRequest)
         {
-            builder.AppendLine("ORIENTATION MODE — user is asking a meta or identity question.");
+            builder.AppendLine("ORIENTATION MODE - user is asking a meta or identity question.");
             builder.AppendLine("- Anchor your reply in the ZAVOD system: explain that this is ZAVOD, a project-aware execution environment, and your role is Shift Lead.");
             builder.AppendLine("- Name the current project from PROJECT CONTEXT.");
-            builder.AppendLine("- If asked \"what model\" or \"who are you\" — say you are Shift Lead running on the configured model for this role; do not speculate about specific model names unless they were provided in context.");
+            builder.AppendLine("- If asked \"what model\" or \"who are you\" - say you are Shift Lead running on the configured model for this role; do not speculate about specific model names unless they were provided in context.");
             builder.AppendLine("- Keep it short, warm, and project-aware. Intent state for orientation questions is \"orientation\".");
             builder.AppendLine();
         }
 
+        builder.AppendLine("NOVICE EXECUTION GUIDANCE");
+        builder.AppendLine("- If the user asks to build, run, launch, or play and says they do not know the toolchain, do not bounce tool choices back to them.");
+        builder.AppendLine("- Use PROJECT STACK and warnings to frame a safe first pass for Worker; unknown toolchain/assets/platform details belong in warnings, not repeated Lead questions.");
+        builder.AppendLine("- If the project root is a Windows path or the user says Windows, treat Windows as the host assumption.");
+        builder.AppendLine();
+
         builder.AppendLine("USER MESSAGE");
         builder.AppendLine(input.UserMessage?.Trim() ?? string.Empty);
         builder.AppendLine();
-        builder.AppendLine("OUTPUT — reply with a single strict JSON object only, no code fences, no prose around it:");
+        builder.AppendLine("OUTPUT - reply with a single strict JSON object only, no code fences, no prose around it:");
         builder.AppendLine("{");
         builder.AppendLine("  \"intent_state\": \"candidate\" | \"refining\" | \"ready_for_validation\" | \"orientation\" | \"rejected\",");
         builder.AppendLine("  \"reply\": \"<conversational reply to the user, in their language, focused on framing>\",");
@@ -391,6 +425,26 @@ public sealed class LeadAgentRuntime
     private static string Safe(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? "(none)" : value.Trim();
+    }
+
+    private static string ResolveHostOs()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return "Windows";
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return "macOS";
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return "Linux";
+        }
+
+        return "unknown";
     }
 
     private static IOpenRouterExecutionClient DefaultClientFactory(RoleProfile profile)

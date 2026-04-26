@@ -163,6 +163,12 @@ limits.
 * Sage advisory pipeline (S1–S5a): typed `SageObservation` records in sage-only JSONL, pipeline hooks at four stages, core-enforced budgets, two field-verified emitters (`semantic_gap`, `attention_miss`) — zero prompt pollution
 * Web-rendered Projects and Chats modes with phase-aware surfaces
 
+Additional current execution notes:
+
+* Execution DSL v0 edit slots are implemented: Worker may emit `insert_at_slot` against deterministic insertion slots instead of fragile raw anchors; `write_full` and `insert_after` remain compatible fallbacks.
+* Run/build profile execution can run scanner-discovered commands through a guarded local process path and now surfaces missing host tools such as `npm` as explicit diagnostics instead of opaque Win32 noise.
+* Ordinary Chats assistant replies use OpenRouter streaming; Project role calls still use typed JSON contracts and should expose progress through structured status events rather than raw JSON token streaming.
+
 ### What is incomplete
 
 * 5/5 canonical creation is not yet product-complete: per-kind promote / reject exist, but edit-before-promote, author-from-scratch, and runtime 5/5 state awareness are still next work
@@ -174,6 +180,9 @@ limits.
 * Scanner v2 is not a full AST or semantic architecture map
 * Ambiguous layouts can still expose wording gaps, especially around "main entry" versus candidate entry surfaces
 * Decompilation and legacy repositories can still produce broad active-root candidates that need review
+* Lead short-follow-up resolution is still not product-complete: recent task context is now passed to Lead, but a fresh cssDOOM field test still asked "which element?" for "move it to the left corner"
+* Projects execution transparency is still not product-complete: Worker/QC/status events are moving into the main conversation feed, but the old dedicated execution surface can still confuse recovery and review flows
+* Weak-model Worker behavior remains a deliberate stress target; edit slots reduce anchor fragility, but do not yet guarantee useful completion from low-discipline models
 * Canonical promotion has not yet been re-verified end-to-end after the Scanner v2 topology/importer alignment work
 * Scanner changes were verified through backend/build/probe/import checks, not UI visual verification
 
@@ -183,7 +192,8 @@ limits.
 * Parts of the system exist as design, not full implementation
 * `.zavod/` is project truth: canonical docs, decisions, journal, and durable project state
 * `.zavod.local/` is local runtime state: lab telemetry, Sage observations, staging, and other ephemeral diagnostics
-* Local API credentials are machine-local, not repository truth. OpenRouter local config is read from `Documents/ZAVOD/openrouter.local.json` by default, or from `OPENROUTER_CONFIG_FILE`; secret files must not live in the source tree or clean exports.
+* Local API credentials are machine-local, not repository truth. OpenRouter credentials are read from `Documents/ZAVOD/openrouter.local.json` by default, or from `OPENROUTER_CONFIG_FILE`; secret files must not live in the source tree or clean exports.
+* Model routing is separate from secrets. Default route profiles live in `app/config/model-routing.defaults.json`; user overrides should live in `Documents/ZAVOD/model-routing.local.json` or `ZAVOD_MODEL_ROUTING_CONFIG_FILE`. Lead, Worker, QC, Importer, Senior Specialist, and future Sage routes share this one routing layer.
 * Sage is designed to observe, not adjudicate — role boundaries (Sage observes, QC adjudicates) are enforced by construction
 
 ---

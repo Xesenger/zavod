@@ -172,6 +172,43 @@ Blocks full integration testing of `PromptRequestPipeline` from tests.
 **Status:** RESOLVED 2026-04-23
 **Risk tier when picked up:** LOW-MEDIUM (file hygiene, reversible)
 
+### 5. Execution Transparency and Continuation Handoff
+
+**Gap:** real field testing on cssDOOM / sm64 / opencode showed that the
+typed execution loop is safer than before, but the human-facing path is still
+too opaque:
+
+- Worker/QC/status events are visible in the conversation feed, but the
+  dedicated execution panel can still look like a softlock or black box.
+- short continuation requests such as "move it to the left corner" can lose
+  the prior task target and ask the user which element is meant.
+- run/build profile failures are now reviewable, but missing host tools still
+  need clearer user-facing next steps.
+
+**Required:**
+
+- keep Lead / Worker / QC progress in the same conversation timeline as the
+  user's intent
+- add a deterministic continuation resolver before Lead/Worker handoff, so
+  pronouns and location-only follow-ups bind to the current/recent task when
+  exactly one target exists
+- expose typed run-profile diagnostics as actionable user-facing messages
+  without pretending the command succeeded
+- avoid a separate execution surface until it has clear review actions and an
+  obvious escape hatch
+
+**Canon reference:** `interaction_validation_flow_v1.md`,
+`execution_loop_work_cycle_v1.md`, `worker_execution_strategy_v1.md`
+
+**Status:** ACTIVE. Partial mitigations exist: interrupted execution can return
+to chat, Worker/QC/status items are projected into the main conversation feed,
+Lead now receives recent task context, edit slots reduce Worker anchor
+fragility, and run-profile missing tools surface as diagnostics. Fresh cssDOOM
+testing still reproduced a clarification loop for "move it to the left
+corner", so deterministic continuation binding remains open.
+**Risk tier when picked up:** MEDIUM-HIGH (touches Lead framing,
+conversation state, and execution UX)
+
 ---
 
 ## Track Separation
@@ -258,6 +295,13 @@ plan for any section that becomes newly feasible.
   wired `start_work_cycle` action alongside review/promote/audit, so imported
   projects keep a visible path into first-cycle work without making preview
   docs canonical.
+- 2026-04-26 — Partially mitigated Execution Transparency / Continuation
+  Handoff (§5): Projects status/Worker/QC events remain visible in the main
+  conversation feed, interrupted execution can return to chat, Lead prompt
+  input now has a separate Recent Task Context block, Worker edit slots provide
+  `insert_at_slot`, and run-profile missing host tools are surfaced as
+  diagnostics. Field testing still shows short follow-ups can lose their
+  target, so §5 remains active.
 
 ## Maintenance Rule
 

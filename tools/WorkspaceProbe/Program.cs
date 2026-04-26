@@ -1,10 +1,17 @@
 using System.Text.Json;
+using zavod.Qc;
 using zavod.Execution;
+using zavod.Worker;
 using zavod.Workspace;
+
+if (args.Length >= 1 && string.Equals(args[0], "--role-smoke", StringComparison.OrdinalIgnoreCase))
+{
+    return RunRoleSmoke();
+}
 
 if (args.Length < 1 || string.IsNullOrWhiteSpace(args[0]))
 {
-    Console.Error.WriteLine("Usage: WorkspaceProbe <workspace-root> [--import-interpret]");
+    Console.Error.WriteLine("Usage: WorkspaceProbe <workspace-root> [--import-interpret] | --role-smoke");
     return 2;
 }
 
@@ -171,3 +178,89 @@ else
 
 Console.WriteLine(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
 return 0;
+
+static int RunRoleSmoke()
+{
+    var root = Path.Combine(
+        Environment.CurrentDirectory,
+        "artifacts",
+        "role-smoke-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ"));
+    Directory.CreateDirectory(root);
+
+    var workerRuntime = new WorkerAgentRuntime();
+    var workerResult = workerRuntime.Run(new WorkerAgentInput(
+        ProjectName: "tiny-smoke",
+        ProjectRoot: root,
+        ProjectKind: "controlled test",
+        TaskId: "TASK-SMOKE-001",
+        TaskDescription: "Add one line comment after the exact anchor in src/app.js.",
+        Scope: new[] { "src/app.js" },
+        AcceptanceCriteria: new[]
+        {
+            "Emit a concrete edit for src/app.js.",
+            "Use insert_after with the exact anchor console.log(\"ready\");",
+            "Return strict JSON only."
+        },
+        AdvisoryNotes: Array.Empty<string>(),
+        Anchors: new[]
+        {
+            "src/app.js:",
+            "function boot() {",
+            "  console.log(\"ready\");",
+            "}"
+        }));
+
+    var qcRuntime = new QcAgentRuntime();
+    var qcResult = qcRuntime.Run(new QcAgentInput(
+        ProjectName: "tiny-smoke",
+        ProjectRoot: root,
+        ProjectKind: "controlled test",
+        TaskId: "TASK-SMOKE-001",
+        TaskDescription: "Add one line comment after the exact anchor in src/app.js.",
+        AcceptanceCriteria: new[]
+        {
+            "Emit a concrete edit for src/app.js.",
+            "Use insert_after with the exact anchor console.log(\"ready\");"
+        },
+        WorkerStatus: "success",
+        WorkerSummary: "Added a comment after the ready log.",
+        WorkerBlockers: Array.Empty<string>(),
+        WorkerWarnings: Array.Empty<string>(),
+        WorkerModifications: new[] { "edit: src/app.js - inserted comment after ready log" },
+        StagedArtifacts: new[] { "edit: src/app.js (origin=49B -> staged=75B, sha256=abc123)" }));
+
+    var payload = new
+    {
+        root,
+        worker = new
+        {
+            workerResult.Success,
+            workerResult.ModelId,
+            workerResult.LatencyMs,
+            workerResult.DiagnosticCode,
+            workerResult.DiagnosticMessage,
+            parsedStatus = workerResult.Parsed?.Status,
+            editCount = workerResult.Parsed?.Edits.Count ?? 0,
+            modificationCount = workerResult.Parsed?.Modifications.Count ?? 0,
+            rawContentLength = workerResult.RawResponse?.Length ?? 0,
+            workerResult.TelemetryDirectory,
+            rawResponse = workerResult.RawResponse
+        },
+        qc = new
+        {
+            qcResult.Success,
+            qcResult.ModelId,
+            qcResult.LatencyMs,
+            qcResult.DiagnosticCode,
+            qcResult.DiagnosticMessage,
+            parsedDecision = qcResult.Parsed?.Decision,
+            issueCount = qcResult.Parsed?.Issues.Count ?? 0,
+            rawContentLength = qcResult.RawResponse?.Length ?? 0,
+            qcResult.TelemetryDirectory,
+            rawResponse = qcResult.RawResponse
+        }
+    };
+
+    Console.WriteLine(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
+    return workerResult.Success && qcResult.Success ? 0 : 1;
+}

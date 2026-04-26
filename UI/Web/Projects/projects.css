@@ -51,6 +51,7 @@ html,body{height:100%;background:var(--bg);color:var(--t);font-family:var(--sans
 /* COMPOSER */
 .composer-wrap{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);width:var(--rail);z-index:10;display:flex;flex-direction:column;gap:10px;transition:opacity 250ms ease}
 .composer-wrap.hidden{opacity:0;pointer-events:none}
+.composer-wrap.disabled{opacity:0.45;pointer-events:none}
 .composer-attachments{display:flex;flex-wrap:wrap;gap:6px}
 .composer-attachments[hidden]{display:none}
 .composer-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);background:rgba(255,255,255,0.02);border-radius:999px;font-family:var(--mono);font-size:11px;color:var(--tm);max-width:320px}
@@ -86,6 +87,9 @@ input[type=file]{display:none}
 #phase1{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-height:0}
 #phase3{flex:1;display:none;overflow:hidden}
 #phase3.active{display:grid;grid-template-columns:300px 1fr}
+#screen-wc.execution-open #phase1{flex:1 1 auto;min-height:260px}
+#screen-wc.execution-open #phase3{flex:0 0 min(46vh,430px);border-top:1px solid var(--line)}
+#screen-wc.result-open #phase3{flex-basis:min(52vh,500px)}
 
 /* back nav */
 .nav-bar{height:42px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:14px}

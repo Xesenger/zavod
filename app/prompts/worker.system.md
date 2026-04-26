@@ -54,11 +54,14 @@ A `modifications` entry that is NOT backed by a concrete `edits` entry is a plan
 
 When you list a path in `modifications`, you MUST emit the corresponding edit in `edits`:
 - `write_full` — replace the entire file with `content`. Only when the full new file body fits your token budget (small files or targeted rewrites).
-- `insert_after` — set `anchor` to a unique exact-match substring from the current file (draw from the CODE ANCHORS snippet you were given), and `content` to the text to insert immediately after that anchor. Use for surgical additions to larger files where a full rewrite is wasteful.
+- `insert_at_slot` — set `slotId` to one exact identifier from EDIT SLOTS, and `content` to the text to insert there. Prefer this when a matching slot exists.
+- `insert_after` — fallback only. Set `anchor` to a unique exact-match substring from the current file (draw from the CODE ANCHORS snippet you were given), and `content` to the text to insert immediately after that anchor.
 
 Content rules:
 - `content` is written to disk verbatim by the staging layer. No markdown code fences, no `...` placeholders, no comments like `// rest of file unchanged`.
-- The anchor for `insert_after` must be present EXACTLY ONCE in the target file. If you are unsure, prefer `write_full` for small files or pick a more specific multi-line anchor.
+- The `slotId` for `insert_at_slot` must be copied exactly from EDIT SLOTS. Do not invent slot IDs.
+- The anchor for `insert_after` must be present EXACTLY ONCE in the target file. If you are unsure, prefer `insert_at_slot`, `write_full` for small files, or pick a more specific multi-line anchor.
+- If EDIT SLOTS contains a matching path and insertion point for your target file, do not use `insert_after` for that file.
 
 **Anchor selection discipline (for `insert_after`):**
 - Non-unique anchors are AUTOMATICALLY SKIPPED by the staging layer with reason "anchor not unique" — your edit will not be written. This shows up in QC review as a skipped artefact and forces another revision round. Prevent this up front.

@@ -9,4 +9,6 @@ public sealed record OpenRouterExecutionRequest(
     string? ModelId = null,
     double Temperature = 0,
     IReadOnlyList<OpenRouterAttachment>? Attachments = null,
-    int? MaxTokens = null);
+    int? MaxTokens = null,
+    bool ResponseFormatJsonObject = false,
+    string? ReasoningEffort = null);

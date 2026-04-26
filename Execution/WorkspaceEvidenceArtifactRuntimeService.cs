@@ -586,13 +586,16 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var roadmapDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Roadmap);
         var canonDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Canon);
         var companionDocument = _projectDocumentRuntime.Read(projectRootPath, ProjectDocumentKind.Capsule);
+        var language = WorkspaceDocumentationLanguagePolicy.ResolveCurrent();
+        var isRussian = language.IsRussian;
+        string Label(string en, string ru) => isRussian ? ru : en;
         var title = ResolvePreviewTitle(runResult);
         var styleBlock = ExtractTemplateStyle(TryLoadPreviewTemplate());
         var stageLabel = selection.ActiveStage switch
         {
-            ProjectDocumentStage.CanonicalDocs => "Canonical",
-            ProjectDocumentStage.PreviewDocs => "Preview Docs",
-            _ => "Import"
+            ProjectDocumentStage.CanonicalDocs => Label("Canonical", "Канон"),
+            ProjectDocumentStage.PreviewDocs => Label("Preview Docs", "Превью документов"),
+            _ => Label("Import", "Импорт")
         };
         var stageClass = selection.ActiveStage switch
         {
@@ -609,16 +612,19 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         };
         var extraStyles = @"
 .warning-card { border-color: rgba(220,188,127,0.28); background: linear-gradient(180deg, rgba(220,188,127,0.08), rgba(53,59,68,0.96)); }
-.markdown { color: var(--text); }
+.page { max-width: 1520px; }
+.layout { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap: 34px; }
+.content, .content-card, .markdown, .doc-card, .mini-card { min-width: 0; }
+.markdown { color: var(--text); overflow-wrap: anywhere; }
 .markdown h1, .markdown h2, .markdown h3, .markdown h4 { margin: 1.2em 0 0.5em; line-height: 1.3; }
 .markdown p { margin: 0 0 1em; color: var(--text); }
 .markdown ul, .markdown ol { margin: 0 0 1em 1.25em; padding: 0; }
 .markdown li { margin: 0.2em 0; }
-.markdown code { font-family: ""JetBrains Mono"", ""Consolas"", monospace; background: rgba(255,255,255,0.06); padding: 0.14em 0.35em; border-radius: 6px; }
+.markdown code { font-family: ""JetBrains Mono"", ""Consolas"", monospace; background: rgba(255,255,255,0.06); padding: 0.14em 0.35em; border-radius: 6px; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .markdown pre { overflow-x: auto; padding: 16px; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); border: 1px solid var(--line-soft); }
-.markdown pre code { background: transparent; padding: 0; }
-.markdown table { width: 100%; border-collapse: collapse; margin: 0 0 1em; }
-.markdown th, .markdown td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.markdown pre code { background: transparent; padding: 0; white-space: pre; word-break: normal; }
+.markdown table { width: 100%; border-collapse: collapse; margin: 0 0 1em; table-layout: fixed; }
+.markdown th, .markdown td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; overflow-wrap: anywhere; }
 .markdown thead th { color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
 .markdown blockquote { margin: 0 0 1em; padding: 0 0 0 16px; border-left: 3px solid var(--accent); color: var(--muted); }
 .links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
@@ -626,20 +632,20 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 .source-note { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .content-grid { display: grid; gap: 18px; }
-.structure-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 18px; }
-.mini-card { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--line-soft); background: rgba(255,255,255,0.03); }
+.structure-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 18px; }
+.mini-card { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--line-soft); background: rgba(255,255,255,0.03); overflow-wrap: anywhere; }
 .mini-card h3 { margin: 0 0 10px; font-size: 15px; }
 .mini-card ul { margin: 0; padding-left: 18px; }
 .mini-card li { margin: 0 0 8px; }
 .diagram-preview { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--line-soft); background: rgba(255,255,255,0.02); margin-top: 12px; }
 .truth-note { margin-top: 10px; color: var(--muted); font-size: 13px; }
-.doc-cards { display: grid; gap: 16px; }
+.doc-cards { display: grid; gap: 18px; }
 .doc-card { border-radius: var(--radius-md); border: 1px solid var(--line-soft); overflow: hidden; }
 .doc-card.doc-missing { opacity: 0.55; }
-.doc-card-head { padding: 12px 18px 11px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); }
+.doc-card-head { padding: 12px 18px 11px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02); flex-wrap: wrap; }
 .doc-card-label { font-size: 13px; font-weight: 500; flex: 1; }
-.doc-card-filename { font-family: ""JetBrains Mono"", ""Consolas"", monospace; font-size: 11px; color: var(--muted); }
-.doc-card-body { padding: 16px 18px; }
+.doc-card-filename { font-family: ""JetBrains Mono"", ""Consolas"", monospace; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.doc-card-body { padding: 18px 20px; }
 .doc-card-body .markdown { font-size: 14px; }
 .doc-card-body .markdown h1 { font-size: 18px; }
 .doc-card-body .markdown h2 { font-size: 15px; }
@@ -647,15 +653,15 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } body { padding: 32px 16px 40px; } .hero { padding: 30px 24px; } .content-card { padding: 24px 22px; } }";
         var subtitle = selection.ActiveStage switch
         {
-            ProjectDocumentStage.CanonicalDocs => "Canonical docs are active for this project root.",
-            ProjectDocumentStage.PreviewDocs => "Preview docs are active. This document stream is still not canonical truth.",
+            ProjectDocumentStage.CanonicalDocs => Label("Canonical docs are active for this project root.", "Для корня проекта активны канонические документы."),
+            ProjectDocumentStage.PreviewDocs => Label("Preview docs are active. This document stream is still not canonical truth.", "Активны preview-документы. Этот поток документов ещё не является канонической правдой."),
             _ => interpretation.InterpretationMode == ProjectInterpretationMode.SingleProject
-                ? "Import preview is active. This is a human-readable projection of the current bundle."
-                : "Import preview is active for a mixed container. Unified architecture is not assumed."
+                ? Label("Import preview is active. This is a human-readable projection of the current bundle.", "Активно превью импорта. Это человекочитаемая проекция текущего evidence bundle.")
+                : Label("Import preview is active for a mixed container. Unified architecture is not assumed.", "Активно превью импорта для смешанного контейнера. Единая архитектура не предполагается.")
         };
         var warning = interpretation.InterpretationMode == ProjectInterpretationMode.SingleProject
             ? string.Empty
-            : "<div class=\"card content-card warning-card\"><div class=\"section-title\">Container Warning</div><div class=\"lead\">This folder contains multiple independent or loosely related projects. Unified architecture is not assumed.</div></div>";
+            : $"<div class=\"card content-card warning-card\"><div class=\"section-title\">{HtmlEncode(Label("Topology Review", "Проверка топологии"))}</div><div class=\"lead\">{HtmlEncode(Label("This folder may contain multiple independent or loosely related project shapes. Unified architecture is not assumed.", "Папка может содержать несколько независимых или слабо связанных форм проекта. Единая архитектура не предполагается."))}</div></div>";
         var mainMarkdown = mainDocument.Exists
             ? mainDocument.Markdown
             : File.Exists(projectReportPath)
@@ -666,7 +672,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var mainDocForSection = mainDocument.Exists
             ? mainDocument
             : new ProjectDocumentReadResult(ProjectDocumentKind.Project, mainDocument.Stage, mainDocument.Path, Exists: true, mainMarkdown);
-        var documentsSection = BuildDocumentsSectionHtml(mainDocForSection, directionDocument, roadmapDocument, canonDocument, companionDocument);
+        var documentsSection = BuildDocumentsSectionHtml(mainDocForSection, directionDocument, roadmapDocument, canonDocument, companionDocument, language);
         var healthLabel = pack?.ProjectProfile.Health.ToString() ?? "Unknown";
         var importKindLabel = runResult.PreviewPacket.ImportKind.ToString();
         var sourceRootsLabel = sourceRoots.Count > 0
@@ -677,36 +683,40 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         var confidenceLabel = BuildConfidenceBadgeLabel(interpretation);
         var truthNote = selection.ActiveStage switch
         {
-            ProjectDocumentStage.CanonicalDocs => "Canonical docs active.",
-            ProjectDocumentStage.PreviewDocs => "Preview only. Not canonical yet.",
-            _ => "Import report only. Preview docs are not materialized yet."
+            ProjectDocumentStage.CanonicalDocs => Label("Canonical docs active.", "Активны канонические документы."),
+            ProjectDocumentStage.PreviewDocs => Label("Preview only. Not canonical yet.", "Только preview. Ещё не канон."),
+            _ => Label("Import report only. Preview docs are not materialized yet.", "Только отчёт импорта. Preview-документы ещё не материализованы.")
         };
-        var structureSection = BuildStructureSectionHtml(runResult, outputHtmlPath, architectureMapPath);
+        var previewCopyNote = IsBundlePreviewPath(outputHtmlPath)
+            ? Label("Evidence-bundle snapshot. The Projects UI loads .zavod/preview.html.", "Snapshot внутри evidence bundle. Projects UI открывает .zavod/preview.html.")
+            : Label("UI entry copy. The evidence-bundle snapshot is import_evidence_bundle/preview.html.", "Копия для UI. Snapshot evidence bundle лежит в import_evidence_bundle/preview.html.");
+        var structureSection = BuildStructureSectionHtml(runResult, outputHtmlPath, architectureMapPath, language);
 
         return $$"""
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{(isRussian ? "ru" : "en")}}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{title}} · ZAVOD Preview</title>
+  <title>{{title}} · {{HtmlEncode(Label("ZAVOD Preview", "Превью ZAVOD"))}}</title>
   {{styleBlock}}
   <style>{{extraStyles}}</style>
 </head>
 <body>
   <div class="page">
     <header class="hero">
-      <div class="brand">ZAVOD · Document Preview</div>
+      <div class="brand">ZAVOD · {{HtmlEncode(Label("Document Preview", "Превью документов"))}}</div>
       <h1>{{title}}</h1>
       <div class="subtitle">{{HtmlEncode(subtitle)}}</div>
       <div class="hero-badges">
-        <span class="badge {{stageClass}}">Stage: {{HtmlEncode(stageLabel)}}</span>
+        <span class="badge {{stageClass}}">{{HtmlEncode(Label("Stage", "Стадия"))}}: {{HtmlEncode(stageLabel)}}</span>
         <span class="badge {{modeClass}}">{{HtmlEncode(modeLabel)}}</span>
         <span class="badge unknown">{{HtmlEncode(confidenceLabel)}}</span>
       </div>
-      <div class="source-note">Source: {{HtmlEncode(DescribeSource(mainDocument.Stage, mainDocument.Path))}}</div>
+      <div class="source-note">{{HtmlEncode(Label("Source", "Источник"))}}: {{HtmlEncode(DescribeSource(mainDocument.Stage, mainDocument.Path, language))}}</div>
+      <div class="truth-note">{{HtmlEncode(previewCopyNote)}}</div>
       <div class="links">
-        <a class="link-chip" href="{{HtmlAttributeEncode(ResolveRelativeHref(outputHtmlPath, projectReportPath))}}">Open project_report.md</a>
+        <a class="link-chip" href="{{HtmlAttributeEncode(ResolveRelativeHref(outputHtmlPath, projectReportPath))}}">{{HtmlEncode(Label("Open", "Открыть"))}} project_report.md</a>
       </div>
     </header>
 
@@ -715,56 +725,56 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         <div class="sticky">
           <div class="card">
             <div class="card-inner">
-              <div class="section-title">Overview</div>
+              <div class="section-title">{{HtmlEncode(Label("Overview", "Обзор"))}}</div>
               <div class="project-name">{{title}}</div>
               <div class="path">{{HtmlEncode(ResolveArtifactRoot(runResult))}}</div>
 
               <div class="quick-stat">
-                <div class="quick-label">Stage</div>
+                <div class="quick-label">{{HtmlEncode(Label("Stage", "Стадия"))}}</div>
                 <div class="quick-value">{{HtmlEncode(stageLabel)}} <span class="badge {{stageClass}}">{{HtmlEncode(stageLabel)}}</span></div>
-                <div class="quick-sub">Active document source for this preview.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Active document source for this preview.", "Активный источник документов для этого превью."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Interpretation Mode</div>
+                <div class="quick-label">{{HtmlEncode(Label("Interpretation Mode", "Режим интерпретации"))}}</div>
                 <div class="quick-value">{{HtmlEncode(modeLabel)}} <span class="badge {{modeClass}}">{{HtmlEncode(modeLabel)}}</span></div>
-                <div class="quick-sub">Importer-owned mode from the current bundle.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Importer-owned mode from the current bundle.", "Режим importer из текущего bundle."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Import Kind</div>
+                <div class="quick-label">{{HtmlEncode(Label("Import Kind", "Тип импорта"))}}</div>
                 <div class="quick-value">{{HtmlEncode(importKindLabel)}}</div>
-                <div class="quick-sub">Observed import boundary for this run.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Observed import boundary for this run.", "Наблюдаемая граница импорта для этого запуска."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Health</div>
+                <div class="quick-label">{{HtmlEncode(Label("Health", "Состояние"))}}</div>
                 <div class="quick-value">{{HtmlEncode(healthLabel)}}</div>
-                <div class="quick-sub">Scanner/project-profile health from the current evidence pack.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Scanner/project-profile health from the current evidence pack.", "Состояние scanner/project-profile из текущего evidence pack."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Confidence</div>
+                <div class="quick-label">{{HtmlEncode(Label("Confidence", "Уверенность"))}}</div>
                 <div class="quick-value">{{HtmlEncode(confidenceLabel)}}</div>
-                <div class="quick-sub">Current confidence split for the active interpretation.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Current confidence split for the active interpretation.", "Текущий разрез confidence для активной интерпретации."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Source Roots</div>
+                <div class="quick-label">{{HtmlEncode(Label("Source Roots", "Source roots"))}}</div>
                 <div class="quick-value">{{HtmlEncode(sourceRoots.Count.ToString())}}</div>
                 <div class="quick-sub">{{HtmlEncode(sourceRootsLabel)}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Primary Entry</div>
+                <div class="quick-label">{{HtmlEncode(Label("Primary Entry", "Primary entry"))}}</div>
                 <div class="quick-value">{{HtmlEncode(primaryEntryLabel)}}</div>
-                <div class="quick-sub">Best current bounded entry selection.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("Best current bounded entry selection.", "Лучший текущий bounded entry selection."))}}</div>
               </div>
 
               <div class="quick-stat">
-                <div class="quick-label">Truth Note</div>
+                <div class="quick-label">{{HtmlEncode(Label("Truth Note", "Truth note"))}}</div>
                 <div class="quick-value">{{HtmlEncode(truthNote)}}</div>
-                <div class="quick-sub">This preview does not upgrade document stage silently.</div>
+                <div class="quick-sub">{{HtmlEncode(Label("This preview does not upgrade document stage silently.", "Это превью не повышает стадию документов молча."))}}</div>
               </div>
             </div>
           </div>
@@ -790,20 +800,23 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         ProjectDocumentReadResult direction,
         ProjectDocumentReadResult roadmap,
         ProjectDocumentReadResult canon,
-        ProjectDocumentReadResult capsule)
+        ProjectDocumentReadResult capsule,
+        WorkspaceDocumentationLanguagePolicy language)
     {
+        var isRussian = language.IsRussian;
+        string Label(string en, string ru) => isRussian ? ru : en;
         var cards = new[]
         {
-            BuildDocCardHtml("Project", "project.md", project),
-            BuildDocCardHtml("Direction", "direction.md", direction),
-            BuildDocCardHtml("Roadmap", "roadmap.md", roadmap),
-            BuildDocCardHtml("Canon", "canon.md", canon),
-            BuildDocCardHtml("Capsule", "capsule.md", capsule, "Companion Document"),
+            BuildDocCardHtml(Label("Project", "Проект"), "project.md", project, language),
+            BuildDocCardHtml(Label("Direction", "Направление"), "direction.md", direction, language),
+            BuildDocCardHtml(Label("Roadmap", "Roadmap"), "roadmap.md", roadmap, language),
+            BuildDocCardHtml(Label("Canon", "Канон"), "canon.md", canon, language),
+            BuildDocCardHtml(Label("Capsule", "Capsule"), "capsule.md", capsule, language, Label("Companion Document", "Сопутствующий документ")),
         };
 
         return $"""
 <section class="card content-card">
-  <div class="section-title">Canonical Documents</div>
+  <div class="section-title">{HtmlEncode(Label("Project Documents", "Документы проекта"))}</div>
   <div class="doc-cards">
     {string.Join("\n    ", cards)}
   </div>
@@ -811,15 +824,22 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
 """;
     }
 
-    private static string BuildDocCardHtml(string label, string fileName, ProjectDocumentReadResult doc, string? roleLabel = null)
+    private static string BuildDocCardHtml(
+        string label,
+        string fileName,
+        ProjectDocumentReadResult doc,
+        WorkspaceDocumentationLanguagePolicy language,
+        string? roleLabel = null)
     {
+        var isRussian = language.IsRussian;
+        string Label(string en, string ru) => isRussian ? ru : en;
         var (stageClass, stageName) = doc.Stage switch
         {
-            ProjectDocumentStage.CanonicalDocs => ("good", "Canonical"),
-            ProjectDocumentStage.PreviewDocs => ("unknown", "Preview"),
-            _ => ("warn", "Import")
+            ProjectDocumentStage.CanonicalDocs => ("good", Label("Canonical", "Канон")),
+            ProjectDocumentStage.PreviewDocs => ("unknown", Label("Preview", "Превью")),
+            _ => ("warn", Label("Import", "Импорт"))
         };
-        var sourceNote = HtmlEncode(DescribeSource(doc.Stage, doc.Path));
+        var sourceNote = HtmlEncode(DescribeSource(doc.Stage, doc.Path, language));
         var roleHtml = string.IsNullOrWhiteSpace(roleLabel)
             ? string.Empty
             : $"<div class=\"source-note\">{HtmlEncode(roleLabel)}</div>";
@@ -831,12 +851,12 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
   <div class="doc-card-head">
     <span class="doc-card-label">{HtmlEncode(label)}</span>
     <span class="doc-card-filename">{HtmlEncode(fileName)}</span>
-    <span class="badge warn">Not created</span>
+    <span class="badge warn">{HtmlEncode(Label("Not created", "Не создан"))}</span>
   </div>
   <div class="doc-card-body">
     {roleHtml}
-    <div class="source-note">Source: {sourceNote}</div>
-    <div class="doc-missing-note">This document has not been created yet.</div>
+    <div class="source-note">{HtmlEncode(Label("Source", "Источник"))}: {sourceNote}</div>
+    <div class="doc-missing-note">{HtmlEncode(Label("This document has not been created yet.", "Этот документ ещё не создан."))}</div>
   </div>
 </div>
 """;
@@ -851,7 +871,7 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
   </div>
   <div class="doc-card-body">
     {roleHtml}
-    <div class="source-note">Source: {sourceNote}</div>
+    <div class="source-note">{HtmlEncode(Label("Source", "Источник"))}: {sourceNote}</div>
     <div class="markdown">{RenderMarkdownToHtml(doc.Markdown)}</div>
   </div>
 </div>
@@ -861,20 +881,53 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
     private static string BuildStructureSectionHtml(
         WorkspaceImportMaterialInterpreterRunResult runResult,
         string outputHtmlPath,
-        string architectureMapPath)
+        string architectureMapPath,
+        WorkspaceDocumentationLanguagePolicy language)
     {
+        var isRussian = language.IsRussian;
+        string Label(string en, string ru) => isRussian ? ru : en;
         var interpretation = runResult.Interpretation;
+        var pack = runResult.PreviewPacket.EvidencePack;
+        var topology = pack?.Topology;
+        var scannerEntryPoints = pack?.Candidates?.EntryPoints ?? Array.Empty<WorkspaceEvidenceEntryPoint>();
+        var scannerModules = pack?.Candidates?.ModuleCandidates ?? Array.Empty<WorkspaceEvidenceModule>();
+        var projectUnits = pack?.Candidates?.ProjectUnits ?? Array.Empty<WorkspaceEvidenceProjectUnit>();
+        var runProfiles = pack?.Candidates?.RunProfiles ?? Array.Empty<WorkspaceEvidenceRunProfile>();
         var entryPoints = interpretation.EntryPoints ?? Array.Empty<WorkspaceImportMaterialEntryPointInterpretation>();
         var materials = interpretation.Materials ?? Array.Empty<WorkspaceMaterialPreviewInterpretation>();
         var notes = interpretation.DiagramSpec.Notes ?? Array.Empty<string>();
         var diagramVisible = interpretation.InterpretationMode == ProjectInterpretationMode.SingleProject &&
                              interpretation.DiagramSpec.Nodes.Count > 0 &&
                              File.Exists(architectureMapPath);
+        var topologyLines = topology is null
+            ? new[] { $"<li>{HtmlEncode(Label("Missing artifact", "Не хватает artifact"))}: <code>topology.index.json</code></li>" }
+            : new[]
+                {
+                    $"<li>{HtmlEncode(Label("Topology", "Топология"))}: <code>{HtmlEncode(topology.Kind)}</code></li>",
+                    $"<li>Safe mode: {HtmlEncode(topology.SafeImportMode)}</li>"
+                }
+                .Concat(topology.ObservedZones
+                    .Where(static zone => !IsInternalZavodRoot(zone.Root))
+                    .Take(6)
+                    .Select(zone => $"<li><code>{HtmlEncode(zone.Root)}</code> {HtmlEncode(zone.Role)} · files={zone.FileCount} · {HtmlEncode(zone.Confidence.ToString())}</li>"))
+                .Concat(BuildInternalNoiseLine(topology, language))
+                .ToArray();
+        var topologyDetails = $"<ul>{string.Join(string.Empty, topologyLines)}</ul>";
         var diagramSection = diagramVisible
-            ? $"<div class=\"mini-card\"><h3>Architecture Map</h3><p>Source: diagram artifact</p><img class=\"diagram-preview\" src=\"{HtmlAttributeEncode(ResolveRelativeHref(outputHtmlPath, architectureMapPath))}\" alt=\"Architecture map\" /></div>"
-            : "<div class=\"mini-card\"><h3>Architecture Map</h3><p>No richer structure map is projected for this stage.</p></div>";
+            ? $"<div class=\"mini-card\"><h3>{HtmlEncode(Label("Evidence / Topology Map", "Evidence / карта топологии"))}</h3><p>{HtmlEncode(Label("Source: scanner topology + diagram artifact.", "Источник: scanner topology + diagram artifact."))}</p>{topologyDetails}<img class=\"diagram-preview\" src=\"{HtmlAttributeEncode(ResolveRelativeHref(outputHtmlPath, architectureMapPath))}\" alt=\"Architecture map\" /></div>"
+            : $"<div class=\"mini-card\"><h3>{HtmlEncode(Label("Evidence / Topology Map", "Evidence / карта топологии"))}</h3><p>{HtmlEncode(Label("Source: scanner topology artifacts. This is not canonical architecture truth.", "Источник: scanner topology artifacts. Это не каноническая архитектурная правда."))}</p>{topologyDetails}</div>";
         var entryItems = entryPoints.Take(5)
             .Select(entry => $"<li><code>{HtmlEncode(entry.RelativePath)}</code> {HtmlEncode($"[{entry.Confidence}] {entry.Note}")}</li>");
+        var scannerEntryItems = scannerEntryPoints.Take(5)
+            .Select(entry => $"<li><code>{HtmlEncode(entry.RelativePath)}</code> {HtmlEncode(entry.Role)} · score={entry.Score} · {HtmlEncode(entry.EvidenceMarker?.Confidence.ToString() ?? "Unknown")}</li>");
+        var moduleItems = scannerModules.Take(6)
+            .Select(module => $"<li><code>{HtmlEncode(module.Name)}</code> {HtmlEncode(module.Role)} · {HtmlEncode(module.EvidenceMarker?.Confidence.ToString() ?? "Unknown")}</li>");
+        var projectUnitItems = projectUnits.Take(5)
+            .Select(unit => $"<li><code>{HtmlEncode(unit.RootPath)}</code> {HtmlEncode(unit.Kind)} · {HtmlEncode(unit.Confidence.ToString())}</li>");
+        var runProfileItems = runProfiles.Take(5)
+            .Select(profile => $"<li><code>{HtmlEncode(profile.Command)}</code> {HtmlEncode(profile.Kind)} · cwd=<code>{HtmlEncode(profile.WorkingDirectory)}</code> · {HtmlEncode(profile.Confidence.ToString())}</li>");
+        var uncertaintyItems = (topology?.UncertaintyReasons ?? Array.Empty<string>()).Take(5)
+            .Select(reason => $"<li>{HtmlEncode(reason)}</li>");
         var materialItems = materials
             .Where(static material => material.PossibleUsefulness != WorkspaceMaterialContextUsefulness.Unknown || !string.IsNullOrWhiteSpace(material.Summary))
             .Take(5)
@@ -883,29 +936,64 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
             .Select(note => $"<li>{HtmlEncode(note)}</li>");
         var entriesHtml = entryPoints.Count > 0
             ? $"<ul>{string.Join(string.Empty, entryItems)}</ul>"
-            : "<p>No explicit entry points are projected for this stage.</p>";
+            : $"<p>{HtmlEncode(Label("No explicit entry points are projected for this stage.", "Явные entry points для этой стадии не спроецированы."))}</p>";
+        var scannerEntriesHtml = scannerEntryPoints.Count > 0
+            ? $"<ul>{string.Join(string.Empty, scannerEntryItems)}</ul>"
+            : $"<p>{HtmlEncode(Label("No scanner entry candidates are available in", "В artifact нет scanner entry candidates"))} <code>entrypoints.index.json</code>.</p>";
+        var modulesHtml = scannerModules.Count > 0
+            ? $"<ul>{string.Join(string.Empty, moduleItems)}</ul>"
+            : $"<p>{HtmlEncode(Label("No scanner module candidates are available in", "В artifact нет scanner module candidates"))} <code>modules.map.json</code>.</p>";
+        var projectUnitsHtml = projectUnits.Count > 0
+            ? $"<ul>{string.Join(string.Empty, projectUnitItems)}</ul>"
+            : $"<p>{HtmlEncode(Label("No project unit candidates are available in", "В artifact нет project unit candidates"))} <code>project_units.index.json</code>.</p>";
+        var runProfilesHtml = runProfiles.Count > 0
+            ? $"<ul>{string.Join(string.Empty, runProfileItems)}</ul>"
+            : $"<p>{HtmlEncode(Label("No run/test profiles are available in", "В artifact нет run/test profiles"))} <code>runprofiles.index.json</code>.</p>";
+        var uncertaintyHtml = topology?.UncertaintyReasons.Count > 0
+            ? $"<ul>{string.Join(string.Empty, uncertaintyItems)}</ul>"
+            : $"<p>{HtmlEncode(Label("No topology uncertainty reasons are recorded.", "Причины uncertainty по топологии не записаны."))}</p>";
         var materialsHtml = materials.Any(static material => material.PossibleUsefulness != WorkspaceMaterialContextUsefulness.Unknown || !string.IsNullOrWhiteSpace(material.Summary))
             ? $"<ul>{string.Join(string.Empty, materialItems)}</ul>"
-            : "<p>No top materials are stabilized for this stage.</p>";
+            : $"<p>{HtmlEncode(Label("No top materials are stabilized for this stage.", "Top materials для этой стадии не стабилизированы."))}</p>";
         var notesHtml = notes.Count > 0
             ? $"<ul>{string.Join(string.Empty, noteItems)}</ul>"
-            : "<p>Diagram notes are coarse or suppressed.</p>";
+            : $"<p>{HtmlEncode(Label("Diagram notes are coarse or suppressed.", "Заметки диаграммы грубые или подавлены."))}</p>";
 
         return $$"""
 <section class="card content-card">
-  <div class="section-title">Structure / Map</div>
+  <div class="section-title">{{HtmlEncode(Label("Evidence / Topology", "Evidence / топология"))}}</div>
   <div class="structure-grid">
     {{diagramSection}}
     <div class="mini-card">
-      <h3>Entry Points</h3>
+      <h3>{{HtmlEncode(Label("Entry Points", "Entry points"))}}</h3>
       {{entriesHtml}}
     </div>
     <div class="mini-card">
-      <h3>Materials</h3>
+      <h3>{{HtmlEncode(Label("Scanner Entries", "Scanner entries"))}}</h3>
+      {{scannerEntriesHtml}}
+    </div>
+    <div class="mini-card">
+      <h3>{{HtmlEncode(Label("Modules", "Модули"))}}</h3>
+      {{modulesHtml}}
+    </div>
+    <div class="mini-card">
+      <h3>{{HtmlEncode(Label("Project Units", "Project units"))}}</h3>
+      {{projectUnitsHtml}}
+    </div>
+    <div class="mini-card">
+      <h3>{{HtmlEncode(Label("Run / Test Profiles", "Run / test profiles"))}}</h3>
+      {{runProfilesHtml}}
+    </div>
+    <div class="mini-card">
+      <h3>{{HtmlEncode(Label("Uncertainty", "Uncertainty"))}}</h3>
+      {{uncertaintyHtml}}
+    </div>
+    <div class="mini-card">
+      <h3>{{HtmlEncode(Label("Materials", "Материалы"))}}</h3>
       {{materialsHtml}}
     </div>
     <div class="mini-card">
-      <h3>Diagram Notes</h3>
+      <h3>{{HtmlEncode(Label("Diagram Notes", "Заметки диаграммы"))}}</h3>
       {{notesHtml}}
     </div>
   </div>
@@ -918,15 +1006,50 @@ public sealed class WorkspaceEvidenceArtifactRuntimeService(
         return $"Confirmed {interpretation.ConfirmedSignals.Count} · Likely {interpretation.LikelySignals.Count} · Unknown {interpretation.UnknownSignals.Count}";
     }
 
-    private static string DescribeSource(ProjectDocumentStage stage, string path)
+    private static string DescribeSource(ProjectDocumentStage stage, string path, WorkspaceDocumentationLanguagePolicy? language = null)
     {
+        var isRussian = language?.IsRussian == true;
         var fileName = string.IsNullOrWhiteSpace(path) ? "unknown" : Path.GetFileName(path);
         return stage switch
         {
-            ProjectDocumentStage.CanonicalDocs => $"canonical docs ({fileName})",
-            ProjectDocumentStage.PreviewDocs => $"preview docs ({fileName})",
-            _ => $"import report ({fileName})"
+            ProjectDocumentStage.CanonicalDocs => isRussian ? $"канонические документы ({fileName})" : $"canonical docs ({fileName})",
+            ProjectDocumentStage.PreviewDocs => isRussian ? $"preview-документы ({fileName})" : $"preview docs ({fileName})",
+            _ => isRussian ? $"отчёт импорта ({fileName})" : $"import report ({fileName})"
         };
+    }
+
+    private static IEnumerable<string> BuildInternalNoiseLine(
+        WorkspaceEvidenceTopology topology,
+        WorkspaceDocumentationLanguagePolicy language)
+    {
+        var internalRoots = topology.ObservedZones
+            .Where(static zone => IsInternalZavodRoot(zone.Root))
+            .Select(static zone => zone.Root)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static root => root, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (internalRoots.Length == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var prefix = language.IsRussian
+            ? "Внутреннее состояние ZAVOD проигнорировано"
+            : "Internal ZAVOD state ignored";
+        return new[] { $"<li>{HtmlEncode(prefix)}: {string.Join(", ", internalRoots.Select(static root => $"<code>{HtmlEncode(root)}</code>"))}</li>" };
+    }
+
+    private static bool IsInternalZavodRoot(string root)
+    {
+        var normalized = root.Replace('/', '\\').Trim('\\');
+        return string.Equals(normalized, ".zavod", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(normalized, ".zavod.local", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsBundlePreviewPath(string outputHtmlPath)
+    {
+        var directoryName = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(outputHtmlPath)) ?? string.Empty);
+        return string.Equals(directoryName, "import_evidence_bundle", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveRelativeHref(string fromPath, string toPath)

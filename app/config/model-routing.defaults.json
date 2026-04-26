@@ -1,0 +1,10 @@
+{
+  "routes": {
+    "importer": { "model": "openai/gpt-4.1-nano", "temperature": 0.0, "timeoutSeconds": 90, "maxTokens": 2500 },
+    "lead": { "model": "openai/gpt-4.1-mini", "temperature": 0.3, "timeoutSeconds": 60, "maxTokens": 800 },
+    "worker": { "model": "nvidia/nemotron-3-super-120b-a12b:free", "temperature": 0.2, "timeoutSeconds": 240, "maxTokens": 3200 },
+    "qc": { "model": "nvidia/nemotron-3-super-120b-a12b:free", "temperature": 0.0, "timeoutSeconds": 60, "maxTokens": 1000 },
+    "seniorSpecialist": { "model": "openai/gpt-4.1", "temperature": 0.1, "timeoutSeconds": 120, "maxTokens": 3000 },
+    "sage": { "model": "openai/gpt-4.1-nano", "temperature": 0.0, "timeoutSeconds": 45, "maxTokens": 1000 }
+  }
+}

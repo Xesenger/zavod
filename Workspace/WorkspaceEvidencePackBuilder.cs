@@ -214,6 +214,10 @@ public static class WorkspaceEvidencePackBuilder
                 {
                     AddCMakeRunProfiles(profiles, unit, manifest);
                 }
+                else if (string.Equals(fileName, "Makefile", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddMakeRunProfiles(profiles, unit, manifest);
+                }
                 else if (Path.GetExtension(fileName).Equals(".csproj", StringComparison.OrdinalIgnoreCase))
                 {
                     AddDotnetRunProfiles(profiles, unit, manifest);
@@ -1317,6 +1321,15 @@ public static class WorkspaceEvidencePackBuilder
         AddRunProfile(profiles, unit, "build", "cmake --build build", manifest, unit.Confidence, evidence);
     }
 
+    private static void AddMakeRunProfiles(
+        ICollection<WorkspaceEvidenceRunProfile> profiles,
+        WorkspaceEvidenceProjectUnit unit,
+        string manifest)
+    {
+        var evidence = UnitProfileEvidence(unit, manifest);
+        AddRunProfile(profiles, unit, "build", "make", manifest, WorkspaceEvidenceConfidenceLevel.Confirmed, evidence.Concat(new[] { "makefile_manifest" }).ToArray());
+    }
+
     private static void AddDotnetRunProfiles(
         ICollection<WorkspaceEvidenceRunProfile> profiles,
         WorkspaceEvidenceProjectUnit unit,
@@ -2049,6 +2062,7 @@ public static class WorkspaceEvidencePackBuilder
             "setup.py" => "python-project",
             "go.mod" => "go-module",
             "CMakeLists.txt" => "cmake-project",
+            "Makefile" => "make-project",
             _ when extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) => "dotnet-project",
             _ => string.Empty
         };
